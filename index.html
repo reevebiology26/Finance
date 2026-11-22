@@ -1,0 +1,2797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wealth &amp; ISA Portfolio Tracker</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS for reading & writing multi-sheet Excel (.xlsx) files locally -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Chart.js for interactive & animated portfolio visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg, #f5f3ff 0%, #f8fafc 260px);
+      color: #0f172a;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c7d2fe;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #818cf8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-violet-200 selection:text-violet-950">
+
+  <!-- Hidden Multi-File Input -->
+  <input id="excelMultiInput" type="file" accept=".xlsx,.xls,.csv" multiple class="hidden" onchange="handleExcelFilesSelected(event)" />
+
+  <!-- ===================================================================== -->
+  <!-- TOP HEADER WITH VIBRANT GRADIENT & TOP-RIGHT £25/DAY INTEREST COUNTER -->
+  <!-- ===================================================================== -->
+  <header id="appHeader" class="bg-gradient-to-r from-indigo-950 via-violet-900 to-fuchsia-900 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-wrap items-center justify-between py-3.5 gap-3">
+        <!-- Brand & Local Privacy Status -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-xs border border-white/20 text-white flex items-center justify-center shadow-sm shrink-0">
+            <svg class="w-5 h-5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">Wealth &amp; ISA Tracker</h1>
+              <button type="button" onclick="openSecurityModal()" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 hover:bg-emerald-400/30 text-emerald-200 border border-emerald-300/35 transition cursor-pointer" title="Click to inspect local-only privacy & security details">
+                <svg class="w-3.5 h-3.5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span>100% Local &amp; Private</span>
+              </button>
+            </div>
+            <p class="text-xs text-indigo-200">Multi-sheet Excel &bull; Auto-bank detection &bull; Cash, Shares &amp; Pensions</p>
+          </div>
+        </div>
+
+        <!-- Right Side: Top-Right Live £25/day Counter + Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 ml-auto">
+          <!-- TOP-RIGHT CORNER LIVE COUNTER: INTEREST EARNED THIS YEAR (£25/DAY) -->
+          <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border border-emerald-300/40 backdrop-blur-xs shadow-sm" title="Tracks £25/day since January 1st of the current year (Jan 1 = £25, Jan 3 = £75)">
+            <div class="w-8 h-8 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center font-extrabold text-sm shadow-xs shrink-0">
+              £
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-200">Interest Earned This Year</span>
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span id="ytdInterestAmount" class="text-base sm:text-lg font-extrabold text-white tracking-tight">£0</span>
+                <span id="ytdInterestSubtext" class="text-[11px] font-medium text-emerald-200">+£25/day (Day 1)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Global Action Buttons -->
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <button onclick="triggerExcelUpload()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-indigo-950 bg-amber-300 hover:bg-amber-200 rounded-xl shadow-sm transition cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              <span>+ Import Excel</span>
+            </button>
+
+            <button onclick="exportToExcel()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-white bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl transition cursor-pointer">
+              <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              <span class="hidden sm:inline">Export</span>
+            </button>
+
+            <button onclick="showWelcomeScreen()" class="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-medium text-indigo-200 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl transition cursor-pointer" title="Return to Welcome Screen or Reset Data">
+              <span>Reset</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4-Tab Navigation Bar (De-cluttered 2-Tab Dashboard + Annual + Monthly Entry) -->
+      <nav id="mainNavTabs" class="hidden flex space-x-1 sm:space-x-2 overflow-x-auto pt-1" aria-label="Tabs">
+        <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-900 shadow-xs flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>
+          Overview
+        </button>
+        <button onclick="switchTab('insights')" id="tab-insights" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
+          Providers &amp; Insights (<span id="navProviderCount">0</span>)
+        </button>
+        <button onclick="switchTab('annual')" id="tab-annual" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-teal-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+          Annual (Feb)
+        </button>
+        <button onclick="switchTab('entry')" id="tab-entry" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+          Add / Edit Month
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ===================================================================== -->
+    <!-- WELCOME / START SCREEN (Initial Load or Start/Reset)                  -->
+    <!-- ===================================================================== -->
+    <section id="welcomeScreen" class="max-w-4xl mx-auto my-4 sm:my-8">
+      <div class="bg-white rounded-3xl border border-violet-100 shadow-lg overflow-hidden">
+        <div class="p-6 sm:p-10 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center mx-auto mb-5 shadow-md">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+            </svg>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-3">
+            Track Your ISAs, Savings &amp; Pensions
+          </h2>
+          <p class="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto mb-8 leading-relaxed">
+            Built for multi-sheet Excel workbooks where each tab is a date. Upload one or multiple spreadsheets—unknown banks are automatically detected, extra notes/columns are safely ignored, and duplicate tabs are merged without double-counting.
+          </p>
+
+          <!-- Two Primary Actions -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
+            <!-- Action 1: Upload Spreadsheet(s) -->
+            <button onclick="triggerExcelUpload()" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md transition flex flex-col justify-between cursor-pointer">
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                </div>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20">Auto-Detects New Banks</span>
+              </div>
+              <div>
+                <div class="text-lg font-bold mb-1">Upload Spreadsheet(s) (.xlsx)</div>
+                <p class="text-xs text-indigo-100 leading-relaxed">
+                  Select one or more Excel files. Automatically adds new banks, ignores extra columns/notes, and deduplicates overlapping dates.
+                </p>
+              </div>
+            </button>
+
+            <!-- Action 2: Explore 5-Year Trial Data -->
+            <button onclick="loadTrialDataset()" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white shadow-md transition flex flex-col justify-between cursor-pointer">
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-amber-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                  </svg>
+                </div>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 text-emerald-100">60 Months (2021–2026)</span>
+              </div>
+              <div>
+                <div class="text-lg font-bold mb-1">Explore 5-Year Trial Data</div>
+                <p class="text-xs text-emerald-50 leading-relaxed">
+                  Load 60 months of UK portfolio data using your exact account codes (<code class="text-amber-200">M chall</code>, <code class="text-amber-200">HL isa shares</code>, <code class="text-amber-200">T212 sipp shares</code>, etc.).
+                </p>
+              </div>
+            </button>
+          </div>
+
+          <!-- Resume Existing Session Banner -->
+          <div id="resumeSavedBanner" class="hidden max-w-2xl mx-auto mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-3 text-left">
+            <div>
+              <div class="text-sm font-bold text-amber-950">Saved Portfolio Found in Browser</div>
+              <div id="resumeSavedDetails" class="text-xs text-amber-800">You have existing sheets saved locally.</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="resumeExistingPortfolio()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition cursor-pointer">
+                Return to Overview
+              </button>
+              <button onclick="clearSavedPortfolio()" class="px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100 rounded-xl transition cursor-pointer">
+                Wipe Data
+              </button>
+            </div>
+          </div>
+
+          <!-- Format Helper Footer -->
+          <div class="border-t border-slate-100 pt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+            <span>Auto-classifies: <strong class="text-amber-700">SIPP</strong> &rarr; Pension &bull; <strong class="text-violet-700">Shares</strong> &rarr; ISA &bull; <strong class="text-emerald-700">Other</strong> &rarr; Cash &bull; Extra columns ignored</span>
+            <button onclick="downloadSampleTemplateXlsx()" class="text-violet-600 hover:text-violet-800 font-semibold underline cursor-pointer">
+              Download Sample Multi-Sheet .xlsx
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 1: OVERVIEW (DE-CLUTTERED: 4 KPI CARDS + ANIMATED RUNNING CHART)  -->
+    <!-- ===================================================================== -->
+    <section id="view-overview" class="space-y-6 hidden">
+      <!-- 4 Vibrant Headline KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Net Worth -->
+        <div class="bg-gradient-to-br from-indigo-900 via-violet-900 to-purple-900 text-white rounded-2xl p-5 shadow-md relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-200">Total Net Worth</span>
+            <span id="kpiDateBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/15 text-amber-200">—</span>
+          </div>
+          <div id="kpiTotalWorth" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">£0</div>
+          <div id="kpiTotalChange" class="mt-2 text-xs font-medium text-indigo-200">—</div>
+        </div>
+
+        <!-- Cash & Cash ISAs -->
+        <div class="bg-white rounded-2xl border-2 border-emerald-100 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              Cash &amp; Cash ISAs
+            </span>
+            <span id="kpiCashShare" class="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">0%</span>
+          </div>
+          <div id="kpiCashTotal" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">£0</div>
+          <div id="kpiCashSub" class="mt-2 text-xs font-medium text-emerald-700">—</div>
+        </div>
+
+        <!-- Shares & S&S ISAs -->
+        <div class="bg-white rounded-2xl border-2 border-violet-100 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-violet-700 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span>
+              Shares / S&amp;S ISAs
+            </span>
+            <span id="kpiSharesShare" class="text-xs font-bold text-violet-800 bg-violet-100 px-2.5 py-0.5 rounded-full">0%</span>
+          </div>
+          <div id="kpiSharesTotal" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">£0</div>
+          <div id="kpiSharesSub" class="mt-2 text-xs font-medium text-violet-700">—</div>
+        </div>
+
+        <!-- Pensions / SIPPs -->
+        <div class="bg-white rounded-2xl border-2 border-amber-100 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              Pensions / SIPPs
+            </span>
+            <span id="kpiPensionShare" class="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full">0%</span>
+          </div>
+          <div id="kpiPensionTotal" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">£0</div>
+          <div id="kpiPensionSub" class="mt-2 text-xs font-medium text-amber-700">—</div>
+        </div>
+      </div>
+
+      <!-- Main Running Totals Over Time Chart with Animated Playback -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Running Totals Over Time</h2>
+            <p class="text-xs text-slate-500">Watch your Cash, Shares, and Pensions grow month-by-month across your history</p>
+          </div>
+
+          <!-- Animation & Chart Controls -->
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Animated Timeline Playback Controls -->
+            <div class="inline-flex items-center gap-1 bg-violet-50 border border-violet-200 rounded-xl p-1">
+              <button onclick="toggleTimelineAnimation()" id="btnPlayAnimation" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 shadow-2xs transition cursor-pointer">
+                <svg id="playIconSvg" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span id="playBtnLabel">Play Growth Animation</span>
+              </button>
+              <button onclick="resetTimelineAnimation()" title="Reset Animation to Full View" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-violet-700 hover:bg-violet-100 transition cursor-pointer">
+                Full
+              </button>
+              <button onclick="cycleAnimationSpeed()" id="btnAnimSpeed" title="Change Playback Speed" class="px-2 py-1.5 rounded-lg text-xs font-bold text-violet-900 bg-white border border-violet-200 hover:bg-violet-100 transition cursor-pointer">
+                1x
+              </button>
+            </div>
+
+            <!-- View Mode Toggle -->
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+              <button onclick="setChartMode('stacked')" id="mode-stacked" class="px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">Stacked</button>
+              <button onclick="setChartMode('lines')" id="mode-lines" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Lines</button>
+              <button onclick="setChartMode('total')" id="mode-total" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Total</button>
+            </div>
+
+            <!-- Timeframe Filter -->
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+              <button onclick="setTimeframe('6M')" id="tf-6M" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">6M</button>
+              <button onclick="setTimeframe('1Y')" id="tf-1Y" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">1Y</button>
+              <button onclick="setTimeframe('3Y')" id="tf-3Y" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">3Y</button>
+              <button onclick="setTimeframe('ALL')" id="tf-ALL" class="px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">All</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animation Progress Scrubber Bar (Shown during playback) -->
+        <div id="animationProgressWrapper" class="hidden mt-3 flex items-center gap-3">
+          <span id="animCurrentMonthBadge" class="text-xs font-bold text-violet-700 bg-violet-100 px-2.5 py-0.5 rounded-md shrink-0">—</span>
+          <div class="flex-1 h-2 bg-violet-100 rounded-full overflow-hidden">
+            <div id="animProgressBar" class="h-full bg-gradient-to-r from-emerald-500 via-violet-500 to-amber-500 transition-all duration-150" style="width: 100%"></div>
+          </div>
+          <span id="animStepCounter" class="text-xs text-slate-500 shrink-0">0 / 0</span>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative mt-4 h-[330px] sm:h-[380px] w-full">
+          <canvas id="portfolioChartCanvas"></canvas>
+          <div id="chartSvgFallback" class="hidden w-full h-full"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 2: PROVIDERS & INSIGHTS (SECOND DASHBOARD TAB)                    -->
+    <!-- ===================================================================== -->
+    <section id="view-insights" class="space-y-6 hidden">
+      <!-- Dynamic Portfolio Interpretation & Insights Panel -->
+      <div class="bg-white rounded-2xl border border-violet-100 shadow-sm p-5 sm:p-6">
+        <div class="flex items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white flex items-center justify-center shadow-xs">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+            </div>
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">Dynamic Portfolio Interpretation</h2>
+              <p class="text-xs text-slate-500">Live insights generated from your multi-year cash, ISA, and pension trajectory</p>
+            </div>
+          </div>
+          <span id="insightsSnapshotLabel" class="text-xs font-bold px-3 py-1 rounded-full bg-violet-100 text-violet-800">—</span>
+        </div>
+
+        <div id="dynamicInsightsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Provider / Bank Breakdown Cards -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">Provider &amp; Bank Breakdown</h3>
+            <p class="text-xs text-slate-500">All accounts grouped by bank/platform—including any new banks automatically detected from your spreadsheets</p>
+          </div>
+          <span id="providerCountBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">0 Providers</span>
+        </div>
+
+        <div id="providerBreakdownGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Account Category Quick Re-Classifier -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Account Category Mapping (<span id="accountsMappingCount">0</span>)</h3>
+            <p class="text-xs text-slate-500">Switch any account between <strong>Cash</strong>, <strong>Shares</strong>, and <strong>Pension</strong> and all charts update immediately</p>
+          </div>
+        </div>
+        <div id="accountsRulesList" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 3: ANNUAL SNAPSHOT (AS NEAR TO FEBRUARY EACH YEAR)               -->
+    <!-- ===================================================================== -->
+    <section id="view-annual" class="space-y-6 hidden">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">Annual Wealth Progress (February Snapshot)</h2>
+              <span id="annualYearSpanBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-800">—</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Automatically picks each calendar year's sheet closest to <strong>February</strong> (falling back to January or the nearest available month when February isn't recorded).
+            </p>
+          </div>
+
+          <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold self-start sm:self-auto shrink-0">
+            <button onclick="setAnnualBarMode('stacked')" id="annual-mode-stacked" class="px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">
+              Stacked Bar
+            </button>
+            <button onclick="setAnnualBarMode('grouped')" id="annual-mode-grouped" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+              Grouped Bar
+            </button>
+          </div>
+        </div>
+
+        <div class="relative mt-5 h-[330px] sm:h-[370px] w-full">
+          <canvas id="annualBarChartCanvas"></canvas>
+          <div id="annualSvgFallback" class="hidden w-full h-full"></div>
+        </div>
+
+        <div id="annualFallbackNote" class="hidden mt-3 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2">
+          <strong>* Nearest-month match:</strong> Years marked with an asterisk did not have a February sheet, so the closest available month (e.g., January) was automatically used.
+        </div>
+      </div>
+
+      <!-- Year-over-Year Summary Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-5 sm:p-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Year-over-Year Breakdown</h3>
+            <p class="text-xs text-slate-500">Annual category totals and year-on-year net worth growth</p>
+          </div>
+          <span id="annualCagrBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 hidden">
+            —
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <th class="py-3.5 px-5">Year</th>
+                <th class="py-3.5 px-4">Snapshot Month Used</th>
+                <th class="py-3.5 px-4 text-right">Cash (£)</th>
+                <th class="py-3.5 px-4 text-right">Shares (£)</th>
+                <th class="py-3.5 px-4 text-right">Pensions (£)</th>
+                <th class="py-3.5 px-4 text-right">Total Wealth (£)</th>
+                <th class="py-3.5 px-5 text-right">Annual Change</th>
+              </tr>
+            </thead>
+            <tbody id="annualSummaryTableBody" class="divide-y divide-slate-100 text-sm">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 4: ADD / EDIT MONTH (WITH "+ ADD ANOTHER ACCOUNT" OPTION)         -->
+    <!-- ===================================================================== -->
+    <section id="view-entry" class="max-w-4xl mx-auto space-y-6 hidden">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Add / Edit Monthly Details</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Pre-filled with your latest balances and interest rates—plus add new accounts anytime.</p>
+          </div>
+
+          <div class="flex items-end gap-2">
+            <div>
+              <label for="entryMonthPicker" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Target Month</label>
+              <input type="month" id="entryMonthPicker" onchange="onEntryMonthChanged()" class="px-3.5 py-2 text-sm font-semibold text-slate-900 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+            </div>
+            <button type="button" onclick="prefillEntryFromLatest()" class="px-3.5 py-2 text-xs font-bold text-violet-800 bg-violet-100 hover:bg-violet-200 border border-violet-200 rounded-xl transition cursor-pointer">
+              Reset to Last Month's Values
+            </button>
+          </div>
+        </div>
+
+        <!-- Status & Live Total Bar -->
+        <div class="mt-4 px-4 py-3 rounded-xl bg-gradient-to-r from-violet-50 via-indigo-50 to-emerald-50 border border-violet-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div id="entryModeBannerText" class="flex flex-wrap items-center gap-2 text-slate-700 font-medium">Creating new monthly snapshot</div>
+          <div class="flex flex-wrap items-center gap-4 font-bold">
+            <span class="text-emerald-700" id="entrySubCash">Cash: £0</span>
+            <span class="text-violet-700" id="entrySubShares">Shares: £0</span>
+            <span class="text-amber-700" id="entrySubPension">Pension: £0</span>
+            <span class="text-slate-900 text-sm" id="entryLiveNetWorth">Total: £0</span>
+          </div>
+        </div>
+
+        <!-- PROMINENT "+ ADD ANOTHER ACCOUNT" CARD -->
+        <div class="mt-5 rounded-2xl bg-gradient-to-r from-violet-50 to-fuchsia-50 border-2 border-dashed border-violet-300 p-4 sm:p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold shadow-xs">
+                +
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-violet-950">Add Another Account</h3>
+                <p class="text-xs text-violet-700">Opened a new bank account, ISA, or SIPP? Add it here and it will appear every month automatically.</p>
+              </div>
+            </div>
+            <button type="button" onclick="toggleAddAccountPanel()" id="btnToggleAddAccount" class="px-3.5 py-1.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-xs transition cursor-pointer">
+              + Add Another Account
+            </button>
+          </div>
+
+          <div id="addAnotherAccountFields" class="mt-4 pt-4 border-t border-violet-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+            <div class="sm:col-span-3">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Account Code / Name *</label>
+              <input type="text" id="addFundCode" placeholder="e.g. Chase sav / AJ Bell sipp" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Bank / Provider</label>
+              <input type="text" id="addFundProvider" placeholder="e.g. Chase, Vanguard, Chip" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+              <select id="addFundCategory" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500">
+                <option value="Cash">Cash</option>
+                <option value="Shares" selected>Shares</option>
+                <option value="Pension">Pension</option>
+              </select>
+            </div>
+            <div class="sm:col-span-4 flex gap-2 items-end">
+              <div class="flex-1">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Balance (£)</label>
+                <input type="number" step="0.01" id="addFundAmount" placeholder="0.00" class="w-full px-2.5 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              </div>
+              <div class="w-20">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">AER %</label>
+                <input type="number" step="0.01" id="addFundRate" placeholder="4.5" class="w-full px-2 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              </div>
+              <button type="button" onclick="handleAddNewFund()" class="px-4 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition cursor-pointer shrink-0">
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recurring Accounts Form -->
+        <form id="monthlyEntryForm" onsubmit="saveMonthlyEntry(event)" class="mt-6 space-y-6">
+          <div id="entryGroupsContainer" class="space-y-6">
+            <!-- Cash, Shares, and Pension groups injected here -->
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
+            <p class="text-xs text-slate-500">Barclaycard (and any credit card) is automatically deducted as negative even if entered as a positive figure.</p>
+            <button type="submit" class="px-6 py-3 text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-xl shadow-md transition cursor-pointer">
+              Save Monthly Sheet
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL: 100% LOCAL & PRIVATE SECURITY OVERVIEW                           -->
+  <!-- ======================================================================= -->
+  <div id="securityInfoModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-emerald-200 max-w-lg w-full overflow-hidden">
+      <div class="px-6 py-4 bg-gradient-to-r from-indigo-950 to-violet-900 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-400/20 border border-emerald-300/40 flex items-center justify-center text-emerald-300">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+          </div>
+          <h3 class="text-base font-bold">100% Local &amp; Private Storage</h3>
+        </div>
+        <button type="button" onclick="closeSecurityModal()" class="p-1.5 text-indigo-200 hover:text-white rounded-lg cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+        <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-1.5">
+          <div class="font-bold">Zero Cloud Uploads &amp; Zero Tracking</div>
+          <p class="text-xs">Your spreadsheets and monthly figures are parsed strictly inside your browser's memory and stored only in this device's <code class="font-mono bg-white px-1 py-0.5 rounded">localStorage</code>. Nothing is ever sent to any external server.</p>
+        </div>
+
+        <div class="space-y-2 text-xs text-slate-600">
+          <div class="font-bold text-slate-900">Why your data has minimal exposure even if inspected locally:</div>
+          <ul class="list-disc pl-4 space-y-1">
+            <li><strong>No Account Numbers, Sort Codes, or Logins:</strong> Only shorthand labels (like <code class="font-mono">MC</code> or <code class="font-mono">HL isa shares</code>) and balances are saved.</li>
+            <li><strong>Read-Only Numbers:</strong> No bank tokens or payment credentials exist anywhere in this file.</li>
+            <li><strong>Best Practice:</strong> Use a device login password/PIN and avoid using this app on shared public computers.</li>
+          </ul>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <button type="button" onclick="wipeAllBrowserDataAndReset()" class="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer">
+            Wipe Browser Data
+          </button>
+          <button type="button" onclick="closeSecurityModal()" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition cursor-pointer">
+            Got It
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT ENGINE                                                       -->
+  <!-- ======================================================================= -->
+  <script>
+    /**
+     * =========================================================================
+     * 1. STATE, VIBRANT PALETTE & CONSTANTS
+     * =========================================================================
+     */
+    const STORAGE_KEY = 'uk_wealth_isa_tracker_v4';
+    const DAILY_INTEREST_RATE_GBP = 25; // £25/day since Jan 1 (Jan 1 = £25, Jan 3 = £75)
+
+    let appState = {
+      accounts: [],
+      snapshots: [],
+      preferences: {
+        chartMode: 'stacked',       // 'stacked' | 'lines' | 'total'
+        timeframe: 'ALL',           // '6M' | '1Y' | '3Y' | 'ALL'
+        annualBarMode: 'stacked'    // 'stacked' | 'grouped'
+      }
+    };
+
+    let pendingImportBatch = null;
+    let chartInstance = null;
+    let annualChartInstance = null;
+
+    let animationState = {
+      isPlaying: false,
+      currentIndex: null,
+      speed: 1,
+      timerId: null
+    };
+
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const MONTH_MAP = {
+      jan: 1, january: 1,
+      feb: 2, february: 2,
+      mar: 3, march: 3,
+      apr: 4, april: 4,
+      may: 5,
+      jun: 6, june: 6,
+      jul: 7, july: 7,
+      aug: 8, august: 8,
+      sep: 9, sept: 9, september: 9,
+      oct: 10, october: 10,
+      nov: 11, november: 11,
+      dec: 12, december: 12
+    };
+
+    // Exciting, high-contrast vibrant palette
+    const CATEGORY_STYLES = {
+      Cash: {
+        hex: '#10b981',       // Vibrant Emerald
+        fill: 'rgba(16, 185, 129, 0.24)',
+        badgeBg: 'bg-emerald-100',
+        badgeText: 'text-emerald-800',
+        dot: 'bg-emerald-500'
+      },
+      Shares: {
+        hex: '#7c3aed',       // Electric Violet
+        fill: 'rgba(124, 58, 237, 0.22)',
+        badgeBg: 'bg-violet-100',
+        badgeText: 'text-violet-800',
+        dot: 'bg-violet-600'
+      },
+      Pension: {
+        hex: '#f59e0b',       // Warm Amber / Gold
+        fill: 'rgba(245, 158, 11, 0.26)',
+        badgeBg: 'bg-amber-100',
+        badgeText: 'text-amber-900',
+        dot: 'bg-amber-500'
+      }
+    };
+
+    // Exact mapping for your 17 known codes
+    const KNOWN_ACCOUNT_CODES = {
+      'barclaycard':      { displayName: 'Barclaycard',               provider: 'Barclaycard',        category: 'Cash',    isLiability: true },
+      'barclays':         { displayName: 'Barclays Current/Savings',  provider: 'Barclays',           category: 'Cash',    isLiability: false },
+      'hl isa shares':    { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown',category: 'Shares',  isLiability: false },
+      'hl sipp shares':   { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown',category: 'Pension', isLiability: false },
+      'm chall':          { displayName: 'Monzo Challenge Pot',       provider: 'Monzo',              category: 'Cash',    isLiability: false },
+      'm funpot':         { displayName: 'Monzo Fun Pot',             provider: 'Monzo',              category: 'Cash',    isLiability: false },
+      'mc':               { displayName: 'Monzo Current',             provider: 'Monzo',              category: 'Cash',    isLiability: false },
+      'minvest shares':   { displayName: 'Monzo Investments (ISA)',   provider: 'Monzo',              category: 'Shares',  isLiability: false },
+      'ms':               { displayName: 'Monzo Savings Pot',         provider: 'Monzo',              category: 'Cash',    isLiability: false },
+      'nsai':             { displayName: 'NS&I Premium Bonds/Sav',    provider: 'NS&I',               category: 'Cash',    isLiability: false },
+      'nsandi':           { displayName: 'NS&I Premium Bonds/Sav',    provider: 'NS&I',               category: 'Cash',    isLiability: false },
+      'nw':               { displayName: 'Nationwide Current',        provider: 'Nationwide',         category: 'Cash',    isLiability: false },
+      'nw sav':           { displayName: 'Nationwide Savings',        provider: 'Nationwide',         category: 'Cash',    isLiability: false },
+      'nwe isa':          { displayName: 'Nationwide Cash ISA',       provider: 'Nationwide',         category: 'Cash',    isLiability: false },
+      's':                { displayName: 'Starling Bank',             provider: 'Starling',           category: 'Cash',    isLiability: false },
+      't212 isa shares':  { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',        category: 'Shares',  isLiability: false },
+      't212 sipp shares': { displayName: 'Trading 212 SIPP Pension',  provider: 'Trading 212',        category: 'Pension', isLiability: false },
+      'virisa':           { displayName: 'Virgin Money Cash ISA',     provider: 'Virgin Money',       category: 'Cash',    isLiability: false }
+    };
+
+    // Extended UK bank & platform prefix/keyword dictionary so new banks auto-register cleanly
+    const KNOWN_BANK_KEYWORDS = [
+      { pattern: /^t212\b|^trading\s*212\b/i, provider: 'Trading 212' },
+      { pattern: /^hl\b|^hargreaves/i, provider: 'Hargreaves Lansdown' },
+      { pattern: /^nw\w*\b|^nationwide\b/i, provider: 'Nationwide' },
+      { pattern: /^nsai\b|^nsandi\b|^ns&i\b/i, provider: 'NS&I' },
+      { pattern: /^vir\w*\b|^virgin\b/i, provider: 'Virgin Money' },
+      { pattern: /^barclaycard\b/i, provider: 'Barclaycard' },
+      { pattern: /^barclays\b/i, provider: 'Barclays' },
+      { pattern: /^m\s+|^mc$|^ms$|^minvest|^monzo\b/i, provider: 'Monzo' },
+      { pattern: /^s$|^starling\b/i, provider: 'Starling' },
+      { pattern: /^chase\b/i, provider: 'Chase UK' },
+      { pattern: /^marcus\b/i, provider: 'Marcus' },
+      { pattern: /^chip\b/i, provider: 'Chip' },
+      { pattern: /^zopa\b/i, provider: 'Zopa' },
+      { pattern: /^vanguard\b/i, provider: 'Vanguard' },
+      { pattern: /^aj\s*bell\b/i, provider: 'AJ Bell' },
+      { pattern: /^fidelity\b/i, provider: 'Fidelity' },
+      { pattern: /^freetrade\b/i, provider: 'Freetrade' },
+      { pattern: /^investengine\b/i, provider: 'InvestEngine' },
+      { pattern: /^hsbc\b/i, provider: 'HSBC' },
+      { pattern: /^lloyds\b/i, provider: 'Lloyds' },
+      { pattern: /^natwest\b/i, provider: 'NatWest' },
+      { pattern: /^santander\b/i, provider: 'Santander' },
+      { pattern: /^halifax\b/i, provider: 'Halifax' },
+      { pattern: /^coventry\b/i, provider: 'Coventry BS' },
+      { pattern: /^yorkshire\b/i, provider: 'Yorkshire BS' },
+      { pattern: /^skipton\b/i, provider: 'Skipton BS' },
+      { pattern: /^first\s*direct\b/i, provider: 'First Direct' },
+      { pattern: /^revolut\b/i, provider: 'Revolut' },
+      { pattern: /^plum\b/i, provider: 'Plum' },
+      { pattern: /^moneybox\b/i, provider: 'Moneybox' },
+      { pattern: /^nutmeg\b/i, provider: 'Nutmeg' },
+      { pattern: /^pensionbee\b/i, provider: 'PensionBee' },
+      { pattern: /^aviva\b/i, provider: 'Aviva' },
+      { pattern: /^scottish\s*widows\b/i, provider: 'Scottish Widows' },
+      { pattern: /^legal\s*&?\s*general\b|^l&g\b/i, provider: 'Legal & General' },
+      { pattern: /^royal\s*london\b/i, provider: 'Royal London' },
+      { pattern: /^standard\s*life\b/i, provider: 'Standard Life' },
+      { pattern: /^aegon\b/i, provider: 'Aegon' },
+      { pattern: /^nest\b/i, provider: 'NEST Pension' }
+    ];
+
+    /**
+     * =========================================================================
+     * 2. TOP-RIGHT COUNTER: INTEREST EARNED THIS YEAR (£25/DAY SINCE JAN 1)
+     * =========================================================================
+     */
+    function updateYtdInterestCounter() {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1); // Jan 1 at 00:00 local time
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const msPerDay = 24 * 60 * 60 * 1000;
+
+      // Jan 1 = Day 1 (£25), Jan 2 = Day 2 (£50), Jan 3 = Day 3 (£75), etc.
+      const dayOfYear = Math.floor((todayMidnight - startOfYear) / msPerDay) + 1;
+      const ytdAmount = dayOfYear * DAILY_INTEREST_RATE_GBP;
+
+      const amountEl = document.getElementById('ytdInterestAmount');
+      const subEl = document.getElementById('ytdInterestSubtext');
+      if (amountEl) amountEl.textContent = formatGBP(ytdAmount);
+      if (subEl) subEl.textContent = `+£${DAILY_INTEREST_RATE_GBP}/day (Day ${dayOfYear} of ${now.getFullYear()})`;
+    }
+
+    /**
+     * =========================================================================
+     * 3. INITIALIZATION & STORAGE
+     * =========================================================================
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      updateYtdInterestCounter();
+      loadFromLocalStorage();
+      if (appState.accounts.length > 0 && appState.snapshots.length > 0) {
+        enterActiveWorkspace('overview');
+      } else {
+        showWelcomeScreen();
+      }
+    });
+
+    function loadFromLocalStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.accounts) && Array.isArray(parsed.snapshots)) {
+          appState = {
+            accounts: parsed.accounts,
+            snapshots: parsed.snapshots,
+            preferences: Object.assign(
+              { chartMode: 'stacked', timeframe: 'ALL', annualBarMode: 'stacked' },
+              parsed.preferences || {}
+            )
+          };
+        }
+      } catch (err) {
+        console.warn('Could not read saved data from localStorage:', err);
+      }
+    }
+
+    function saveToLocalStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (err) {
+        console.warn('Could not save data to localStorage:', err);
+      }
+    }
+
+    function showWelcomeScreen() {
+      stopTimelineAnimation();
+      document.getElementById('welcomeScreen').classList.remove('hidden');
+      document.getElementById('mainNavTabs').classList.add('hidden');
+      document.getElementById('view-overview').classList.add('hidden');
+      document.getElementById('view-insights').classList.add('hidden');
+      document.getElementById('view-annual').classList.add('hidden');
+      document.getElementById('view-entry').classList.add('hidden');
+      updateResumeBanner();
+    }
+
+    function updateResumeBanner() {
+      const banner = document.getElementById('resumeSavedBanner');
+      const details = document.getElementById('resumeSavedDetails');
+      if (appState.accounts.length > 0 && appState.snapshots.length > 0) {
+        const sorted = sortSnapshots(appState.snapshots);
+        banner.classList.remove('hidden');
+        details.textContent = `${appState.accounts.length} accounts across ${sorted.length} monthly sheets (${sorted[0].label} to ${sorted[sorted.length - 1].label}).`;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function resumeExistingPortfolio() {
+      enterActiveWorkspace('overview');
+    }
+
+    function clearSavedPortfolio() {
+      localStorage.removeItem(STORAGE_KEY);
+      appState.accounts = [];
+      appState.snapshots = [];
+      updateResumeBanner();
+      showToast('Saved portfolio cleared.', 'info');
+    }
+
+    function openSecurityModal() {
+      document.getElementById('securityInfoModal')?.classList.remove('hidden');
+    }
+
+    function closeSecurityModal() {
+      document.getElementById('securityInfoModal')?.classList.add('hidden');
+    }
+
+    function wipeAllBrowserDataAndReset() {
+      clearSavedPortfolio();
+      closeSecurityModal();
+      showWelcomeScreen();
+      showToast('All local browser portfolio data has been permanently wiped.', 'success');
+    }
+      const isLiability = /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(key);
+      const displayName = titleCaseWords(cleaned);
+
+      return {
+        rawName: cleaned,
+        displayName,
+        provider,
+        category,
+        isLiability,
+        isNewBank
+      };
+    }
+
+    /**
+     * Ensures liabilities (such as Barclaycard) are always stored as <= 0
+     * so net worth always subtracts credit card balances accurately.
+     */
+    function enforceAccountSign(amount, accOrMeta) {
+      const num = Number(amount) || 0;
+      if (num === 0) return 0;
+      const isCardOrDebt = Boolean(
+        accOrMeta &&
+        (accOrMeta.isLiability || /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(`${accOrMeta.rawName || ''} ${accOrMeta.displayName || ''}`))
+      );
+      return isCardOrDebt ? -Math.abs(num) : num;
+    }
+      ['overview', 'insights', 'annual', 'entry'].forEach(t => {
+        const viewEl = document.getElementById(`view-${t}`);
+        const btnEl = document.getElementById(`tab-${t}`);
+        if (!viewEl || !btnEl) return;
+        if (t === tabName) {
+          viewEl.classList.remove('hidden');
+          btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-900 shadow-xs flex items-center gap-2 transition cursor-pointer';
+        } else {
+          viewEl.classList.add('hidden');
+          btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer';
+        }
+      });
+
+      if (tabName === 'overview') {
+        renderOverviewTab();
+      } else if (tabName === 'insights') {
+        renderInsightsAndProvidersTab();
+      } else if (tabName === 'annual') {
+        renderAnnualSnapshotTab();
+      } else if (tabName === 'entry') {
+        renderMonthlyEntryForm();
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 4. ACCOUNT CLASSIFICATION & UNKNOWN BANK AUTO-DETECTION ENGINE
+     * =========================================================================
+     */
+    function normalizeAccountKey(rawName) {
+      return String(rawName || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ');
+    }
+
+    function slugifyId(rawName) {
+      return normalizeAccountKey(rawName).replace(/[^a-z0-9]+/g, '_') || 'acc_' + Math.random().toString(36).slice(2, 7);
+    }
+
+    function titleCaseWords(str) {
+      return str.replace(/\b\w+/g, w => {
+        if (['isa', 'sipp', 'ns&i', 'nsai', 'hl', 't212', 'uk', 'bs'].includes(w.toLowerCase())) {
+          return w.toUpperCase();
+        }
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      });
+    }
+
+    function classifyAccount(rawName) {
+      const cleaned = String(rawName || '').trim();
+      const key = normalizeAccountKey(cleaned);
+
+      // 1. Check exact preset account map first
+      if (KNOWN_ACCOUNT_CODES[key]) {
+        return {
+          rawName: cleaned,
+          isNewBank: false,
+          ...KNOWN_ACCOUNT_CODES[key]
+        };
+      }
+
+      // 2. Category rule: SIPP -> Pension; Shares/Invest/Equity -> Shares; else -> Cash
+      let category = 'Cash';
+      if (/\bsipp\b|\bpension\b/i.test(key)) {
+        category = 'Pension';
+      } else if (/\bshares?\b|\binvest\b|\bequity\b|\bstocks?\b/i.test(key)) {
+        category = 'Shares';
+      }
+
+      // 3. Provider detection: match known bank patterns or extract first word/token as new bank
+      let provider = '';
+      for (const item of KNOWN_BANK_KEYWORDS) {
+        if (item.pattern.test(key)) {
+          provider = item.provider;
+          break;
+        }
+      }
+
+      let isNewBank = false;
+      if (!provider) {
+        // Infer bank/provider name from the leading word(s) of the unknown account entry
+        const strippedRole = cleaned.replace(/\b(isa|sipp|shares?|savings?|sav|current|cash|account|pot|bond|bonds)\b/gi, '').trim();
+        const inferredToken = strippedRole || cleaned.split(/\s+/)[0] || 'Other Bank';
+        provider = titleCaseWords(inferredToken);
+        isNewBank = true;
+      }
+
+      const isLiability = /\b(card|loan|mortgage|debt|overdraft)\b/i.test(key);
+      const displayName = titleCaseWords(cleaned);
+
+      return {
+        rawName: cleaned,
+        displayName,
+        provider,
+        category,
+        isLiability,
+        isNewBank
+      };
+    }
+
+    /**
+     * =========================================================================
+     * 5. DATE PARSING, FORMATTING & NUMBER UTILITIES
+     * =========================================================================
+     */
+    function parseSheetNameToDateKey(sheetName) {
+      const s = String(sheetName || '').trim();
+      if (!s) return null;
+
+      let m = s.match(/^(\d{4})[-_/.\s](\d{1,2})(?:[-_/.\s]\d{1,2})?$/);
+      if (m) {
+        const y = parseInt(m[1], 10);
+        const mo = parseInt(m[2], 10);
+        if (y >= 1990 && y <= 2100 && mo >= 1 && mo <= 12) {
+          return `${y}-${String(mo).padStart(2, '0')}`;
+        }
+      }
+
+      m = s.match(/^(?:\d{1,2}[-_/.\s])?(\d{1,2})[-_/.\s](\d{2}|\d{4})$/);
+      if (m) {
+        const mo = parseInt(m[1], 10);
+        let y = parseInt(m[2], 10);
+        if (y < 100) y += 2000;
+        if (y >= 1990 && y <= 2100 && mo >= 1 && mo <= 12) {
+          return `${y}-${String(mo).padStart(2, '0')}`;
+        }
+      }
+
+      const lower = s.toLowerCase().replace(/[,._-]+/g, ' ').trim();
+      const tokens = lower.split(/\s+/);
+      let foundMonth = null;
+      let foundYear = null;
+      for (const tok of tokens) {
+        if (MONTH_MAP[tok]) foundMonth = MONTH_MAP[tok];
+        const num = parseInt(tok, 10);
+        if (!isNaN(num)) {
+          if (num >= 1990 && num <= 2100) foundYear = num;
+          else if (tok.length === 2 && num >= 0 && num <= 99 && foundYear === null) foundYear = 2000 + num;
+        }
+      }
+      if (foundMonth && foundYear) {
+        return `${foundYear}-${String(foundMonth).padStart(2, '0')}`;
+      }
+
+      const compact = lower.match(/^([a-z]{3,9})(\d{2,4})$/);
+      if (compact && MONTH_MAP[compact[1]]) {
+        let y = parseInt(compact[2], 10);
+        if (y < 100) y += 2000;
+        return `${y}-${String(MONTH_MAP[compact[1]]).padStart(2, '0')}`;
+      }
+
+      return null;
+    }
+
+    function formatDateKeyToLabel(dateKey) {
+      const [yStr, mStr] = dateKey.split('-');
+      const mIdx = parseInt(mStr, 10) - 1;
+      return `${MONTH_NAMES[mIdx] || mStr} ${yStr}`;
+    }
+
+    function parseCurrencyValue(val) {
+      if (val === null || val === undefined || val === '') return null;
+      if (typeof val === 'number') return isFinite(val) ? val : null;
+      let str = String(val).trim();
+      if (!str || str === '-' || str === '—') return null;
+      let isNeg = false;
+      if (str.startsWith('(') && str.endsWith(')')) {
+        isNeg = true;
+        str = str.slice(1, -1);
+      }
+      str = str.replace(/[£$€,\s]/g, '');
+      const num = parseFloat(str);
+      if (isNaN(num)) return null;
+      return isNeg ? -Math.abs(num) : num;
+    }
+
+    function parseInterestRateValue(val) {
+      if (val === null || val === undefined || val === '') return null;
+      if (typeof val === 'number') {
+        if (!isFinite(val)) return null;
+        if (val > 0 && val < 0.25) return Math.round(val * 10000) / 100;
+        return Math.round(val * 100) / 100;
+      }
+      const str = String(val).replace(/[%\s]/g, '').trim();
+      const num = parseFloat(str);
+      if (isNaN(num)) return null;
+      return Math.round(num * 100) / 100;
+    }
+
+    function formatGBP(amount) {
+      const val = Number(amount) || 0;
+      const absStr = Math.abs(val).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      return val < 0 ? `-£${absStr}` : `£${absStr}`;
+    }
+
+    function formatSignedGBP(amount) {
+      const val = Number(amount) || 0;
+      const absStr = Math.abs(val).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      if (val > 0) return `+£${absStr}`;
+      if (val < 0) return `-£${absStr}`;
+      return '£0';
+    }
+
+    function formatSignedPct(pct) {
+      const val = Number(pct) || 0;
+      return `${val >= 0 ? '+' : ''}${val.toFixed(1)}%`;
+    }
+
+    function sortSnapshots(snapshots) {
+      return [...snapshots].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+    }
+
+    function computeSnapshotTotals(snapshot) {
+      let cash = 0;
+      let shares = 0;
+      let pension = 0;
+      let weightedRateSum = 0;
+      let positiveCashSum = 0;
+
+      for (const acc of appState.accounts) {
+        const entry = snapshot.entries[acc.id];
+        if (!entry) continue;
+        const amt = Number(entry.amount) || 0;
+        if (acc.category === 'Cash') {
+          cash += amt;
+          if (amt > 0 && entry.rate !== null && entry.rate !== undefined && !isNaN(entry.rate)) {
+            weightedRateSum += amt * Number(entry.rate);
+            positiveCashSum += amt;
+          }
+        } else if (acc.category === 'Shares') {
+          shares += amt;
+        } else if (acc.category === 'Pension') {
+          pension += amt;
+        }
+      }
+
+      const total = cash + shares + pension;
+      const avgCashRate = positiveCashSum > 0 ? weightedRateSum / positiveCashSum : 0;
+      const projectedAnnualCashInterest = positiveCashSum * (avgCashRate / 100);
+
+      return { Cash: cash, Shares: shares, Pension: pension, total, avgCashRate, projectedAnnualCashInterest };
+    }
+
+    /**
+     * =========================================================================
+     * 6. 5-YEAR TRIAL DATASET GENERATOR (60 MONTHS: DEC 2021 – NOV 2026)
+     * =========================================================================
+     */
+    function loadTrialDataset() {
+      const trialConfigs = [
+        { code: 'Barclaycard',      start: -280,  monthlyAdd: 0,    growth: 0.000, rate: null, jitter: 160 },
+        { code: 'Barclays',         start: 1450,  monthlyAdd: 15,   growth: 0.001, rate: 1.50, jitter: 220 },
+        { code: 'HL isa shares',    start: 6200,  monthlyAdd: 220,  growth: 0.0068,rate: null, jitter: 240 },
+        { code: 'Hl sipp shares',   start: 9800,  monthlyAdd: 280,  growth: 0.0072,rate: null, jitter: 310 },
+        { code: 'M chall',          start: 120,   monthlyAdd: 35,   growth: 0.002, rate: 4.10, jitter: 40 },
+        { code: 'M funpot',         start: 340,   monthlyAdd: 25,   growth: 0.001, rate: 3.85, jitter: 90 },
+        { code: 'MC',               start: 820,   monthlyAdd: 10,   growth: 0.000, rate: 1.25, jitter: 180 },
+        { code: 'Minvest shares',   start: 450,   monthlyAdd: 85,   growth: 0.0062,rate: null, jitter: 65 },
+        { code: 'Ms',               start: 1600,  monthlyAdd: 60,   growth: 0.0032,rate: 4.35, jitter: 75 },
+        { code: 'NSAI',             start: 3500,  monthlyAdd: 75,   growth: 0.0030,rate: 4.15, jitter: 50 },
+        { code: 'Nw',               start: 950,   monthlyAdd: 10,   growth: 0.000, rate: 1.00, jitter: 150 },
+        { code: 'Nw sav',           start: 2800,  monthlyAdd: 90,   growth: 0.0035,rate: 4.50, jitter: 60 },
+        { code: 'Nwe isa',          start: 4100,  monthlyAdd: 140,  growth: 0.0036,rate: 4.65, jitter: 40 },
+        { code: 'S',                start: 1120,  monthlyAdd: 20,   growth: 0.0022,rate: 3.25, jitter: 130 },
+        { code: 'T212 isa shares',  start: 4800,  monthlyAdd: 320,  growth: 0.0075,rate: null, jitter: 280 },
+        { code: 'T212 sipp shares', start: 5400,  monthlyAdd: 240,  growth: 0.0074,rate: null, jitter: 220 },
+        { code: 'Virisa',           start: 3200,  monthlyAdd: 110,  growth: 0.0034,rate: 4.45, jitter: 35 }
+      ];
+
+      const accounts = trialConfigs.map(cfg => {
+        const meta = classifyAccount(cfg.code);
+        return {
+          id: slugifyId(cfg.code),
+          rawName: cfg.code,
+          displayName: meta.displayName,
+          provider: meta.provider,
+          category: meta.category,
+          isLiability: meta.isLiability,
+          active: true
+        };
+      });
+
+      const running = {};
+      trialConfigs.forEach(cfg => {
+        running[slugifyId(cfg.code)] = cfg.start;
+      });
+
+      const snapshots = [];
+      let year = 2021;
+      let month = 12; // 60 months ending Nov 2026
+
+      for (let i = 0; i < 60; i++) {
+        const dateKey = `${year}-${String(month).padStart(2, '0')}`;
+        const label = formatDateKeyToLabel(dateKey);
+        const entries = {};
+
+        trialConfigs.forEach((cfg, idx) => {
+          const id = slugifyId(cfg.code);
+          const wave = Math.sin((i + idx) * 0.48) * cfg.jitter;
+          if (cfg.isLiability) {
+            running[id] = -Math.round(Math.max(80, Math.abs(cfg.start) + wave));
+          } else {
+            running[id] = Math.max(0, running[id] * (1 + cfg.growth) + cfg.monthlyAdd + wave * 0.25);
+          }
+
+          let rate = cfg.rate;
+          if (rate !== null && i < 18) {
+            rate = Math.max(0.5, Math.round((rate - 1.4) * 100) / 100);
+          }
+
+          entries[id] = {
+            amount: Math.round(running[id]),
+            rate
+          };
+        });
+
+        snapshots.push({ dateKey, label, entries });
+
+        month += 1;
+        if (month > 12) {
+          month = 1;
+          year += 1;
+        }
+      }
+
+      appState.accounts = accounts;
+      appState.snapshots = snapshots;
+      saveToLocalStorage();
+      enterActiveWorkspace('overview');
+      showToast('Loaded 5-year trial dataset (Dec 2021 – Nov 2026) with all 17 accounts.', 'success');
+    }
+
+    /**
+     * =========================================================================
+     * 7. SMART MULTI-SPREADSHEET EXCEL IMPORTER
+     *    - Reads ONLY Col 1 (Account), Col 2 (Amount), Col 3 (Optional Rate)
+     *    - Completely ignores Col 4+, extra notes, blank rows, and summary rows
+     *    - Auto-adds any unknown banks/accounts not in the preset list
+     *    - Cross-references & deduplicates overlapping dates/accounts
+     * =========================================================================
+     */
+    function triggerExcelUpload() {
+      const input = document.getElementById('excelMultiInput');
+      input.value = '';
+      input.click();
+    }
+
+    async function handleExcelFilesSelected(event) {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
+
+      if (typeof XLSX === 'undefined') {
+        showToast('Excel library is still loading. Please try again in a moment.', 'error');
+        return;
+      }
+
+      try {
+        const discoveredAccountsMap = new Map();
+        const mergedSheetsMap = new Map();
+        let rawSheetCount = 0;
+        let duplicateRecordsMerged = 0;
+        let duplicateTabsMerged = 0;
+
+        for (const file of files) {
+          const buffer = await file.arrayBuffer();
+          const workbook = XLSX.read(buffer, { type: 'array' });
+
+          for (const sheetName of workbook.SheetNames) {
+            const dateKey = parseSheetNameToDateKey(sheetName);
+            if (!dateKey) continue; // Ignore non-date tabs like "Summary" or "Notes"
+
+            const ws = workbook.Sheets[sheetName];
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+            if (!rows || rows.length === 0) continue;
+
+            // Only scan first 3 columns (Col 0 = Account, Col 1 = Amount, Col 2 = Rate).
+            // All extra columns (Col 3+) and extra notes are strictly ignored!
+            const parsedRows = [];
+            for (let r = 0; r < rows.length; r++) {
+              const row = rows[r];
+              if (!Array.isArray(row) || row.length < 2) continue;
+
+              const rawCol1 = row[0] !== null && row[0] !== undefined ? String(row[0]).trim() : '';
+              if (!rawCol1) continue;
+
+              // Ignore header rows, summary/total rows, and standalone note lines
+              if (/^(account|fund|name|provider|bank|pot|total|grand total|subtotal|net worth|cash total|shares total|pension total|notes?|comments?|summary|date)$/i.test(rawCol1)) {
+                continue;
+              }
+              if (/^(total|subtotal|sum)\b/i.test(rawCol1)) {
+                continue;
+              }
+
+              // Must have a valid numeric amount in Column 2; otherwise treat row as extra text/note and ignore
+              const amount = parseCurrencyValue(row[1]);
+              if (amount === null) continue;
+
+              // Optional interest rate in Column 3 (ignored if non-numeric/text note)
+              const rate = row.length >= 3 ? parseInterestRateValue(row[2]) : null;
+              parsedRows.push({ rawName: rawCol1, amount, rate });
+            }
+
+            if (parsedRows.length === 0) continue;
+            rawSheetCount += 1;
+
+            if (mergedSheetsMap.has(dateKey)) {
+              duplicateTabsMerged += 1;
+            } else {
+              mergedSheetsMap.set(dateKey, {
+                dateKey,
+                label: formatDateKeyToLabel(dateKey),
+                sourceSheets: [],
+                selected: true,
+                entriesByNormKey: new Map()
+              });
+            }
+
+            const sheetBucket = mergedSheetsMap.get(dateKey);
+            sheetBucket.sourceSheets.push(`${file.name} [${sheetName}]`);
+
+            for (const item of parsedRows) {
+              const normKey = normalizeAccountKey(item.rawName);
+              if (!discoveredAccountsMap.has(normKey)) {
+                const existingAcc = appState.accounts.find(a => normalizeAccountKey(a.rawName) === normKey);
+                if (existingAcc) {
+                  discoveredAccountsMap.set(normKey, {
+                    normKey,
+                    rawName: existingAcc.rawName,
+                    displayName: existingAcc.displayName,
+                    provider: existingAcc.provider,
+                    category: existingAcc.category,
+                    isLiability: existingAcc.isLiability,
+                    isNewBank: false
+                  });
+                } else {
+                  const meta = classifyAccount(item.rawName);
+                  discoveredAccountsMap.set(normKey, {
+                    normKey,
+                    rawName: item.rawName,
+                    displayName: meta.displayName,
+                    provider: meta.provider,
+                    category: meta.category,
+                    isLiability: meta.isLiability,
+                    isNewBank: meta.isNewBank
+                  });
+                }
+              }
+
+              if (sheetBucket.entriesByNormKey.has(normKey)) {
+                duplicateRecordsMerged += 1;
+              }
+              const accMeta = discoveredAccountsMap.get(normKey);
+              sheetBucket.entriesByNormKey.set(normKey, {
+                amount: enforceAccountSign(item.amount, accMeta),
+                rate: item.rate
+              });
+            }
+          }
+        }
+
+        if (mergedSheetsMap.size === 0) {
+          showToast('No date-named tabs (e.g. "Apr 2024" or "2024-04") with Account + Amount columns were found.', 'error');
+          return;
+        }
+
+        const sheetsList = Array.from(mergedSheetsMap.values()).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+        const accountsList = Array.from(discoveredAccountsMap.values());
+        const newBanksDetected = accountsList.filter(a => a.isNewBank).map(a => a.provider);
+        const uniqueNewBanks = Array.from(new Set(newBanksDetected));
+
+        let overlapWithAppCount = 0;
+        for (const sh of sheetsList) {
+          if (appState.snapshots.some(s => s.dateKey === sh.dateKey)) {
+            overlapWithAppCount += 1;
+          }
+        }
+
+        pendingImportBatch = {
+          fileCount: files.length,
+          rawSheetCount,
+          duplicateTabsMerged,
+          duplicateRecordsMerged,
+          overlapWithAppCount,
+          uniqueNewBanks,
+          sheets: sheetsList,
+          accounts: accountsList
+        };
+
+        openImportReviewModal();
+      } catch (err) {
+        console.error('Excel import error:', err);
+        showToast('Could not read Excel file. Ensure it is a valid .xlsx or .xls workbook.', 'error');
+      }
+    }
+
+    function openImportReviewModal() {
+      if (!pendingImportBatch) return;
+      const b = pendingImportBatch;
+
+      document.getElementById('importReviewSubtitle').textContent =
+        `Scanned ${b.fileCount} file(s), ${b.rawSheetCount} date tab(s), and ${b.accounts.length} account(s). Extra columns/notes safely ignored.`;
+
+      const summaryBox = document.getElementById('dedupSummaryBox');
+      const newBankHtml = b.uniqueNewBanks.length > 0
+        ? `<div><strong>New Banks Auto-Detected &amp; Added:</strong> ${b.uniqueNewBanks.map(nb => `<span class="inline-block px-2 py-0.5 rounded bg-violet-100 text-violet-900 font-semibold mr-1">${escapeHtml(nb)}</span>`).join('')}</div>`
+        : '';
+
+      summaryBox.innerHTML = `
+        <div class="font-bold text-emerald-950">Smart Import &amp; Cross-Reference Summary</div>
+        <div>&bull; <strong>${b.sheets.length} unique monthly sheet(s)</strong> ready (${b.sheets[0].label} to ${b.sheets[b.sheets.length - 1].label}).</div>
+        <div>&bull; <strong>${b.duplicateTabsMerged} overlapping tab(s)</strong> &amp; <strong>${b.duplicateRecordsMerged} duplicate account cell(s)</strong> merged across files so nothing is counted twice.</div>
+        ${newBankHtml}
+        ${b.overlapWithAppCount > 0 ? `<div>&bull; <strong>${b.overlapWithAppCount} month(s)</strong> already exist in your app and will update cleanly on merge.</div>` : ''}
+      `;
+
+      renderReviewModalLists();
+      document.getElementById('importReviewModal').classList.remove('hidden');
+    }
+
+    function closeImportReviewModal() {
+      document.getElementById('importReviewModal').classList.add('hidden');
+      pendingImportBatch = null;
+    }
+
+    function renderReviewModalLists() {
+      if (!pendingImportBatch) return;
+      const b = pendingImportBatch;
+
+      document.getElementById('reviewSheetCount').textContent = `${b.sheets.filter(s => s.selected).length}/${b.sheets.length}`;
+      document.getElementById('reviewSheetsList').innerHTML = b.sheets.map((sh, idx) => `
+        <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition ${sh.selected ? 'bg-violet-50 border-violet-300 text-violet-950' : 'bg-white border-slate-200 text-slate-400'}">
+          <input type="checkbox" ${sh.selected ? 'checked' : ''} onchange="toggleSingleReviewSheet(${idx})" class="rounded text-violet-600" />
+          <span>${escapeHtml(sh.label)}</span>
+          ${sh.sourceSheets.length > 1 ? `<span class="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Merged x${sh.sourceSheets.length}</span>` : ''}
+        </label>
+      `).join('');
+
+      document.getElementById('reviewAccountCount').textContent = b.accounts.length;
+      document.getElementById('reviewAccountsList').innerHTML = b.accounts.map((acc, idx) => `
+        <div class="p-3 bg-white flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-slate-900">${escapeHtml(acc.displayName)}</span>
+              <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">${escapeHtml(acc.rawName)}</span>
+              ${acc.isNewBank ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">New Bank</span>` : ''}
+            </div>
+            <div class="text-xs text-slate-500">Provider: <strong>${escapeHtml(acc.provider)}</strong></div>
+          </div>
+
+          <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+            ${['Cash', 'Shares', 'Pension'].map(cat => {
+              const active = acc.category === cat;
+              let activeCls = 'bg-white text-slate-900 shadow-xs';
+              if (active && cat === 'Cash') activeCls = 'bg-emerald-600 text-white shadow-xs';
+              if (active && cat === 'Shares') activeCls = 'bg-violet-600 text-white shadow-xs';
+              if (active && cat === 'Pension') activeCls = 'bg-amber-500 text-white shadow-xs';
+              return `<button type="button" onclick="setReviewAccountCategory(${idx}, '${cat}')" class="px-3 py-1 rounded-lg transition cursor-pointer ${active ? activeCls : 'text-slate-600 hover:text-slate-900'}">${cat}</button>`;
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleSingleReviewSheet(idx) {
+      if (!pendingImportBatch) return;
+      pendingImportBatch.sheets[idx].selected = !pendingImportBatch.sheets[idx].selected;
+      renderReviewModalLists();
+    }
+
+    function toggleReviewSheets(selectAll) {
+      if (!pendingImportBatch) return;
+      pendingImportBatch.sheets.forEach(s => { s.selected = selectAll; });
+      renderReviewModalLists();
+    }
+
+    function setReviewAccountCategory(idx, category) {
+      if (!pendingImportBatch) return;
+      pendingImportBatch.accounts[idx].category = category;
+      renderReviewModalLists();
+    }
+
+    function commitReviewedImport() {
+      if (!pendingImportBatch) return;
+      const b = pendingImportBatch;
+      const selectedSheets = b.sheets.filter(s => s.selected);
+      if (selectedSheets.length === 0) {
+        showToast('Please select at least one date sheet to import.', 'error');
+        return;
+      }
+
+      const strategy = document.querySelector('input[name="importStrategy"]:checked')?.value || 'merge';
+      if (strategy === 'replace') {
+        appState.accounts = [];
+        appState.snapshots = [];
+      }
+
+      const normToId = new Map();
+      appState.accounts.forEach(a => {
+        normToId.set(normalizeAccountKey(a.rawName), a.id);
+      });
+
+      // Automatically register all accounts (including any newly detected banks)
+      for (const revAcc of b.accounts) {
+        if (normToId.has(revAcc.normKey)) {
+          const existing = appState.accounts.find(a => a.id === normToId.get(revAcc.normKey));
+          if (existing) {
+            existing.category = revAcc.category;
+            existing.provider = revAcc.provider;
+            existing.active = true;
+          }
+        } else {
+          let newId = slugifyId(revAcc.rawName);
+          while (appState.accounts.some(a => a.id === newId)) {
+            newId += '_' + Math.floor(Math.random() * 100);
+          }
+          appState.accounts.push({
+            id: newId,
+            rawName: revAcc.rawName,
+            displayName: revAcc.displayName,
+            provider: revAcc.provider,
+            category: revAcc.category,
+            isLiability: revAcc.isLiability,
+            active: true
+          });
+          normToId.set(revAcc.normKey, newId);
+        }
+      }
+
+      const snapMap = new Map();
+      appState.snapshots.forEach(s => snapMap.set(s.dateKey, s));
+
+      for (const sh of selectedSheets) {
+        const existingSnap = snapMap.get(sh.dateKey);
+        const entries = existingSnap ? Object.assign({}, existingSnap.entries) : {};
+        sh.entriesByNormKey.forEach((valObj, normKey) => {
+          const accId = normToId.get(normKey);
+          const accObj = appState.accounts.find(a => a.id === accId);
+          if (accId) {
+            entries[accId] = {
+              amount: enforceAccountSign(valObj.amount, accObj),
+              rate: valObj.rate
+            };
+          }
+        });
+        snapMap.set(sh.dateKey, {
+          dateKey: sh.dateKey,
+          label: sh.label,
+          entries
+        });
+      }
+
+      appState.snapshots = sortSnapshots(Array.from(snapMap.values()));
+      saveToLocalStorage();
+      closeImportReviewModal();
+      enterActiveWorkspace('overview');
+      showToast(`Imported ${selectedSheets.length} sheet(s) & ${b.accounts.length} account(s) with deduplication.`, 'success');
+    }
+
+    /**
+     * =========================================================================
+     * 8. EXCEL EXPORT & SAMPLE WORKBOOK DOWNLOAD
+     * =========================================================================
+     */
+    function exportToExcel() {
+      if (typeof XLSX === 'undefined') {
+        showToast('Excel exporter library unavailable.', 'error');
+        return;
+      }
+      const sorted = sortSnapshots(appState.snapshots);
+      if (sorted.length === 0) {
+        showToast('No monthly data to export yet.', 'error');
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+      const usedSheetNames = new Set();
+
+      for (const snap of sorted) {
+        let tabName = snap.label.replace(/[:\\/?*\[\]]/g, '').slice(0, 31);
+        if (usedSheetNames.has(tabName)) tabName = snap.dateKey;
+        usedSheetNames.add(tabName);
+
+        const rows = [['Account', 'Amount', 'Interest Rate']];
+        for (const acc of appState.accounts) {
+          const entry = snap.entries[acc.id];
+          if (!entry && !acc.active) continue;
+          const amt = entry ? entry.amount : 0;
+          const rate = entry && entry.rate !== null && entry.rate !== undefined ? entry.rate : '';
+          rows.push([acc.rawName, amt, rate]);
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, tabName);
+      }
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Wealth_ISA_Portfolio_${todayStr}.xlsx`);
+      showToast(`Exported ${sorted.length} monthly sheet(s) to Excel.`, 'success');
+    }
+
+    function downloadSampleTemplateXlsx() {
+      if (typeof XLSX === 'undefined') {
+        showToast('Excel library still loading.', 'error');
+        return;
+      }
+      const wb = XLSX.utils.book_new();
+      const sampleSheets = [
+        {
+          name: 'Jan 2026',
+          rows: [
+            ['Account', 'Amount', 'Interest Rate', 'Extra Notes (Ignored by App)'],
+            ['Barclaycard', -320, '', 'Monthly statement balance'],
+            ['Barclays', 1850, 1.5, 'Current account'],
+            ['HL isa shares', 18400, '', 'Global index tracker'],
+            ['Hl sipp shares', 26500, '', 'Retirement pot'],
+            ['M chall', 1420, 4.1, '1p savings challenge'],
+            ['M funpot', 780, 3.85, 'Holiday fund'],
+            ['MC', 1150, 1.25, 'Main Monzo'],
+            ['Minvest shares', 4150, '', 'Monzo balanced fund'],
+            ['Ms', 4900, 4.35, 'Instant access'],
+            ['NSAI', 7500, 4.15, 'Premium bonds'],
+            ['Nw', 1200, 1.0, 'Bills account'],
+            ['Nw sav', 6800, 4.5, 'Regular saver'],
+            ['Nwe isa', 11200, 4.65, 'Fixed cash ISA'],
+            ['S', 2100, 3.25, 'Starling spaces'],
+            ['T212 isa shares', 21500, '', 'S&P 500 + FTSE'],
+            ['T212 sipp shares', 19400, '', 'SIPP ETFs'],
+            ['Virisa', 8900, 4.45, 'Virgin ISA'],
+            ['Chase sav', 3200, 4.75, 'Example newly added bank!']
+          ]
+        },
+        {
+          name: 'Feb 2026',
+          rows: [
+            ['Account', 'Amount', 'Interest Rate', 'Extra Notes (Ignored by App)'],
+            ['Barclaycard', -290, '', ''],
+            ['Barclays', 1920, 1.5, ''],
+            ['HL isa shares', 18950, '', ''],
+            ['Hl sipp shares', 27200, '', ''],
+            ['M chall', 1510, 4.1, ''],
+            ['M funpot', 840, 3.85, ''],
+            ['MC', 1190, 1.25, ''],
+            ['Minvest shares', 4320, '', ''],
+            ['Ms', 5050, 4.35, ''],
+            ['NSAI', 7600, 4.15, ''],
+            ['Nw', 1250, 1.0, ''],
+            ['Nw sav', 7000, 4.5, ''],
+            ['Nwe isa', 11400, 4.65, ''],
+            ['S', 2180, 3.25, ''],
+            ['T212 isa shares', 22300, '', ''],
+            ['T212 sipp shares', 20100, '', ''],
+            ['Virisa', 9050, 4.45, ''],
+            ['Chase sav', 3450, 4.75, '']
+          ]
+        }
+      ];
+
+      sampleSheets.forEach(s => {
+        const ws = XLSX.utils.aoa_to_sheet(s.rows);
+        XLSX.utils.book_append_sheet(wb, ws, s.name);
+      });
+
+      XLSX.writeFile(wb, 'Sample_Wealth_Tracker_Template.xlsx');
+      showToast('Downloaded sample multi-sheet .xlsx file.', 'success');
+    }
+
+    /**
+     * =========================================================================
+     * 9. RENDER MASTER & TAB 1: OVERVIEW (KPI CARDS + ANIMATED TIMELINE)
+     * =========================================================================
+     */
+    function renderAll() {
+      const providersCount = getUniqueProvidersCount();
+      const navProvEl = document.getElementById('navProviderCount');
+      if (navProvEl) navProvEl.textContent = providersCount;
+
+      renderOverviewTab();
+      renderInsightsAndProvidersTab();
+      renderAnnualSnapshotTab();
+      renderMonthlyEntryForm();
+    }
+
+    function getUniqueProvidersCount() {
+      const set = new Set();
+      appState.accounts.forEach(acc => set.add(acc.provider || 'Other'));
+      return set.size;
+    }
+
+    function getFilteredSnapshots() {
+      const sorted = sortSnapshots(appState.snapshots);
+      const tf = appState.preferences.timeframe;
+      if (tf === '6M') return sorted.slice(-6);
+      if (tf === '1Y') return sorted.slice(-12);
+      if (tf === '3Y') return sorted.slice(-36);
+      return sorted;
+    }
+
+    function setChartMode(mode) {
+      appState.preferences.chartMode = mode;
+      saveToLocalStorage();
+      renderOverviewTab();
+    }
+
+    function setTimeframe(tf) {
+      stopTimelineAnimation();
+      appState.preferences.timeframe = tf;
+      saveToLocalStorage();
+      renderOverviewTab();
+    }
+
+    function renderOverviewTab() {
+      const fullSlice = getFilteredSnapshots();
+      if (fullSlice.length === 0) return;
+
+      ['stacked', 'lines', 'total'].forEach(m => {
+        const btn = document.getElementById(`mode-${m}`);
+        if (btn) {
+          btn.className = appState.preferences.chartMode === m
+            ? 'px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
+            : 'px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
+        }
+      });
+
+      ['6M', '1Y', '3Y', 'ALL'].forEach(t => {
+        const btn = document.getElementById(`tf-${t}`);
+        if (btn) {
+          btn.className = appState.preferences.timeframe === t
+            ? 'px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
+            : 'px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
+        }
+      });
+
+      const activeEndIndex = animationState.currentIndex !== null
+        ? Math.min(animationState.currentIndex, fullSlice.length - 1)
+        : fullSlice.length - 1;
+
+      const visibleSlice = fullSlice.slice(0, activeEndIndex + 1);
+      const latestSnap = visibleSlice[visibleSlice.length - 1];
+      const prevSnap = visibleSlice.length > 1 ? visibleSlice[visibleSlice.length - 2] : null;
+
+      updateOverviewKpiCards(latestSnap, prevSnap);
+      renderTimelineChart(visibleSlice, fullSlice.length);
+    }
+
+    function updateOverviewKpiCards(latestSnap, prevSnap) {
+      const curr = computeSnapshotTotals(latestSnap);
+      const prev = prevSnap ? computeSnapshotTotals(prevSnap) : null;
+
+      document.getElementById('kpiDateBadge').textContent = latestSnap.label;
+      document.getElementById('kpiTotalWorth').textContent = formatGBP(curr.total);
+
+      const changeEl = document.getElementById('kpiTotalChange');
+      if (prev) {
+        const diff = curr.total - prev.total;
+        const pct = prev.total !== 0 ? (diff / Math.abs(prev.total)) * 100 : 0;
+        const cls = diff > 0 ? 'text-emerald-300' : diff < 0 ? 'text-rose-300' : 'text-indigo-200';
+        changeEl.innerHTML = `<span class="${cls} font-bold">${formatSignedGBP(diff)} (${formatSignedPct(pct)})</span> vs ${prevSnap.label}`;
+      } else {
+        changeEl.textContent = 'Starting baseline month';
+      }
+
+      const grossAssets = Math.max(0, curr.Cash) + Math.max(0, curr.Shares) + Math.max(0, curr.Pension);
+      const cashPct = grossAssets > 0 ? Math.round((Math.max(0, curr.Cash) / grossAssets) * 100) : 0;
+      const sharesPct = grossAssets > 0 ? Math.round((Math.max(0, curr.Shares) / grossAssets) * 100) : 0;
+      const pensionPct = grossAssets > 0 ? Math.max(0, 100 - cashPct - sharesPct) : 0;
+
+      document.getElementById('kpiCashTotal').textContent = formatGBP(curr.Cash);
+      document.getElementById('kpiCashShare').textContent = `${cashPct}%`;
+      document.getElementById('kpiCashSub').textContent = curr.avgCashRate > 0
+        ? `Avg AER ${curr.avgCashRate.toFixed(2)}% (~${formatGBP(curr.projectedAnnualCashInterest)}/yr)`
+        : 'Liquid bank & cash ISAs';
+
+      document.getElementById('kpiSharesTotal').textContent = formatGBP(curr.Shares);
+      document.getElementById('kpiSharesShare').textContent = `${sharesPct}%`;
+      if (prev) {
+        const sDiff = curr.Shares - prev.Shares;
+        document.getElementById('kpiSharesSub').textContent = `${formatSignedGBP(sDiff)} vs ${prevSnap.label}`;
+      } else {
+        document.getElementById('kpiSharesSub').textContent = 'Stocks & Shares ISAs';
+      }
+
+      document.getElementById('kpiPensionTotal').textContent = formatGBP(curr.Pension);
+      document.getElementById('kpiPensionShare').textContent = `${pensionPct}%`;
+      if (prev) {
+        const pDiff = curr.Pension - prev.Pension;
+        document.getElementById('kpiPensionSub').textContent = `${formatSignedGBP(pDiff)} vs ${prevSnap.label}`;
+      } else {
+        document.getElementById('kpiPensionSub').textContent = 'SIPPs & Retirement funds';
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 10. ANIMATED TIMELINE GROWTH PLAYBACK & CHART.JS
+     * =========================================================================
+     */
+    function toggleTimelineAnimation() {
+      if (animationState.isPlaying) {
+        stopTimelineAnimation();
+      } else {
+        startTimelineAnimation();
+      }
+    }
+
+    function startTimelineAnimation() {
+      const fullSlice = getFilteredSnapshots();
+      if (fullSlice.length < 2) {
+        showToast('Add at least 2 months of data to play the growth animation.', 'info');
+        return;
+      }
+
+      animationState.isPlaying = true;
+      if (animationState.currentIndex === null || animationState.currentIndex >= fullSlice.length - 1) {
+        animationState.currentIndex = 0;
+      }
+
+      updatePlayButtonUi();
+      document.getElementById('animationProgressWrapper').classList.remove('hidden');
+
+      const stepIntervalMs = Math.max(60, Math.round(320 / animationState.speed));
+      renderOverviewTab();
+
+      animationState.timerId = setInterval(() => {
+        const slice = getFilteredSnapshots();
+        if (animationState.currentIndex < slice.length - 1) {
+          animationState.currentIndex += 1;
+          renderOverviewTab();
+        } else {
+          stopTimelineAnimation();
+        }
+      }, stepIntervalMs);
+    }
+
+    function stopTimelineAnimation() {
+      animationState.isPlaying = false;
+      if (animationState.timerId) {
+        clearInterval(animationState.timerId);
+        animationState.timerId = null;
+      }
+      updatePlayButtonUi();
+    }
+
+    function resetTimelineAnimation() {
+      stopTimelineAnimation();
+      animationState.currentIndex = null;
+      document.getElementById('animationProgressWrapper').classList.add('hidden');
+      renderOverviewTab();
+    }
+
+    function cycleAnimationSpeed() {
+      const speeds = [1, 2, 4];
+      const nextIdx = (speeds.indexOf(animationState.speed) + 1) % speeds.length;
+      animationState.speed = speeds[nextIdx];
+      document.getElementById('btnAnimSpeed').textContent = `${animationState.speed}x`;
+      if (animationState.isPlaying) {
+        stopTimelineAnimation();
+        startTimelineAnimation();
+      }
+    }
+
+    function updatePlayButtonUi() {
+      const labelEl = document.getElementById('playBtnLabel');
+      const iconEl = document.getElementById('playIconSvg');
+      const fullSlice = getFilteredSnapshots();
+
+      if (animationState.isPlaying) {
+        labelEl.textContent = 'Pause';
+        iconEl.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+      } else if (animationState.currentIndex !== null && animationState.currentIndex >= fullSlice.length - 1) {
+        labelEl.textContent = 'Replay Growth';
+        iconEl.innerHTML = '<path d="M8 5v14l11-7z"/>';
+      } else {
+        labelEl.textContent = 'Play Growth Animation';
+        iconEl.innerHTML = '<path d="M8 5v14l11-7z"/>';
+      }
+    }
+
+    function renderTimelineChart(visibleSlice, totalCount) {
+      const labels = visibleSlice.map(s => s.label);
+      const totalsSeries = visibleSlice.map(s => computeSnapshotTotals(s));
+      const cashData = totalsSeries.map(t => t.Cash);
+      const sharesData = totalsSeries.map(t => t.Shares);
+      const pensionData = totalsSeries.map(t => t.Pension);
+      const totalData = totalsSeries.map(t => t.total);
+
+      if (animationState.currentIndex !== null) {
+        const pct = Math.round(((animationState.currentIndex + 1) / totalCount) * 100);
+        document.getElementById('animCurrentMonthBadge').textContent = labels[labels.length - 1] || '';
+        document.getElementById('animProgressBar').style.width = `${pct}%`;
+        document.getElementById('animStepCounter').textContent = `${animationState.currentIndex + 1} / ${totalCount}`;
+      }
+
+      const canvas = document.getElementById('portfolioChartCanvas');
+      const svgFallback = document.getElementById('chartSvgFallback');
+
+      if (typeof Chart === 'undefined') {
+        canvas.classList.add('hidden');
+        svgFallback.classList.remove('hidden');
+        renderSvgFallbackChart(svgFallback, labels, totalData);
+        return;
+      }
+
+      canvas.classList.remove('hidden');
+      svgFallback.classList.add('hidden');
+
+      const mode = appState.preferences.chartMode;
+      let datasets = [];
+
+      if (mode === 'total') {
+        datasets = [{
+          label: 'Total Net Worth',
+          data: totalData,
+          borderColor: '#6d28d9',
+          backgroundColor: 'rgba(124, 58, 237, 0.16)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.25,
+          pointRadius: visibleSlice.length <= 24 ? 3.5 : 1.5,
+          pointHoverRadius: 5
+        }];
+      } else {
+        const isStacked = mode === 'stacked';
+        datasets = [
+          {
+            label: 'Cash & Cash ISAs',
+            data: cashData,
+            borderColor: CATEGORY_STYLES.Cash.hex,
+            backgroundColor: isStacked ? CATEGORY_STYLES.Cash.fill : 'transparent',
+            borderWidth: 2.5,
+            fill: isStacked,
+            tension: 0.25,
+            pointRadius: visibleSlice.length <= 24 ? 3 : 1
+          },
+          {
+            label: 'Shares / ISAs',
+            data: sharesData,
+            borderColor: CATEGORY_STYLES.Shares.hex,
+            backgroundColor: isStacked ? CATEGORY_STYLES.Shares.fill : 'transparent',
+            borderWidth: 2.5,
+            fill: isStacked,
+            tension: 0.25,
+            pointRadius: visibleSlice.length <= 24 ? 3 : 1
+          },
+          {
+            label: 'Pensions / SIPPs',
+            data: pensionData,
+            borderColor: CATEGORY_STYLES.Pension.hex,
+            backgroundColor: isStacked ? CATEGORY_STYLES.Pension.fill : 'transparent',
+            borderWidth: 2.5,
+            fill: isStacked,
+            tension: 0.25,
+            pointRadius: visibleSlice.length <= 24 ? 3 : 1
+          }
+        ];
+      }
+
+      if (chartInstance) {
+        chartInstance.data.labels = labels;
+        chartInstance.data.datasets = datasets;
+        chartInstance.options.scales.y.stacked = (mode === 'stacked');
+        chartInstance.update(animationState.isPlaying ? 'none' : 'default');
+        return;
+      }
+
+      chartInstance = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              position: 'top',
+              align: 'end',
+              labels: { usePointStyle: true, boxWidth: 8, font: { size: 12, weight: '600' } }
+            },
+            tooltip: {
+              backgroundColor: '#1e1b4b',
+              padding: 12,
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${formatGBP(ctx.parsed.y)}`,
+                footer: (items) => {
+                  if (mode === 'total' || !items.length) return '';
+                  const idx = items[0].dataIndex;
+                  return `Net Worth: ${formatGBP(totalData[idx])}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { maxTicksLimit: 12, font: { size: 11 }, color: '#64748b' }
+            },
+            y: {
+              stacked: (mode === 'stacked'),
+              border: { display: false },
+              grid: { color: '#f1f5f9' },
+              ticks: {
+                font: { size: 11 },
+                color: '#64748b',
+                callback: (v) => '£' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(0) + 'k' : v)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderSvgFallbackChart(container, labels, values) {
+      if (!values.length) return;
+      const w = 800;
+      const h = 300;
+      const pad = 40;
+      const minV = Math.min(...values, 0);
+      const maxV = Math.max(...values, 100);
+      const span = Math.max(1, maxV - minV);
+      const pts = values.map((v, i) => {
+        const x = pad + (i / Math.max(1, values.length - 1)) * (w - pad * 2);
+        const y = h - pad - ((v - minV) / span) * (h - pad * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+
+      container.innerHTML = `
+        <svg viewBox="0 0 ${w} ${h}" class="w-full h-full">
+          <polyline fill="none" stroke="#7c3aed" stroke-width="3.5" points="${pts}" />
+        </svg>
+      `;
+    }
+
+    /**
+     * =========================================================================
+     * 11. TAB 2: PROVIDERS & INSIGHTS (SECOND DASHBOARD TAB)
+     * =========================================================================
+     */
+    function renderInsightsAndProvidersTab() {
+      const sorted = sortSnapshots(appState.snapshots);
+      if (sorted.length === 0) return;
+      const latestSnap = sorted[sorted.length - 1];
+
+      renderDynamicInsights(sorted);
+      renderProviderBreakdown(latestSnap);
+      renderAccountCategoryRules();
+    }
+
+    function renderDynamicInsights(slice) {
+      const grid = document.getElementById('dynamicInsightsGrid');
+      const labelEl = document.getElementById('insightsSnapshotLabel');
+      if (!slice.length) return;
+
+      const first = computeSnapshotTotals(slice[0]);
+      const latestSnap = slice[slice.length - 1];
+      const latest = computeSnapshotTotals(latestSnap);
+      labelEl.textContent = `${slice[0].label} → ${latestSnap.label}`;
+
+      const netGain = latest.total - first.total;
+      const netGainPct = first.total !== 0 ? (netGain / Math.abs(first.total)) * 100 : 0;
+
+      const buckets = [
+        { name: 'Cash', diff: latest.Cash - first.Cash, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+        { name: 'Shares', diff: latest.Shares - first.Shares, color: 'text-violet-700', bg: 'bg-violet-50 border-violet-200' },
+        { name: 'Pensions', diff: latest.Pension - first.Pension, color: 'text-amber-800', bg: 'bg-amber-50 border-amber-200' }
+      ].sort((a, b) => b.diff - a.diff);
+      const topDriver = buckets[0];
+
+      let growthStreak = 0;
+      for (let i = slice.length - 1; i >= 1; i--) {
+        if (computeSnapshotTotals(slice[i]).total >= computeSnapshotTotals(slice[i - 1]).total) {
+          growthStreak += 1;
+        } else {
+          break;
+        }
+      }
+
+      const gross = Math.max(1, Math.max(0, latest.Cash) + Math.max(0, latest.Shares) + Math.max(0, latest.Pension));
+      const equityPct = Math.round(((Math.max(0, latest.Shares) + Math.max(0, latest.Pension)) / gross) * 100);
+
+      const cards = [
+        {
+          title: 'Multi-Year Wealth Trajectory',
+          accent: 'border-violet-200 bg-violet-50/60',
+          badge: 'bg-violet-100 text-violet-800',
+          body: `Portfolio moved by <strong>${formatSignedGBP(netGain)}</strong> (${formatSignedPct(netGainPct)}) across ${slice.length} recorded month(s).`
+        },
+        {
+          title: 'Primary Growth Engine',
+          accent: topDriver.bg,
+          badge: 'bg-white text-slate-800',
+          body: `<strong class="${topDriver.color}">${topDriver.name}</strong> led portfolio gains with <strong>${formatSignedGBP(topDriver.diff)}</strong> added over the period.`
+        },
+        {
+          title: 'Cash Yield & Rate Efficiency',
+          accent: 'border-emerald-200 bg-emerald-50/60',
+          badge: 'bg-emerald-100 text-emerald-800',
+          body: latest.avgCashRate > 0
+            ? `Weighted cash AER is <strong>${latest.avgCashRate.toFixed(2)}%</strong>, generating ~<strong>${formatGBP(latest.projectedAnnualCashInterest)}/yr</strong> (${formatGBP(latest.projectedAnnualCashInterest / 12)}/mo).`
+            : `Add interest rates (%) on cash accounts to project annual cash yield automatically.`
+        },
+        {
+          title: 'Growth vs. Liquid Split',
+          accent: 'border-amber-200 bg-amber-50/60',
+          badge: 'bg-amber-100 text-amber-900',
+          body: `<strong>${equityPct}%</strong> is invested for long-term growth (Shares &amp; Pensions), while <strong>${100 - equityPct}%</strong> sits in liquid cash.`
+        },
+        {
+          title: 'Momentum & Streak',
+          accent: 'border-fuchsia-200 bg-fuchsia-50/60',
+          badge: 'bg-fuchsia-100 text-fuchsia-800',
+          body: growthStreak > 0
+            ? `On a <strong>${growthStreak}-month consecutive growth streak</strong> heading into ${latestSnap.label}.`
+            : `Latest month saw a slight consolidation—regular contributions continue building units.`
+        },
+        {
+          title: 'ISA & Pension Balance',
+          accent: 'border-sky-200 bg-sky-50/60',
+          badge: 'bg-sky-100 text-sky-800',
+          body: `Accessible ISAs/Cash stand at <strong>${formatGBP(latest.Cash + latest.Shares)}</strong> alongside <strong>${formatGBP(latest.Pension)}</strong> locked for retirement.`
+        }
+      ];
+
+      grid.innerHTML = cards.map(c => `
+        <div class="p-4 rounded-xl border ${c.accent} flex flex-col justify-between">
+          <div class="text-xs font-extrabold uppercase tracking-wider text-slate-800 mb-1.5">${c.title}</div>
+          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">${c.body}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderProviderBreakdown(latestSnap) {
+      const grid = document.getElementById('providerBreakdownGrid');
+      const countBadge = document.getElementById('providerCountBadge');
+      const provMap = new Map();
+
+      appState.accounts.forEach(acc => {
+        const entry = latestSnap.entries[acc.id];
+        const amt = entry ? Number(entry.amount) || 0 : 0;
+        if (!provMap.has(acc.provider)) {
+          provMap.set(acc.provider, { provider: acc.provider, total: 0, count: 0, categories: new Set() });
+        }
+        const item = provMap.get(acc.provider);
+        item.total += amt;
+        item.count += 1;
+        item.categories.add(acc.category);
+      });
+
+      const list = Array.from(provMap.values()).sort((a, b) => b.total - a.total);
+      if (countBadge) countBadge.textContent = `${list.length} Provider${list.length === 1 ? '' : 's'}`;
+
+      grid.innerHTML = list.map(p => {
+        const isNeg = p.total < 0;
+        const cats = Array.from(p.categories).join(' & ');
+        return `
+          <div class="p-4 rounded-xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:border-violet-300 transition flex flex-col justify-between shadow-2xs">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="text-sm font-bold text-slate-900 truncate">${escapeHtml(p.provider)}</span>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 shrink-0">${p.count} pot${p.count > 1 ? 's' : ''}</span>
+            </div>
+            <div class="text-lg font-extrabold ${isNeg ? 'text-rose-600' : 'text-slate-900'} my-1">${formatGBP(p.total)}</div>
+            <div class="text-[11px] font-medium text-slate-500">${escapeHtml(cats)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAccountCategoryRules() {
+      const container = document.getElementById('accountsRulesList');
+      const countEl = document.getElementById('accountsMappingCount');
+      if (!container) return;
+      if (countEl) countEl.textContent = appState.accounts.length;
+
+      container.innerHTML = appState.accounts.map(acc => `
+        <div class="p-3.5 bg-white flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm font-bold ${acc.active ? 'text-slate-900' : 'text-slate-400 line-through'}">${escapeHtml(acc.displayName)}</span>
+              <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">${escapeHtml(acc.rawName)}</span>
+              <span class="text-xs font-medium text-violet-700">&bull; ${escapeHtml(acc.provider)}</span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+              ${['Cash', 'Shares', 'Pension'].map(cat => {
+                const active = acc.category === cat;
+                let activeCls = 'bg-white text-slate-900 shadow-xs';
+                if (active && cat === 'Cash') activeCls = 'bg-emerald-600 text-white shadow-xs';
+                if (active && cat === 'Shares') activeCls = 'bg-violet-600 text-white shadow-xs';
+                if (active && cat === 'Pension') activeCls = 'bg-amber-500 text-white shadow-xs';
+                return `<button type="button" onclick="changeAccountBucket('${acc.id}', '${cat}')" class="px-2.5 py-1 rounded-lg transition cursor-pointer ${active ? activeCls : 'text-slate-600 hover:text-slate-900'}">${cat}</button>`;
+              }).join('')}
+            </div>
+
+            <button type="button" onclick="toggleAccountVisibility('${acc.id}')" class="px-2.5 py-1 text-xs font-medium rounded-xl border transition cursor-pointer ${acc.active ? 'border-slate-300 text-slate-600 hover:bg-slate-50' : 'border-violet-200 bg-violet-50 text-violet-700'}">
+              ${acc.active ? 'Hide' : 'Restore'}
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function changeAccountBucket(accId, newCat) {
+      const acc = appState.accounts.find(a => a.id === accId);
+      if (!acc) return;
+      acc.category = newCat;
+      saveToLocalStorage();
+      renderAll();
+      showToast(`Re-classified "${acc.displayName}" as ${newCat}.`, 'success');
+    }
+
+    function toggleAccountVisibility(accId) {
+      const acc = appState.accounts.find(a => a.id === accId);
+      if (!acc) return;
+      acc.active = !acc.active;
+      saveToLocalStorage();
+      renderAll();
+    }
+
+    /**
+     * =========================================================================
+     * 12. TAB 3: ANNUAL SNAPSHOT (AS NEAR TO FEBRUARY EACH YEAR)
+     * =========================================================================
+     */
+    function setAnnualBarMode(mode) {
+      appState.preferences.annualBarMode = mode;
+      saveToLocalStorage();
+      renderAnnualSnapshotTab();
+    }
+
+    function getAnnualFebruarySnapshots() {
+      const sorted = sortSnapshots(appState.snapshots);
+      const byYear = new Map();
+
+      sorted.forEach(snap => {
+        const [yStr, mStr] = snap.dateKey.split('-');
+        const year = parseInt(yStr, 10);
+        const month = parseInt(mStr, 10);
+        if (isNaN(year) || isNaN(month)) return;
+        if (!byYear.has(year)) byYear.set(year, []);
+        byYear.get(year).push({ snap, year, month });
+      });
+
+      const years = Array.from(byYear.keys()).sort((a, b) => a - b);
+      return years.map(year => {
+        const candidates = byYear.get(year);
+        candidates.sort((a, b) => {
+          const distA = Math.abs(a.month - 2);
+          const distB = Math.abs(b.month - 2);
+          if (distA !== distB) return distA - distB;
+          return a.month - b.month;
+        });
+
+        const chosen = candidates[0];
+        const isExactFeb = chosen.month === 2;
+        const monthShort = MONTH_NAMES[chosen.month - 1] || '';
+        const xAxisLabel = isExactFeb ? `${year} (Feb)` : `${year} (${monthShort})*`;
+        const totals = computeSnapshotTotals(chosen.snap);
+
+        return {
+          year,
+          month: chosen.month,
+          monthShort,
+          isExactFeb,
+          xAxisLabel,
+          snapshot: chosen.snap,
+          totals
+        };
+      });
+    }
+
+    function renderAnnualSnapshotTab() {
+      const annualRows = getAnnualFebruarySnapshots();
+      const mode = appState.preferences.annualBarMode || 'stacked';
+
+      ['stacked', 'grouped'].forEach(m => {
+        const btn = document.getElementById(`annual-mode-${m}`);
+        if (btn) {
+          btn.className = mode === m
+            ? 'px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
+            : 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
+        }
+      });
+
+      const spanBadge = document.getElementById('annualYearSpanBadge');
+      const fallbackNote = document.getElementById('annualFallbackNote');
+      const cagrBadge = document.getElementById('annualCagrBadge');
+
+      if (annualRows.length === 0) {
+        if (spanBadge) spanBadge.textContent = '0 years';
+        document.getElementById('annualSummaryTableBody').innerHTML =
+          `<tr><td colspan="7" class="py-8 text-center text-slate-400 text-sm">No annual snapshots available yet.</td></tr>`;
+        return;
+      }
+
+      if (spanBadge) {
+        spanBadge.textContent = `${annualRows.length} year${annualRows.length === 1 ? '' : 's'} (${annualRows[0].year} – ${annualRows[annualRows.length - 1].year})`;
+      }
+
+      const hasAnyFallback = annualRows.some(r => !r.isExactFeb);
+      if (fallbackNote) {
+        fallbackNote.classList.toggle('hidden', !hasAnyFallback);
+      }
+
+      if (cagrBadge) {
+        if (annualRows.length > 1) {
+          const firstTotal = annualRows[0].totals.total;
+          const lastTotal = annualRows[annualRows.length - 1].totals.total;
+          const overallDiff = lastTotal - firstTotal;
+          const overallPct = firstTotal !== 0 ? (overallDiff / Math.abs(firstTotal)) * 100 : 0;
+          cagrBadge.textContent = `${annualRows[0].year} → ${annualRows[annualRows.length - 1].year}: ${formatSignedGBP(overallDiff)} (${formatSignedPct(overallPct)})`;
+          cagrBadge.classList.remove('hidden');
+        } else {
+          cagrBadge.classList.add('hidden');
+        }
+      }
+
+      renderAnnualBarChart(annualRows, mode);
+      renderAnnualSummaryTable(annualRows);
+    }
+
+    function renderAnnualBarChart(annualRows, mode) {
+      const labels = annualRows.map(r => r.xAxisLabel);
+      const cashData = annualRows.map(r => r.totals.Cash);
+      const sharesData = annualRows.map(r => r.totals.Shares);
+      const pensionData = annualRows.map(r => r.totals.Pension);
+      const isStacked = mode === 'stacked';
+
+      const canvas = document.getElementById('annualBarChartCanvas');
+      const svgFallback = document.getElementById('annualSvgFallback');
+      if (!canvas) return;
+
+      if (typeof Chart === 'undefined') {
+        canvas.classList.add('hidden');
+        svgFallback.classList.remove('hidden');
+        renderSvgFallbackChart(svgFallback, labels, annualRows.map(r => r.totals.total));
+        return;
+      }
+
+      canvas.classList.remove('hidden');
+      svgFallback.classList.add('hidden');
+
+      const datasets = [
+        {
+          label: 'Cash & Cash ISAs',
+          data: cashData,
+          backgroundColor: CATEGORY_STYLES.Cash.hex,
+          borderRadius: isStacked ? 0 : 6,
+          maxBarThickness: 56
+        },
+        {
+          label: 'Shares / ISAs',
+          data: sharesData,
+          backgroundColor: CATEGORY_STYLES.Shares.hex,
+          borderRadius: isStacked ? 0 : 6,
+          maxBarThickness: 56
+        },
+        {
+          label: 'Pensions / SIPPs',
+          data: pensionData,
+          backgroundColor: CATEGORY_STYLES.Pension.hex,
+          borderRadius: isStacked ? { topLeft: 6, topRight: 6 } : 6,
+          maxBarThickness: 56
+        }
+      ];
+
+      if (annualChartInstance) {
+        annualChartInstance.data.labels = labels;
+        annualChartInstance.data.datasets = datasets;
+        annualChartInstance.options.scales.x.stacked = isStacked;
+        annualChartInstance.options.scales.y.stacked = isStacked;
+        annualChartInstance.update();
+        return;
+      }
+
+      annualChartInstance = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              position: 'top',
+              align: 'end',
+              labels: { usePointStyle: true, boxWidth: 10, font: { size: 12, weight: '600' } }
+            },
+            tooltip: {
+              backgroundColor: '#1e1b4b',
+              padding: 12,
+              callbacks: {
+                title: (items) => {
+                  const idx = items[0]?.dataIndex ?? 0;
+                  const row = annualRows[idx];
+                  if (!row) return '';
+                  return row.isExactFeb
+                    ? `${row.year} — February Snapshot`
+                    : `${row.year} — Nearest to Feb (${row.snapshot.label})`;
+                },
+                label: (ctx) => `${ctx.dataset.label}: ${formatGBP(ctx.parsed.y)}`,
+                footer: (items) => {
+                  const idx = items[0]?.dataIndex ?? 0;
+                  const row = annualRows[idx];
+                  return row ? `Total Wealth: ${formatGBP(row.totals.total)}` : '';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              stacked: isStacked,
+              grid: { display: false },
+              ticks: { font: { size: 12, weight: '600' }, color: '#334155' }
+            },
+            y: {
+              stacked: isStacked,
+              border: { display: false },
+              grid: { color: '#f1f5f9' },
+              ticks: {
+                font: { size: 11 },
+                color: '#64748b',
+                callback: (v) => '£' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(0) + 'k' : v)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderAnnualSummaryTable(annualRows) {
+      const tbody = document.getElementById('annualSummaryTableBody');
+      if (!tbody) return;
+
+      tbody.innerHTML = annualRows.map((row, idx) => {
+        const prevRow = idx > 0 ? annualRows[idx - 1] : null;
+        const diff = prevRow ? row.totals.total - prevRow.totals.total : null;
+        const pct = prevRow && prevRow.totals.total !== 0
+          ? (diff / Math.abs(prevRow.totals.total)) * 100
+          : null;
+
+        const badgeHtml = row.isExactFeb
+          ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+               Feb Exact
+             </span>`
+          : `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900">
+               <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+               Nearest: ${escapeHtml(row.monthShort)}
+             </span>`;
+
+        let changeHtml = `<span class="text-slate-400 text-xs">Baseline</span>`;
+        if (diff !== null) {
+          const cls = diff > 0 ? 'text-emerald-600' : diff < 0 ? 'text-rose-600' : 'text-slate-500';
+          changeHtml = `<span class="font-bold ${cls}">${formatSignedGBP(diff)}</span> <span class="text-xs text-slate-500">(${formatSignedPct(pct)})</span>`;
+        }
+
+        return `
+          <tr class="hover:bg-violet-50/40 transition">
+            <td class="py-3.5 px-5 font-bold text-slate-900">${row.year}</td>
+            <td class="py-3.5 px-4">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-medium text-slate-700">${escapeHtml(row.snapshot.label)}</span>
+                ${badgeHtml}
+              </div>
+            </td>
+            <td class="py-3.5 px-4 text-right font-semibold text-emerald-700">${formatGBP(row.totals.Cash)}</td>
+            <td class="py-3.5 px-4 text-right font-semibold text-violet-700">${formatGBP(row.totals.Shares)}</td>
+            <td class="py-3.5 px-4 text-right font-semibold text-amber-700">${formatGBP(row.totals.Pension)}</td>
+            <td class="py-3.5 px-4 text-right font-extrabold text-slate-900">${formatGBP(row.totals.total)}</td>
+            <td class="py-3.5 px-5 text-right">${changeHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    /**
+     * =========================================================================
+     * 13. TAB 4: ADD / EDIT MONTH & "+ ADD ANOTHER ACCOUNT"
+     * =========================================================================
+     */
+    function toggleAddAccountPanel() {
+      const panel = document.getElementById('addAnotherAccountFields');
+      if (!panel) return;
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        document.getElementById('addFundCode')?.focus();
+      }
+    }
+
+    function setDefaultEntryMonth() {
+      const picker = document.getElementById('entryMonthPicker');
+      if (!picker) return;
+      const sorted = sortSnapshots(appState.snapshots);
+      if (sorted.length > 0) {
+        const lastKey = sorted[sorted.length - 1].dateKey;
+        const [yStr, mStr] = lastKey.split('-');
+        let y = parseInt(yStr, 10);
+        let m = parseInt(mStr, 10) + 1;
+        if (m > 12) { m = 1; y += 1; }
+        picker.value = `${y}-${String(m).padStart(2, '0')}`;
+      } else {
+        picker.value = new Date().toISOString().slice(0, 7);
+      }
+    }
+
+    function getPrecedingSnapshot(targetDateKey) {
+      const sorted = sortSnapshots(appState.snapshots);
+      if (sorted.length === 0) return null;
+      const prior = sorted.filter(s => s.dateKey < targetDateKey);
+      if (prior.length > 0) return prior[prior.length - 1];
+      return sorted[sorted.length - 1];
+    }
+
+    function onEntryMonthChanged() {
+      renderMonthlyEntryForm();
+    }
+
+    function prefillEntryFromLatest() {
+      const picker = document.getElementById('entryMonthPicker');
+      const targetDateKey = picker ? picker.value : '';
+      const refSnap = getPrecedingSnapshot(targetDateKey);
+      if (!refSnap) return;
+
+      appState.accounts.forEach(acc => {
+        const amtInput = document.getElementById(`entry-amt-${acc.id}`);
+        const rateInput = document.getElementById(`entry-rate-${acc.id}`);
+        const prev = refSnap.entries[acc.id];
+        if (amtInput) {
+          const val = prev ? enforceAccountSign(prev.amount, acc) : 0;
+          amtInput.value = val;
+        }
+        if (rateInput) {
+          rateInput.value = prev && prev.rate !== null && prev.rate !== undefined ? prev.rate : '';
+        }
+      });
+      recalcLiveEntryTotals();
+      showToast(`Reset all balances and interest rates to ${refSnap.label} values.`, 'info');
+    }
+
+    function handleEntryAmountInput(accId) {
+      const acc = appState.accounts.find(a => a.id === accId);
+      const inp = document.getElementById(`entry-amt-${accId}`);
+      if (acc && inp) {
+        const rawVal = parseFloat(inp.value);
+        if (!isNaN(rawVal) && rawVal > 0 && isAccountLiability(acc)) {
+          inp.value = -Math.abs(rawVal);
+        }
+      }
+      recalcLiveEntryTotals();
+    }
+
+    function isAccountLiability(acc) {
+      return Boolean(
+        acc &&
+        (acc.isLiability || /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(`${acc.rawName || ''} ${acc.displayName || ''}`))
+      );
+    }
+
+    function renderMonthlyEntryForm() {
+      const picker = document.getElementById('entryMonthPicker');
+      if (!picker) return;
+      if (!picker.value) setDefaultEntryMonth();
+      const targetDateKey = picker.value;
+
+      const sorted = sortSnapshots(appState.snapshots);
+      const existingSnap = sorted.find(s => s.dateKey === targetDateKey);
+      const fallbackSnap = getPrecedingSnapshot(targetDateKey);
+      const sourceSnap = existingSnap || fallbackSnap;
+
+      const bannerText = document.getElementById('entryModeBannerText');
+      if (existingSnap) {
+        bannerText.innerHTML = `
+          <span>Editing existing sheet: <strong class="text-violet-700">${existingSnap.label}</strong></span>
+          ${fallbackSnap ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white border border-violet-200 text-violet-800">Prior month: ${escapeHtml(fallbackSnap.label)}</span>` : ''}
+        `;
+      } else {
+        bannerText.innerHTML = `
+          <span>New sheet: <strong class="text-slate-900">${formatDateKeyToLabel(targetDateKey)}</strong></span>
+          ${fallbackSnap ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-violet-600 text-white shadow-2xs">Pre-filled from ${escapeHtml(fallbackSnap.label)}</span>` : ''}
+        `;
+      }
+
+      const container = document.getElementById('entryGroupsContainer');
+      const categories = ['Cash', 'Shares', 'Pension'];
+
+      container.innerHTML = categories.map(cat => {
+        const style = CATEGORY_STYLES[cat];
+        const catAccounts = appState.accounts.filter(a => a.active && a.category === cat);
+        if (catAccounts.length === 0) return '';
+
+        return `
+          <div class="rounded-2xl border border-slate-200 overflow-hidden">
+            <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full ${style.dot}"></span>
+                <h3 class="text-sm font-bold text-slate-900">${cat} Accounts (${catAccounts.length})</h3>
+              </div>
+              <span class="text-xs text-slate-500">Balance (£) &amp; Interest Rate (%)</span>
+            </div>
+
+            <div class="divide-y divide-slate-100 bg-white">
+              ${catAccounts.map(acc => {
+                const rawEntry = sourceSnap && sourceSnap.entries[acc.id] ? sourceSnap.entries[acc.id] : { amount: 0, rate: null };
+                const signedAmount = enforceAccountSign(rawEntry.amount, acc);
+                const isCard = isAccountLiability(acc);
+
+                return `
+                  <div class="p-3.5 sm:px-4 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center ${isCard ? 'bg-rose-50/40' : ''}">
+                    <div class="sm:col-span-6">
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-sm font-semibold text-slate-900">${escapeHtml(acc.displayName)}</span>
+                        ${acc.rawName && acc.rawName !== acc.displayName ? `<span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${escapeHtml(acc.rawName)}</span>` : ''}
+                        ${isCard ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">Credit Card &mdash; auto-deducted as negative</span>` : ''}
+                      </div>
+                      <div class="text-xs font-medium text-violet-700">${escapeHtml(acc.provider)}</div>
+                    </div>
+
+                    <div class="sm:col-span-4">
+                      <label class="block sm:hidden text-[11px] font-medium text-slate-500 mb-1">Balance (£)</label>
+                      <div class="relative">
+                        <span class="absolute left-3 top-2 text-sm ${isCard ? 'text-rose-500' : 'text-slate-400'} font-medium">£</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          id="entry-amt-${acc.id}"
+                          data-category="${acc.category}"
+                          data-liability="${isCard ? '1' : '0'}"
+                          value="${signedAmount}"
+                          oninput="handleEntryAmountInput('${acc.id}')"
+                          onblur="handleEntryAmountInput('${acc.id}')"
+                          class="entry-amt-input w-full pl-7 pr-3 py-1.5 text-sm font-semibold ${isCard ? 'text-rose-700 bg-rose-50/70 border-rose-300' : 'text-slate-900 bg-slate-50 border-slate-300'} border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                      <label class="block sm:hidden text-[11px] font-medium text-slate-500 mb-1">Interest Rate (%)</label>
+                      <div class="relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          id="entry-rate-${acc.id}"
+                          value="${rawEntry.rate !== null && rawEntry.rate !== undefined ? rawEntry.rate : ''}"
+                          placeholder="AER %"
+                          class="w-full pl-2.5 pr-6 py-1.5 text-sm text-slate-700 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        />
+                        <span class="absolute right-2.5 top-2 text-xs text-slate-400">%</span>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      recalcLiveEntryTotals();
+    }
+
+    function recalcLiveEntryTotals() {
+      let cash = 0;
+      let shares = 0;
+      let pension = 0;
+      document.querySelectorAll('.entry-amt-input').forEach(inp => {
+        let val = parseFloat(inp.value) || 0;
+        if (inp.dataset.liability === '1' && val > 0) {
+          val = -Math.abs(val);
+        }
+        const cat = inp.dataset.category;
+        if (cat === 'Cash') cash += val;
+        else if (cat === 'Shares') shares += val;
+        else if (cat === 'Pension') pension += val;
+      });
+      const total = cash + shares + pension;
+      document.getElementById('entrySubCash').textContent = `Cash: ${formatGBP(cash)}`;
+      document.getElementById('entrySubShares').textContent = `Shares: ${formatGBP(shares)}`;
+      document.getElementById('entrySubPension').textContent = `Pension: ${formatGBP(pension)}`;
+      document.getElementById('entryLiveNetWorth').textContent = `Total: ${formatGBP(total)}`;
+    }
+
+    function handleAddNewFund() {
+      const codeInput = document.getElementById('addFundCode');
+      const provInput = document.getElementById('addFundProvider');
+      const catSelect = document.getElementById('addFundCategory');
+      const amtInput = document.getElementById('addFundAmount');
+      const rateInput = document.getElementById('addFundRate');
+
+      const rawCode = codeInput.value.trim();
+      if (!rawCode) {
+        showToast('Please enter an account code or name.', 'error');
+        codeInput.focus();
+        return;
+      }
+
+      const autoMeta = classifyAccount(rawCode);
+      const displayName = autoMeta.displayName;
+      const provider = provInput.value.trim() || autoMeta.provider;
+      const category = catSelect.value || autoMeta.category;
+      const initialAmt = parseFloat(amtInput.value) || 0;
+      const initialRate = rateInput.value !== '' ? parseFloat(rateInput.value) : null;
+
+      if (appState.accounts.some(a => normalizeAccountKey(a.rawName) === normalizeAccountKey(rawCode))) {
+        showToast(`An account named "${rawCode}" already exists.`, 'error');
+        return;
+      }
+
+      let newId = slugifyId(rawCode);
+      while (appState.accounts.some(a => a.id === newId)) {
+        newId += '_' + Math.floor(Math.random() * 100);
+      }
+
+      appState.accounts.push({
+        id: newId,
+        rawName: rawCode,
+        displayName,
+        provider,
+        category,
+        isLiability: autoMeta.isLiability,
+        active: true
+      });
+
+      const targetDateKey = document.getElementById('entryMonthPicker').value;
+      if (targetDateKey) {
+        const snap = appState.snapshots.find(s => s.dateKey === targetDateKey);
+        if (snap) {
+          snap.entries[newId] = { amount: initialAmt, rate: initialRate };
+        }
+      }
+
+      saveToLocalStorage();
+      codeInput.value = '';
+      provInput.value = '';
+      amtInput.value = '';
+      rateInput.value = '';
+
+      renderAll();
+      const newAmtEl = document.getElementById(`entry-amt-${newId}`);
+      const newRateEl = document.getElementById(`entry-rate-${newId}`);
+      if (newAmtEl) newAmtEl.value = initialAmt;
+      if (newRateEl && initialRate !== null) newRateEl.value = initialRate;
+      recalcLiveEntryTotals();
+
+      showToast(`Added "${displayName}" (${provider} • ${category}) to your accounts.`, 'success');
+    }
+
+    function saveMonthlyEntry(event) {
+      event.preventDefault();
+      const targetDateKey = document.getElementById('entryMonthPicker').value;
+      if (!targetDateKey) {
+        showToast('Please select a target month.', 'error');
+        return;
+      }
+
+      const entries = {};
+      appState.accounts.forEach(acc => {
+        const amtEl = document.getElementById(`entry-amt-${acc.id}`);
+        const rateEl = document.getElementById(`entry-rate-${acc.id}`);
+        if (amtEl) {
+          const amount = enforceAccountSign(parseFloat(amtEl.value) || 0, acc);
+          const rate = rateEl && rateEl.value !== '' ? parseFloat(rateEl.value) : null;
+          entries[acc.id] = { amount, rate };
+        }
+      });
+
+      const label = formatDateKeyToLabel(targetDateKey);
+      const existingIdx = appState.snapshots.findIndex(s => s.dateKey === targetDateKey);
+      if (existingIdx >= 0) {
+        appState.snapshots[existingIdx] = { dateKey: targetDateKey, label, entries };
+      } else {
+        appState.snapshots.push({ dateKey: targetDateKey, label, entries });
+      }
+
+      saveToLocalStorage();
+      setDefaultEntryMonth();
+      renderAll();
+      switchTab('overview');
+      showToast(`Saved ${label} snapshot and updated your Overview.`, 'success');
+    }
+
+    /**
+     * =========================================================================
+     * 14. UI HELPERS
+     * =========================================================================
+     */
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      const styles = {
+        success: 'bg-indigo-950 text-white border-emerald-400',
+        error: 'bg-rose-950 text-white border-rose-400',
+        info: 'bg-violet-950 text-white border-amber-400'
+      };
+      el.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg border-l-4 text-xs sm:text-sm font-medium transition-all duration-300 ${styles[type] || styles.info}`;
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(6px)';
+        setTimeout(() => el.remove(), 300);
+      }, 3600);
+    }
+  </script>
+</body>
+</html>
