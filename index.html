@@ -41,15 +41,14 @@
       background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 280px);
       color: #0f172a;
     }
-    /* iPadOS Chrome & Safari compatible visually-positioned transparent file input */
-    .ipad-safe-file-input {
+    /* iOS WebKit (iPad Chrome & Safari) reliable file input: never display:none or 0x0 */
+    .ios-webkit-file-input {
       position: fixed;
-      top: -120px;
-      left: -120px;
-      width: 2px;
-      height: 2px;
+      left: -9999px;
+      top: 0;
+      width: 24px;
+      height: 24px;
       opacity: 0.01;
-      overflow: hidden;
       z-index: -1;
     }
     ::-webkit-scrollbar {
@@ -70,8 +69,8 @@
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-violet-200 selection:text-violet-950">
 
-  <!-- Native Multi-File Input (No display:none and no restrictive MIME accept filter for iPadOS) -->
-  <input id="excelFileInput" type="file" multiple class="ipad-safe-file-input" />
+  <!-- Real Multi-File Input (No display:none and no restrictive MIME accept filter for iPadOS) -->
+  <input id="excelFileInput" type="file" multiple class="ios-webkit-file-input" />
 
   <!-- ===================================================================== -->
   <!-- TOP HEADER: INDIGO-VIOLET GRADIENT + TOP-RIGHT £25/DAY LIVE COUNTER   -->
@@ -121,7 +120,7 @@
 
           <!-- Header Action Buttons -->
           <div class="flex items-center gap-1.5 sm:gap-2">
-            <label for="excelFileInput" role="button" tabindex="0" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-indigo-950 bg-amber-300 hover:bg-amber-200 active:bg-amber-400 rounded-xl shadow-sm transition cursor-pointer select-none">
+            <label for="excelFileInput" role="button" tabindex="0" class="trigger-file-upload inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-indigo-950 bg-amber-300 hover:bg-amber-200 active:bg-amber-400 rounded-xl shadow-sm transition cursor-pointer select-none">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
               </svg>
@@ -135,7 +134,7 @@
         </div>
       </div>
 
-      <!-- 4 Clean Navigation Tabs (NO Annual Feb Tab) -->
+      <!-- 4 Clean Navigation Tabs -->
       <nav id="mainNavTabs" class="hidden flex space-x-1 sm:space-x-2 overflow-x-auto pt-1" aria-label="Tabs">
         <button type="button" data-tab="overview" id="tab-overview" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-950 shadow-xs flex items-center gap-2 transition cursor-pointer">
           <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>
@@ -157,9 +156,27 @@
     </div>
   </header>
 
-  <!-- Live Status Bar for File Parsing Feedback -->
-  <div id="liveStatusBar" class="hidden bg-indigo-900 text-white text-xs sm:text-sm font-medium px-4 py-2.5 text-center border-b border-indigo-700">
-    <span id="liveStatusText">Ready</span>
+  <!-- Live Progress Banner (Immediate visual feedback when files are picked) -->
+  <div id="liveStatusBar" class="hidden bg-indigo-900 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 text-center border-b border-indigo-700 shadow-xs">
+    <span id="liveStatusText">Reading file(s)...</span>
+  </div>
+
+  <!-- Visible Diagnostic Error Alert Box (Never fails silently) -->
+  <div id="diagnosticAlertBox" class="hidden max-w-4xl mx-auto mt-4 px-4">
+    <div class="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 shadow-sm flex items-start justify-between gap-3">
+      <div class="space-y-1">
+        <div class="text-sm font-extrabold text-rose-900 flex items-center gap-2">
+          <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <span id="diagnosticAlertTitle">Spreadsheet Import Notice</span>
+        </div>
+        <p id="diagnosticAlertMessage" class="text-xs text-rose-800 leading-relaxed"></p>
+      </div>
+      <button type="button" id="btnDismissDiagnostic" class="px-2.5 py-1 text-xs font-bold text-rose-800 hover:bg-rose-200 rounded-lg cursor-pointer shrink-0">
+        Dismiss
+      </button>
+    </div>
   </div>
 
   <!-- Toast Notification Container -->
@@ -189,8 +206,8 @@
 
           <!-- Two Clean Launch Actions -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
-            <!-- Action 1: Native Label File Picker -->
-            <label for="excelFileInput" role="button" tabindex="0" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:from-violet-800 active:to-indigo-800 text-white shadow-md transition flex flex-col justify-between cursor-pointer select-none">
+            <!-- Action 1: Native Label + Explicit Click Fallback File Picker -->
+            <label for="excelFileInput" role="button" tabindex="0" class="trigger-file-upload group text-left p-6 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:from-violet-800 active:to-indigo-800 text-white shadow-md transition flex flex-col justify-between cursor-pointer select-none">
               <div class="flex items-center justify-between mb-4">
                 <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
                   <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -202,12 +219,12 @@
               <div>
                 <div class="text-lg font-bold mb-1">Upload Spreadsheet(s) (.xlsx / .xls)</div>
                 <p class="text-xs text-indigo-100 leading-relaxed">
-                  Select one or multiple Excel files. Automatically reads exact sheet dates, cross-references overlapping dates, and inherits categories backwards from your latest November sheet.
+                  Select one or multiple Excel files. Automatically reads all tabs through Nov 12, cross-references overlapping dates, and inherits categories backwards from your latest November sheet.
                 </p>
               </div>
             </label>
 
-            <!-- Action 2: Start Blank & Add First Entry -->
+            <!-- Action 2: Start Empty & Enter First Month Manually -->
             <button type="button" id="btnStartBlank" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:from-emerald-800 active:to-teal-900 text-white shadow-md transition flex flex-col justify-between cursor-pointer select-none">
               <div class="flex items-center justify-between mb-4">
                 <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
@@ -218,7 +235,7 @@
                 <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 text-emerald-100">Manual Entry</span>
               </div>
               <div>
-                <div class="text-lg font-bold mb-1">Start Blank &amp; Add First Entry</div>
+                <div class="text-lg font-bold mb-1">Start Empty &amp; Enter First Month Manually</div>
                 <p class="text-xs text-emerald-50 leading-relaxed">
                   Open an empty tracker right away to add your accounts and record your first monthly figures manually without uploading a spreadsheet.
                 </p>
@@ -263,7 +280,7 @@
         <!-- Total Net Wealth -->
         <div class="bg-gradient-to-br from-indigo-950 via-violet-900 to-purple-900 text-white rounded-2xl p-5 shadow-md">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold uppercase tracking-wider text-indigo-200">Total Net Wealth</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-200">Total Net Worth</span>
             <span id="kpiDateBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/15 text-amber-200">—</span>
           </div>
           <div id="kpiTotalWorth" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">£0</div>
@@ -364,7 +381,7 @@
           <p class="text-sm font-bold text-slate-700 mb-1.5">No portfolio snapshots yet</p>
           <p class="text-xs text-slate-500 mb-5">Upload your Excel workbook(s) or add your first monthly entry to populate your charts.</p>
           <div class="flex flex-wrap justify-center gap-3">
-            <label for="excelFileInput" class="px-4 py-2.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl cursor-pointer">
+            <label for="excelFileInput" role="button" tabindex="0" class="trigger-file-upload px-4 py-2.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl cursor-pointer">
               + Import Excel (.xlsx / .xls)
             </label>
             <button type="button" id="btnEmptyGoAdd" class="px-4 py-2.5 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 rounded-xl cursor-pointer">
@@ -470,7 +487,7 @@
           <span class="text-emerald-300" id="entrySubCash">Cash: £0</span>
           <span class="text-violet-300" id="entrySubShares">Shares: £0</span>
           <span class="text-amber-300" id="entrySubPension">Pension: £0</span>
-          <span class="text-white text-sm" id="entryLiveNetWorth">Total Net Wealth: £0</span>
+          <span class="text-white text-sm" id="entryLiveNetWorth">Total Net Worth: £0</span>
         </div>
 
         <!-- PROMINENT "+ ADD ANOTHER ACCOUNT" INLINE FORM -->
@@ -548,7 +565,7 @@
             <p class="text-xs text-slate-500">All imported spreadsheet tabs and monthly entries stored locally in your browser</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <label for="excelFileInput" role="button" tabindex="0" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-violet-900 bg-violet-100 hover:bg-violet-200 rounded-xl transition cursor-pointer select-none">
+            <label for="excelFileInput" role="button" tabindex="0" class="trigger-file-upload inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-violet-900 bg-violet-100 hover:bg-violet-200 rounded-xl transition cursor-pointer select-none">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
               </svg>
@@ -572,7 +589,7 @@
                 <th class="py-3.5 px-4 text-right">Cash (£)</th>
                 <th class="py-3.5 px-4 text-right">Shares (£)</th>
                 <th class="py-3.5 px-4 text-right">Pension (£)</th>
-                <th class="py-3.5 px-4 text-right">Total Net Wealth</th>
+                <th class="py-3.5 px-4 text-right">Total Net Worth</th>
                 <th class="py-3.5 px-5 text-right">Actions</th>
               </tr>
             </thead>
@@ -707,9 +724,527 @@
   </div>
 
   <!-- ======================================================================= -->
-  <!-- JAVASCRIPT ENGINE (ZERO HARDCODED FINANCIAL NUMBERS)                    -->
+  <!-- JAVASCRIPT ENGINE (DUAL-ENGINE .XLSX PARSER & ZERO PRE-LOADED DATA)     -->
   <!-- ======================================================================= -->
   <script>
+    /**
+     * =========================================================================
+     * 1. STATE, CONSTANTS & TOP-RIGHT £25/DAY LIVE COUNTER
+     * =========================================================================
+     */
+    const STORAGE_KEY = 'wealth_isa_tracker_v10_clean';
+
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const MONTH_MAP = {
+      jan: 1, january: 1,
+      feb: 2, february: 2,
+      mar: 3, march: 3,
+      apr: 4, april: 4,
+      may: 5,
+      jun: 6, june: 6,
+      jul: 7, july: 7,
+      aug: 8, august: 8,
+      sep: 9, sept: 9, september: 9,
+      oct: 10, october: 10,
+      nov: 11, november: 11,
+      dec: 12, december: 12
+    };
+
+    const CATEGORY_STYLES = {
+      Cash: {
+        hex: '#10b981',
+        fill: 'rgba(16, 185, 129, 0.24)',
+        dot: 'bg-emerald-500'
+      },
+      Shares: {
+        hex: '#7c3aed',
+        fill: 'rgba(124, 58, 237, 0.24)',
+        dot: 'bg-violet-600'
+      },
+      Pension: {
+        hex: '#f59e0b',
+        fill: 'rgba(245, 158, 11, 0.26)',
+        dot: 'bg-amber-500'
+      }
+    };
+
+    const KNOWN_PROVIDERS = new Set([
+      'Monzo', 'Starling', 'Nationwide', 'NS&I', 'Hargreaves Lansdown',
+      'Trading 212', 'Virgin Money', 'Barclays', 'Barclaycard'
+    ]);
+
+    let appState = {
+      accounts: [],
+      snapshots: [],
+      preferences: {
+        chartMode: 'stacked',
+        timeframe: 'ALL',
+        hideZeroHistoric: true
+      }
+    };
+
+    let currentTab = 'overview';
+    let chartInstance = null;
+    let pendingImportBatch = null;
+    let statusHideTimer = null;
+
+    let animationState = {
+      isPlaying: false,
+      timerId: null,
+      currentIndex: null,
+      speed: 1
+    };
+
+    /**
+     * Top-Right Live Counter: £25/day inclusive since Jan 1 of current year.
+     * Jan 1 = £25, Jan 3 = £75, Nov 22 = £8,150.
+     */
+    function updateYtdInterestCounter() {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const dayOfYear = Math.floor((todayMidnight - startOfYear) / 86400000) + 1;
+      const earned = Math.max(1, dayOfYear) * 25;
+
+      const amtEl = document.getElementById('ytdInterestAmount');
+      const subEl = document.getElementById('ytdInterestSubtext');
+      if (amtEl) amtEl.textContent = `£${earned.toLocaleString('en-GB')}`;
+      if (subEl) subEl.textContent = `Day ${dayOfYear} of ${now.getFullYear()} (+£25/day)`;
+    }
+
+    function setLiveStatus(msg, autoHideMs = 0) {
+      const bar = document.getElementById('liveStatusBar');
+      const txt = document.getElementById('liveStatusText');
+      if (!bar || !txt) return;
+      if (statusHideTimer) {
+        clearTimeout(statusHideTimer);
+        statusHideTimer = null;
+      }
+      txt.textContent = msg;
+      bar.classList.remove('hidden');
+      if (autoHideMs > 0) {
+        statusHideTimer = setTimeout(() => {
+          bar.classList.add('hidden');
+        }, autoHideMs);
+      }
+    }
+
+    function showDiagnosticAlert(title, message) {
+      const box = document.getElementById('diagnosticAlertBox');
+      const titleEl = document.getElementById('diagnosticAlertTitle');
+      const msgEl = document.getElementById('diagnosticAlertMessage');
+      if (!box || !titleEl || !msgEl) return;
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      box.classList.remove('hidden');
+    }
+
+    function hideDiagnosticAlert() {
+      document.getElementById('diagnosticAlertBox')?.classList.add('hidden');
+    }
+
+    /**
+     * =========================================================================
+     * 2. INITIALIZATION & EVENT LISTENERS (IPADOS CHROME & SAFARI SAFE)
+     * =========================================================================
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+      updateYtdInterestCounter();
+      setInterval(updateYtdInterestCounter, 60000);
+
+      loadFromLocalStorage();
+      bindStaticEvents();
+
+      if (appState.snapshots.length > 0 || appState.accounts.length > 0) {
+        enterActiveWorkspace('overview');
+      } else {
+        showWelcomeScreen();
+      }
+    });
+
+    function bindStaticEvents() {
+      // File Input Change Listener
+      const fileInput = document.getElementById('excelFileInput');
+      if (fileInput) {
+        fileInput.addEventListener('change', handleExcelFilesSelected);
+      }
+
+      // Explicit click/keyboard fallback on all upload labels for iPadOS Chrome & Safari
+      document.querySelectorAll('.trigger-file-upload').forEach(el => {
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            document.getElementById('excelFileInput')?.click();
+          }
+        });
+      });
+
+      // Welcome Screen Actions
+      document.getElementById('btnStartBlank')?.addEventListener('click', () => {
+        enterActiveWorkspace('entry');
+        showToast('Started blank workspace. Add your accounts below.', 'info');
+      });
+
+      document.getElementById('btnResumeSaved')?.addEventListener('click', () => {
+        enterActiveWorkspace('overview');
+      });
+
+      document.getElementById('btnWipeSavedBanner')?.addEventListener('click', wipeBrowserData);
+      document.getElementById('btnHeaderStart')?.addEventListener('click', showWelcomeScreen);
+      document.getElementById('btnDismissDiagnostic')?.addEventListener('click', hideDiagnosticAlert);
+
+      // Security Modal
+      document.getElementById('btnOpenSecurity')?.addEventListener('click', () => {
+        document.getElementById('securityInfoModal')?.classList.remove('hidden');
+      });
+      document.getElementById('btnCloseSecurityX')?.addEventListener('click', () => {
+        document.getElementById('securityInfoModal')?.classList.add('hidden');
+      });
+      document.getElementById('btnCloseSecurityOk')?.addEventListener('click', () => {
+        document.getElementById('securityInfoModal')?.classList.add('hidden');
+      });
+      document.getElementById('btnWipeModalData')?.addEventListener('click', wipeBrowserData);
+
+      // Navigation Tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          switchTab(btn.getAttribute('data-tab'));
+        });
+      });
+
+      // Overview Controls
+      document.getElementById('btnEmptyGoAdd')?.addEventListener('click', () => switchTab('entry'));
+      document.getElementById('btnPlayAnimation')?.addEventListener('click', toggleTimelineAnimation);
+      document.getElementById('btnResetAnim')?.addEventListener('click', resetTimelineAnimation);
+      document.getElementById('btnAnimSpeed')?.addEventListener('click', cycleAnimationSpeed);
+
+      document.querySelectorAll('.chart-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => setChartMode(btn.getAttribute('data-mode')));
+      });
+
+      document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.addEventListener('click', () => setTimeframe(btn.getAttribute('data-tf')));
+      });
+
+      // Entry Tab Controls
+      document.getElementById('entryDatePicker')?.addEventListener('change', renderMonthlyEntryForm);
+      document.getElementById('btnResetEntryToPrev')?.addEventListener('click', prefillEntryFromLatest);
+      document.getElementById('cbHideZeroHistoric')?.addEventListener('change', (e) => {
+        appState.preferences.hideZeroHistoric = e.target.checked;
+        saveToLocalStorage();
+        renderMonthlyEntryForm();
+      });
+      document.getElementById('btnToggleAddAccount')?.addEventListener('click', toggleAddAccountPanel);
+      document.getElementById('btnAddNewFund')?.addEventListener('click', handleAddNewFund);
+      document.getElementById('monthlyEntryForm')?.addEventListener('submit', saveMonthlyEntry);
+
+      // History & Export Controls
+      document.getElementById('btnExportExcel')?.addEventListener('click', exportToExcel);
+
+      // Import Review Modal Controls
+      document.getElementById('btnCloseImportModal')?.addEventListener('click', closeImportReviewModal);
+      document.getElementById('btnCancelImport')?.addEventListener('click', closeImportReviewModal);
+      document.getElementById('btnSelectAllSheets')?.addEventListener('click', () => toggleReviewSheets(true));
+      document.getElementById('btnDeselectAllSheets')?.addEventListener('click', () => toggleReviewSheets(false));
+      document.getElementById('btnConfirmImport')?.addEventListener('click', commitReviewedImport);
+    }
+
+    /**
+     * =========================================================================
+     * 3. STORAGE & VIEW MANAGEMENT
+     * =========================================================================
+     */
+    function saveToLocalStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.warn('LocalStorage save warning:', e);
+      }
+    }
+
+    function loadFromLocalStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.accounts) && Array.isArray(parsed.snapshots)) {
+            appState = {
+              accounts: parsed.accounts,
+              snapshots: sortSnapshots(parsed.snapshots),
+              preferences: Object.assign(
+                { chartMode: 'stacked', timeframe: 'ALL', hideZeroHistoric: true },
+                parsed.preferences || {}
+              )
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('LocalStorage load warning:', e);
+      }
+    }
+
+    function wipeBrowserData() {
+      localStorage.removeItem(STORAGE_KEY);
+      appState = {
+        accounts: [],
+        snapshots: [],
+        preferences: { chartMode: 'stacked', timeframe: 'ALL', hideZeroHistoric: true }
+      };
+      if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+      }
+      document.getElementById('securityInfoModal')?.classList.add('hidden');
+      showWelcomeScreen();
+      showToast('All browser data cleared. Workspace is completely empty.', 'info');
+    }
+
+    function showWelcomeScreen() {
+      stopTimelineAnimation();
+      document.getElementById('welcomeScreen')?.classList.remove('hidden');
+      document.getElementById('mainNavTabs')?.classList.add('hidden');
+      ['overview', 'insights', 'entry', 'history'].forEach(t => {
+        document.getElementById(`view-${t}`)?.classList.add('hidden');
+      });
+
+      const resumeBanner = document.getElementById('resumeSavedBanner');
+      if (appState.snapshots.length > 0 || appState.accounts.length > 0) {
+        resumeBanner?.classList.remove('hidden');
+        const sorted = sortSnapshots(appState.snapshots);
+        const rangeText = sorted.length > 0 ? `${sorted[0].label} to ${sorted[sorted.length - 1].label}` : '0 dates';
+        document.getElementById('resumeSavedDetails').textContent =
+          `${appState.snapshots.length} date(s) (${rangeText}) and ${appState.accounts.length} account(s) stored locally.`;
+      } else {
+        resumeBanner?.classList.add('hidden');
+      }
+    }
+
+    function enterActiveWorkspace(initialTab = 'overview') {
+      document.getElementById('welcomeScreen')?.classList.add('hidden');
+      document.getElementById('mainNavTabs')?.classList.remove('hidden');
+      setDefaultEntryDate();
+      renderAll();
+      switchTab(initialTab);
+    }
+
+    function switchTab(tabName) {
+      currentTab = tabName;
+      if (tabName !== 'overview') {
+        stopTimelineAnimation();
+      }
+      ['overview', 'insights', 'entry', 'history'].forEach(t => {
+        const viewEl = document.getElementById(`view-${t}`);
+        const btnEl = document.getElementById(`tab-${t}`);
+        if (t === tabName) {
+          viewEl?.classList.remove('hidden');
+          if (btnEl) {
+            btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-950 shadow-xs flex items-center gap-2 transition cursor-pointer';
+          }
+        } else {
+          viewEl?.classList.add('hidden');
+          if (btnEl) {
+            btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer';
+          }
+        }
+      });
+
+      if (tabName === 'overview') renderOverviewTab();
+      if (tabName === 'insights') renderInsightsAndProvidersTab();
+      if (tabName === 'entry') renderMonthlyEntryForm();
+      if (tabName === 'history') renderHistoryTable();
+    }
+
+    /**
+     * =========================================================================
+     * 4. ACCOUNT CLASSIFICATION & LATEST-NOVEMBER RETROACTIVE DICTIONARY
+     * =========================================================================
+     */
+    function slugifyId(str) {
+      return 'acc_' + String(str || 'item').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    }
+
+    function isAccountLiability(acc) {
+      if (!acc) return false;
+      if (acc.isLiability) return true;
+      const text = `${acc.rawName || ''} ${acc.displayName || ''}`.toLowerCase();
+      return text.includes('barclaycard') || text.includes('credit card');
+    }
+
+    function enforceAccountSign(amount, acc) {
+      const val = Number(amount) || 0;
+      if (val === 0) return 0;
+      return isAccountLiability(acc) ? -Math.abs(val) : val;
+    }
+
+    /**
+     * Normalizes shorthand account variants across years so unannotated earlier
+     * entries match their annotated November equivalents:
+     * - 'T212', 'T212 isa', 'T212 isa shares' -> 't212_isa'
+     * - 'T212 sipp', 'T212 sipp shares' -> 't212_sipp'
+     * - 'H isa', 'Hisa', 'HS', 'HL isa', 'HL isa shares' -> 'hl_isa'
+     * - 'Hl sipp', 'HL sipp shares' -> 'hl_sipp'
+     * - 'Minvest', 'Minvest shares' -> 'm_invest'
+     */
+    function getCanonicalAccountKey(rawName) {
+      const clean = String(rawName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      if (/^t212\s*sipp/.test(clean)) return 't212_sipp';
+      if (/^t212(\s*(isa|shares))?$/.test(clean)) return 't212_isa';
+      if (/^h\s*l?\s*sipp/.test(clean)) return 'hl_sipp';
+      if (/^(h\s*l?\s*isa|hisa|hs)(\s*shares)?$/.test(clean)) return 'hl_isa';
+      if (/^m\s*invest(\s*shares)?$/.test(clean)) return 'm_invest';
+      if (/^nwe\s*isa$/.test(clean) || /^nweisa$/.test(clean)) return 'nwe_isa';
+      if (/^nwe\s*sav$/.test(clean)) return 'nwe_sav';
+      if (/^m\s*penny$/.test(clean)) return 'm_penny';
+      if (/^m\s*funpot$/.test(clean)) return 'm_funpot';
+      if (/^m\s*chall$/.test(clean)) return 'm_chall';
+      if (/^m\s*isa$/.test(clean) || /^misa$/.test(clean)) return 'm_isa';
+      if (/^nsandi$/.test(clean) || /^nsai$/.test(clean)) return 'nsai';
+      if (/^vir\s*isa$/.test(clean) || /^virisa$/.test(clean)) return 'virisa';
+      return clean.replace(/[^a-z0-9]+/g, '_');
+    }
+
+    function classifyAccount(rawName, novemberDictionary = null) {
+      const raw = String(rawName || '').trim();
+      const lower = raw.toLowerCase().replace(/\s+/g, ' ');
+      const canonicalKey = getCanonicalAccountKey(raw);
+
+      // 1. Check Latest-November Retroactive Dictionary first
+      if (novemberDictionary && novemberDictionary.has(canonicalKey)) {
+        const ref = novemberDictionary.get(canonicalKey);
+        return {
+          canonicalKey,
+          rawName: raw,
+          displayName: ref.displayName,
+          provider: ref.provider,
+          category: ref.category,
+          isLiability: ref.isLiability,
+          isNewBank: ref.isNewBank,
+          inheritedFromNov: true
+        };
+      }
+
+      // 2. Exact user rules:
+      // - SIPP -> Pension
+      // - HL isa / Hisa / HS / T212 isa / T212 / Minvest -> Shares
+      // - All other accounts -> Cash
+      let category = 'Cash';
+      if (lower.includes('sipp')) {
+        category = 'Pension';
+      } else if (
+        lower.includes('shares') ||
+        /^t212(\s*isa)?$/.test(lower) ||
+        /^(h\s*l?\s*isa|hisa|hs)$/.test(lower) ||
+        /^m\s*invest$/.test(lower)
+      ) {
+        category = 'Shares';
+      }
+
+      // 3. Provider & Friendly Display Name Mapping
+      let provider = 'Other';
+      let displayName = raw;
+      let isLiability = false;
+
+      if (lower.includes('barclaycard')) {
+        provider = 'Barclaycard';
+        displayName = 'Barclaycard (Credit Card)';
+        isLiability = true;
+        category = 'Cash';
+      } else if (lower === 'b' || lower.startsWith('barclays')) {
+        provider = 'Barclays';
+        displayName = lower === 'b' ? 'Barclays Current (B)' : raw;
+      } else if (/^h\s*l?\s*sipp/.test(lower)) {
+        provider = 'Hargreaves Lansdown';
+        displayName = 'HL SIPP Pension';
+        category = 'Pension';
+      } else if (/^(h\s*l?\s*isa|hisa|hs)(\s*shares)?$/.test(lower)) {
+        provider = 'Hargreaves Lansdown';
+        displayName = 'HL Stocks & Shares ISA';
+        category = 'Shares';
+      } else if (lower === 'h') {
+        provider = 'Halifax';
+        displayName = 'Halifax Saver (H)';
+      } else if (/^t212\s*sipp/.test(lower)) {
+        provider = 'Trading 212';
+        displayName = 'T212 SIPP Pension';
+        category = 'Pension';
+      } else if (/^t212/.test(lower)) {
+        provider = 'Trading 212';
+        displayName = 'T212 Stocks & Shares ISA';
+        category = 'Shares';
+      } else if (/^m\s*invest/.test(lower)) {
+        provider = 'Monzo';
+        displayName = 'Monzo Investments (Minvest)';
+        category = 'Shares';
+      } else if (lower === 'm') {
+        provider = 'Monzo';
+        displayName = 'Monzo Current (M)';
+      } else if (lower === 'mc') {
+        provider = 'Monzo';
+        displayName = 'Monzo Cash / Current (MC)';
+      } else if (lower === 'ms') {
+        provider = 'Monzo';
+        displayName = 'Monzo Instant Saver (Ms)';
+      } else if (lower === 'misa' || lower === 'm isa') {
+        provider = 'Monzo';
+        displayName = 'Monzo Cash ISA (Misa)';
+      } else if (lower === 'mpb') {
+        provider = 'Monzo';
+        displayName = 'Monzo Pot / Bond (MPB)';
+      } else if (lower.startsWith('m ')) {
+        provider = 'Monzo';
+        const suffix = raw.slice(2).trim();
+        displayName = 'Monzo ' + suffix.charAt(0).toUpperCase() + suffix.slice(1);
+      } else if (lower === 'nw') {
+        provider = 'Nationwide';
+        displayName = 'Nationwide Current (Nw)';
+      } else if (lower === 'nwt') {
+        provider = 'Nationwide';
+        displayName = 'Nationwide FlexDirect / Saver (Nwt)';
+      } else if (lower === 'nwe') {
+        provider = 'Nationwide';
+        displayName = 'Nationwide e-Saver (Nwe)';
+      } else if (lower === 'nw sav' || lower === 'nwe sav') {
+        provider = 'Nationwide';
+        displayName = `Nationwide Saver (${raw})`;
+      } else if (lower === 'nwe isa' || lower === 'nweisa') {
+        provider = 'Nationwide';
+        displayName = `Nationwide Cash ISA (${raw})`;
+      } else if (lower.startsWith('nw')) {
+        provider = 'Nationwide';
+        displayName = `Nationwide (${raw})`;
+      } else if (lower === 's' || lower.startsWith('starling')) {
+        provider = 'Starling';
+        displayName = lower === 's' ? 'Starling Bank (S)' : raw;
+      } else if (lower === 'nsai' || lower === 'nsandi' || lower.includes('ns&i')) {
+        provider = 'NS&I';
+        displayName = `NS&I Savings (${raw})`;
+      } else if (lower === 'pb') {
+        provider = 'NS&I';
+        displayName = 'NS&I Premium Bonds (PB)';
+      } else if (lower === 'v' || lower === 'vir' || lower === 'virisa' || lower.startsWith('virgin')) {
+        provider = 'Virgin Money';
+        displayName = lower.includes('isa') ? `Virgin Money Cash ISA (${raw})` : `Virgin Money (${raw})`;
+      } else {
+        // Newly detected unlisted bank/account
+        const firstWord = raw.split(/\s+/)[0].replace(/[^a-zA-Z0-9&]/g, '');
+        provider = firstWord ? firstWord.charAt(0).toUpperCase() + firstWord.slice(1) : 'Other Bank';
+        displayName = raw;
+      }
+
+      const isNewBank = !KNOWN_PROVIDERS.has(provider);
+
+      return {
+        canonicalKey,
+        rawName: raw,
+        displayName,
+        provider,
+        category,
+        isLiability,
+        isNewBank,
+        inheritedFromNov: false
+      };
+    }
+
     /**
      * =========================================================================
      * 5. EXACT SHEET DATE PARSER (ALL MONTHS JAN-DEC, SERIAL DATES & INNER CELLS)
@@ -782,7 +1317,7 @@
         return { year: null, month: MONTH_MAP[tokens[0]], day: 1, explicitYear: false };
       }
 
-      // 4. [MonthName] [Num1] [Optional Num2]: e.g. 'Nov 12', 'Nov 12 26', 'Nov 26', 'Feb 1 23', 'Sept 15'
+      // 4. [MonthName] [Num1] [Optional Num2]: e.g. 'Nov 12', 'Nov 12 26', 'Jan 26', 'Feb 1 23'
       if (tokens.length >= 2 && MONTH_MAP[tokens[0]]) {
         const mo = MONTH_MAP[tokens[0]];
         const num1 = parseInt(tokens[1], 10);
@@ -791,7 +1326,8 @@
           if (num1 >= 1990 && num1 <= 2099) {
             return { year: num1, month: mo, day: 1, explicitYear: true };
           }
-          if (tokens[1].length === 2 && num1 >= 20 && num1 <= 29) {
+          // 'Jan 26', 'Feb 26' -> Year 2026, Day 1
+          if (tokens[1].length === 2 && num1 >= 23 && num1 <= 29) {
             return { year: 2000 + num1, month: mo, day: 1, explicitYear: true };
           }
           if (num1 >= 1 && num1 <= 31) {
@@ -839,7 +1375,7 @@
         if (rawNum.length === 4 && num >= 1990 && num <= 2099) {
           return { year: num, month: mo, day: 1, explicitYear: true };
         }
-        if (rawNum.length === 2 && num >= 20 && num <= 29) {
+        if (rawNum.length === 2 && num >= 23 && num <= 29) {
           return { year: 2000 + num, month: mo, day: 1, explicitYear: true };
         }
         if (num >= 1 && num <= 31) {
@@ -1042,12 +1578,11 @@
 
     /**
      * =========================================================================
-     * 7. TWO-PASS MULTI-SPREADSHEET IMPORTER & LATEST-NOVEMBER DICTIONARY
+     * 7. DUAL-ENGINE .XLSX PARSER (SHEETJS + NATIVE BROWSER ZIP/XML FALLBACK)
      * =========================================================================
      */
     async function ensureXlsxLoaded() {
       if (typeof window.XLSX !== 'undefined') return true;
-      setLiveStatus('Loading Excel parser...');
       const cdns = [
         'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
         'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
@@ -1069,6 +1604,206 @@
       return typeof window.XLSX !== 'undefined';
     }
 
+    /**
+     * Built-in Zero-Dependency Pure-JS .xlsx ZIP/XML Parser
+     * Uses native browser DecompressionStream('deflate-raw') + DOMParser so .xlsx
+     * files work 100% offline or if SheetJS CDN is blocked on iPad/GitHub Pages.
+     */
+    async function parseXlsxNativeFallback(arrayBuffer) {
+      const bytes = new Uint8Array(arrayBuffer);
+      const view = new DataView(arrayBuffer);
+
+      // Locate End of Central Directory (EOCD) signature 0x06054b50
+      let eocdOffset = -1;
+      for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) {
+        if (view.getUint32(i, true) === 0x06054b50) {
+          eocdOffset = i;
+          break;
+        }
+      }
+      if (eocdOffset < 0) {
+        throw new Error('Not a valid .xlsx (ZIP) archive.');
+      }
+
+      const cdSize = view.getUint32(eocdOffset + 12, true);
+      const cdOffset = view.getUint32(eocdOffset + 16, true);
+      const decoder = new TextDecoder('utf-8');
+      const zipEntries = new Map();
+
+      let ptr = cdOffset;
+      const cdEnd = cdOffset + cdSize;
+      while (ptr < cdEnd && ptr + 46 <= bytes.length) {
+        if (view.getUint32(ptr, true) !== 0x02014b50) break;
+        const compression = view.getUint16(ptr + 10, true);
+        const compSize = view.getUint32(ptr + 20, true);
+        const nameLen = view.getUint16(ptr + 28, true);
+        const extraLen = view.getUint16(ptr + 30, true);
+        const commentLen = view.getUint16(ptr + 32, true);
+        const localHeaderOffset = view.getUint32(ptr + 42, true);
+
+        const fileName = decoder.decode(bytes.subarray(ptr + 46, ptr + 46 + nameLen));
+        ptr += 46 + nameLen + extraLen + commentLen;
+
+        // Read Local File Header
+        if (localHeaderOffset + 30 <= bytes.length && view.getUint32(localHeaderOffset, true) === 0x04034b50) {
+          const lNameLen = view.getUint16(localHeaderOffset + 26, true);
+          const lExtraLen = view.getUint16(localHeaderOffset + 28, true);
+          const dataStart = localHeaderOffset + 30 + lNameLen + lExtraLen;
+          const compressedSlice = bytes.subarray(dataStart, dataStart + compSize);
+          zipEntries.set(fileName.replace(/\\/g, '/'), { compression, compressedSlice });
+        }
+      }
+
+      async function readZipText(path) {
+        const normalized = path.replace(/^\/+/, '');
+        const entry = zipEntries.get(normalized);
+        if (!entry) return null;
+        if (entry.compression === 0) {
+          return decoder.decode(entry.compressedSlice);
+        }
+        if (entry.compression === 8) {
+          if (typeof DecompressionStream === 'undefined') {
+            throw new Error('Browser does not support DecompressionStream for native .xlsx fallback.');
+          }
+          const ds = new DecompressionStream('deflate-raw');
+          const writer = ds.writable.getWriter();
+          writer.write(entry.compressedSlice);
+          writer.close();
+          const decompressedBuf = await new Response(ds.readable).arrayBuffer();
+          return decoder.decode(decompressedBuf);
+        }
+        throw new Error(`Unsupported ZIP compression method (${entry.compression}).`);
+      }
+
+      const domParser = new DOMParser();
+
+      // 1. Parse Shared Strings (xl/sharedStrings.xml)
+      const sharedStrings = [];
+      const ssXml = await readZipText('xl/sharedStrings.xml');
+      if (ssXml) {
+        const ssDoc = domParser.parseFromString(ssXml, 'application/xml');
+        const siNodes = ssDoc.getElementsByTagName('si');
+        for (let i = 0; i < siNodes.length; i++) {
+          const tNodes = siNodes[i].getElementsByTagName('t');
+          let combined = '';
+          for (let j = 0; j < tNodes.length; j++) {
+            combined += tNodes[j].textContent || '';
+          }
+          sharedStrings.push(combined);
+        }
+      }
+
+      // 2. Map Relationship IDs -> Worksheet Paths (xl/_rels/workbook.xml.rels)
+      const relMap = new Map();
+      const relsXml = await readZipText('xl/_rels/workbook.xml.rels');
+      if (relsXml) {
+        const relsDoc = domParser.parseFromString(relsXml, 'application/xml');
+        const relNodes = relsDoc.getElementsByTagName('Relationship');
+        for (let i = 0; i < relNodes.length; i++) {
+          const id = relNodes[i].getAttribute('Id');
+          let target = relNodes[i].getAttribute('Target') || '';
+          if (target.startsWith('/')) target = target.slice(1);
+          else if (!target.startsWith('xl/')) target = 'xl/' + target.replace(/^\.\//, '');
+          if (id) relMap.set(id, target);
+        }
+      }
+
+      // 3. Parse Workbook Sheet Names & Order (xl/workbook.xml)
+      const wbXml = await readZipText('xl/workbook.xml');
+      if (!wbXml) throw new Error('Missing xl/workbook.xml inside .xlsx file.');
+      const wbDoc = domParser.parseFromString(wbXml, 'application/xml');
+      const sheetNodes = wbDoc.getElementsByTagName('sheet');
+
+      function colLettersToIndex(letters) {
+        let col = 0;
+        for (let i = 0; i < letters.length; i++) {
+          col = col * 26 + (letters.charCodeAt(i) - 64);
+        }
+        return col - 1;
+      }
+
+      const sheetsOut = [];
+      for (let i = 0; i < sheetNodes.length; i++) {
+        const sNode = sheetNodes[i];
+        const sheetName = sNode.getAttribute('name') || `Sheet${i + 1}`;
+        const rId = sNode.getAttribute('r:id') || sNode.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+        const targetPath = (rId && relMap.get(rId)) || `xl/worksheets/sheet${i + 1}.xml`;
+        const sheetXml = await readZipText(targetPath);
+        if (!sheetXml) {
+          sheetsOut.push({ sheetName, rows: [] });
+          continue;
+        }
+
+        const sDoc = domParser.parseFromString(sheetXml, 'application/xml');
+        const rowNodes = sDoc.getElementsByTagName('row');
+        const rows = [];
+
+        for (let r = 0; r < rowNodes.length; r++) {
+          const rowNode = rowNodes[r];
+          const rAttr = parseInt(rowNode.getAttribute('r') || '0', 10);
+          const rowIdx = rAttr > 0 ? rAttr - 1 : rows.length;
+          while (rows.length <= rowIdx) rows.push([]);
+
+          const cellNodes = rowNode.getElementsByTagName('c');
+          let fallbackCol = 0;
+          for (let c = 0; c < cellNodes.length; c++) {
+            const cNode = cellNodes[c];
+            const ref = cNode.getAttribute('r') || '';
+            const colMatch = ref.match(/^([A-Z]+)/i);
+            const colIdx = colMatch ? colLettersToIndex(colMatch[1].toUpperCase()) : fallbackCol;
+            fallbackCol = colIdx + 1;
+
+            const cellType = cNode.getAttribute('t') || '';
+            let val = null;
+
+            if (cellType === 'inlineStr') {
+              const tNodes = cNode.getElementsByTagName('t');
+              let txt = '';
+              for (let k = 0; k < tNodes.length; k++) txt += tNodes[k].textContent || '';
+              val = txt;
+            } else {
+              const vNode = cNode.getElementsByTagName('v')[0];
+              if (vNode && vNode.textContent !== null) {
+                const rawVal = vNode.textContent;
+                if (cellType === 's') {
+                  const sIdx = parseInt(rawVal, 10);
+                  val = sharedStrings[sIdx] !== undefined ? sharedStrings[sIdx] : rawVal;
+                } else if (cellType === 'str' || cellType === 'e') {
+                  val = rawVal;
+                } else if (cellType === 'b') {
+                  val = rawVal === '1';
+                } else {
+                  const num = Number(rawVal);
+                  val = isNaN(num) ? rawVal : num;
+                }
+              }
+            }
+
+            while (rows[rowIdx].length <= colIdx) rows[rowIdx].push(null);
+            rows[rowIdx][colIdx] = val;
+          }
+        }
+
+        sheetsOut.push({ sheetName, rows });
+      }
+
+      return sheetsOut;
+    }
+
+    async function extractWorkbookSheets(file, buffer) {
+      const hasSheetJs = await ensureXlsxLoaded();
+      if (hasSheetJs && typeof window.XLSX !== 'undefined') {
+        const workbook = window.XLSX.read(new Uint8Array(buffer), { type: 'array' });
+        return workbook.SheetNames.map(sn => {
+          const ws = workbook.Sheets[sn];
+          const rows = ws ? window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, blankrows: true }) : [];
+          return { sheetName: sn, rows };
+        });
+      }
+      // Seamless fallback to built-in pure-JS .xlsx ZIP/XML engine
+      return await parseXlsxNativeFallback(buffer);
+    }
+
     function readFileAsArrayBuffer(file) {
       if (file.arrayBuffer) return file.arrayBuffer();
       return new Promise((resolve, reject) => {
@@ -1081,23 +1816,35 @@
 
     async function handleExcelFilesSelected(event) {
       const inputEl = event.target;
+      // Immediately copy FileList BEFORE delayed reset so iOS WebKit never invalidates files mid-read
       const files = Array.from(inputEl.files || []);
-      inputEl.value = '';
-      if (files.length === 0) return;
-        // PASS 1A: Extract ALL tabs in workbook.SheetNames without stopping early
-        for (const file of files) {
-          const buffer = await readFileAsArrayBuffer(file);
-          const workbook = window.XLSX.read(new Uint8Array(buffer), { type: 'array' });
+      setTimeout(() => {
+        try { inputEl.value = ''; } catch (_) {}
+      }, 500);
 
-          const tabMetaList = workbook.SheetNames.map(sn => {
-            const ws = workbook.Sheets[sn];
-            const rows = ws ? window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, blankrows: true }) : [];
+      if (files.length === 0) return;
+
+      hideDiagnosticAlert();
+      setLiveStatus(`Reading ${files.length} file(s)...`);
+
+      try {
+        const currentYear = new Date().getFullYear();
+        const extractedRawSheets = [];
+        const skippedTabs = [];
+
+        // PASS 1A: Extract ALL tabs across all selected files without stopping early
+        for (const file of files) {
+          setLiveStatus(`Parsing "${file.name}"...`);
+          const buffer = await readFileAsArrayBuffer(file);
+          const rawWorkbookSheets = await extractWorkbookSheets(file, buffer);
+
+          const tabMetaList = rawWorkbookSheets.map(({ sheetName, rows }) => {
             const parsedItems = parseSheetRows(rows);
-            let parts = parseSheetNameToDateParts(sn);
+            let parts = parseSheetNameToDateParts(sheetName);
             let dateSource = 'tab';
 
             // If tab name isn't a recognized date (e.g. Sheet14), inspect inner top cells if it holds account rows
-            if (!parts && !NON_SNAPSHOT_TAB_REGEX.test(String(sn || '').trim()) && parsedItems.length > 0) {
+            if (!parts && !NON_SNAPSHOT_TAB_REGEX.test(String(sheetName || '').trim()) && parsedItems.length > 0) {
               const innerParts = extractDatePartsFromTopCells(rows);
               if (innerParts) {
                 parts = innerParts;
@@ -1108,11 +1855,11 @@
               }
             }
 
-            return { sheetName: sn, parts, parsedItems, dateSource };
+            return { sheetName, parts, parsedItems, dateSource };
           });
 
           for (let i = 0; i < tabMetaList.length; i++) {
-            const { sheetName, parts, parsedItems, dateSource } = tabMetaList[i];
+            const { sheetName, parts, parsedItems } = tabMetaList[i];
 
             if (!parts) {
               skippedTabs.push({ sheetName, reason: 'Non-date summary/calculator tab' });
@@ -1127,7 +1874,7 @@
             let resolvedYear = parts.year;
             if (!parts.explicitYear || resolvedYear === null) {
               resolvedYear = currentYear;
-              // Only roll Nov/Dec back to previous year if an explicit Jan/Feb of currentYear comes AFTER this tab
+              // Roll yearless Nov/Dec back to previous year ONLY if an explicit Jan/Feb of currentYear comes AFTER it
               if (parts.month >= 11) {
                 for (let j = i + 1; j < tabMetaList.length; j++) {
                   const nextParts = tabMetaList[j].parts;
@@ -1147,7 +1894,6 @@
               month: parts.month,
               year: resolvedYear,
               dateKey,
-              dateSource,
               needsManualDate: Boolean(parts.needsManualDate),
               label: formatDateKeyToLabel(dateKey),
               items: parsedItems
@@ -1156,12 +1902,15 @@
         }
 
         if (extractedRawSheets.length === 0) {
-          setLiveStatus('No valid snapshot tabs found in selected file(s).', 5000);
-          showToast('No date snapshot tabs with Item + Value columns were found.', 'error');
+          setLiveStatus('No valid snapshot tabs found.', 4000);
+          showDiagnosticAlert(
+            'No Date Snapshot Tabs Found',
+            `Read ${files.length} file(s), but no tabs contained a recognized date and Item/Value account rows. Ensure your file is an .xlsx or .xls workbook with date tabs (e.g. "Feb 1 25", "Nov 12").`
+          );
           return;
         }
 
-        // PASS 1B: Build Master Account Dictionary from the Latest November Sheet (and annotated entries across sheets)
+        // PASS 1B: Build Master Account Dictionary from the Latest November Sheet
         const novemberSheets = extractedRawSheets
           .filter(sh => sh.month === 11)
           .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
@@ -1179,7 +1928,6 @@
           }
         }
 
-        // Also enrich dictionary from any explicitly annotated sheet entries across all uploaded sheets
         for (const sh of extractedRawSheets) {
           for (const item of sh.items) {
             const baseMeta = classifyAccount(item.rawName, null);
@@ -1200,7 +1948,6 @@
         let retroactiveCount = 0;
 
         for (const sh of extractedRawSheets) {
-          // Keep distinct dateKeys separate; if exact same dateKey appears across two files, merge & deduplicate
           const mergeKey = sh.needsManualDate ? `${sh.dateKey}__${sh.sheetName}` : sh.dateKey;
           if (mergedSheetsMap.has(mergeKey)) {
             duplicateTabsMerged += 1;
@@ -1271,12 +2018,15 @@
           accounts: accountsList
         };
 
-        setLiveStatus(`Parsed ${sheetsList.length} snapshot date(s) & ${accountsList.length} account(s).`, 2500);
+        setLiveStatus(`Found ${sheetsList.length} snapshot date(s) & ${accountsList.length} account(s).`, 2500);
         openImportReviewModal();
       } catch (err) {
         console.error('Excel import error:', err);
-        setLiveStatus('Error reading Excel file: ' + (err.message || 'Unknown error'), 6000);
-        showToast('Could not read Excel file: ' + (err.message || 'Invalid workbook'), 'error');
+        setLiveStatus('Import failed.', 3000);
+        showDiagnosticAlert(
+          'Could Not Read Spreadsheet',
+          `${err && err.message ? err.message : 'Unknown parsing error'}. Please ensure you selected a valid .xlsx workbook.`
+        );
       }
     }
 
@@ -1487,7 +2237,10 @@
     async function exportToExcel() {
       const xlsxReady = await ensureXlsxLoaded();
       if (!xlsxReady) {
-        showToast('Excel exporter library unavailable. Check internet connection.', 'error');
+        showDiagnosticAlert(
+          'Excel Export Unavailable Offline',
+          'The SheetJS export library could not be reached. Please check your internet connection on your iPad and try Export again.'
+        );
         return;
       }
       const sorted = sortSnapshots(appState.snapshots);
@@ -1671,7 +2424,7 @@
 
     /**
      * =========================================================================
-     * 10. ANIMATED GROWTH TIMELINE PLAYBACK & CHART RENDERER
+     * 10. ANIMATED GROWTH TIMELINE PLAYBACK & CHART RENDERER (+ SVG FALLBACK)
      * =========================================================================
      */
     function toggleTimelineAnimation() {
@@ -1775,22 +2528,24 @@
       const svgFallback = document.getElementById('chartSvgFallback');
       if (!canvas || !svgFallback) return;
 
+      const mode = appState.preferences.chartMode;
+
+      // Crisp built-in SVG chart renderer if Chart.js is offline or blocked
       if (typeof window.Chart === 'undefined') {
         canvas.classList.add('hidden');
         svgFallback.classList.remove('hidden');
-        renderSvgFallbackChart(svgFallback, labels, totalData);
+        renderSvgFallbackChart(svgFallback, labels, { cashData, sharesData, pensionData, totalData }, mode);
         return;
       }
 
       canvas.classList.remove('hidden');
       svgFallback.classList.add('hidden');
 
-      const mode = appState.preferences.chartMode;
       let datasets = [];
 
       if (mode === 'total') {
         datasets = [{
-          label: 'Total Net Wealth',
+          label: 'Total Net Worth',
           data: totalData,
           borderColor: '#6d28d9',
           backgroundColor: 'rgba(124, 58, 237, 0.16)',
@@ -1865,7 +2620,7 @@
                 footer: (items) => {
                   if (mode === 'total' || !items.length) return '';
                   const idx = items[0].dataIndex;
-                  return `Total Net Wealth: ${formatGBP(totalData[idx])}`;
+                  return `Total Net Worth: ${formatGBP(totalData[idx])}`;
                 }
               }
             }
@@ -1890,24 +2645,50 @@
       });
     }
 
-    function renderSvgFallbackChart(container, labels, values) {
-      if (!values.length) return;
-      const w = 800;
-      const h = 300;
-      const pad = 40;
-      const minV = Math.min(...values, 0);
-      const maxV = Math.max(...values, 100);
+    function renderSvgFallbackChart(container, labels, seriesObj, mode) {
+      const { cashData, sharesData, pensionData, totalData } = seriesObj;
+      if (!totalData.length) return;
+      const w = 860;
+      const h = 330;
+      const padL = 62;
+      const padR = 24;
+      const padT = 34;
+      const padB = 34;
+
+      const allVals = mode === 'total'
+        ? totalData
+        : [...cashData, ...sharesData, ...pensionData, ...totalData];
+
+      const minV = Math.min(...allVals, 0);
+      const maxV = Math.max(...allVals, 100);
       const span = Math.max(1, maxV - minV);
-      const pts = values.map((v, i) => {
-        const x = pad + (i / Math.max(1, values.length - 1)) * (w - pad * 2);
-        const y = h - pad - ((v - minV) / span) * (h - pad * 2);
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      }).join(' ');
+
+      const toX = (i) => padL + (i / Math.max(1, totalData.length - 1)) * (w - padL - padR);
+      const toY = (v) => h - padB - ((v - minV) / span) * (h - padT - padB);
+      const makePoints = (arr) => arr.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+
+      let polylines = '';
+      if (mode === 'total') {
+        polylines = `<polyline fill="none" stroke="#6d28d9" stroke-width="3.5" points="${makePoints(totalData)}" />`;
+      } else {
+        polylines = `
+          <polyline fill="none" stroke="#10b981" stroke-width="2.8" points="${makePoints(cashData)}" />
+          <polyline fill="none" stroke="#7c3aed" stroke-width="2.8" points="${makePoints(sharesData)}" />
+          <polyline fill="none" stroke="#f59e0b" stroke-width="2.8" points="${makePoints(pensionData)}" />
+          <polyline fill="none" stroke="#1e1b4b" stroke-width="2" stroke-dasharray="5,4" points="${makePoints(totalData)}" />
+        `;
+      }
 
       container.innerHTML = `
         <svg viewBox="0 0 ${w} ${h}" class="w-full h-full">
-          <polyline fill="none" stroke="#7c3aed" stroke-width="3.5" points="${pts}" />
-          <text x="${pad}" y="22" font-size="12" fill="#475569" font-weight="600">${escapeHtml(labels[0] || '')} &rarr; ${escapeHtml(labels[labels.length - 1] || '')}: ${formatGBP(values[values.length - 1])}</text>
+          <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${h - padB}" stroke="#cbd5e1" stroke-width="1" />
+          <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#cbd5e1" stroke-width="1" />
+          <text x="${padL - 8}" y="${padT + 4}" text-anchor="end" font-size="11" fill="#64748b">${formatGBP(maxV)}</text>
+          <text x="${padL - 8}" y="${h - padB}" text-anchor="end" font-size="11" fill="#64748b">${formatGBP(minV)}</text>
+          <text x="${padL}" y="${h - 10}" font-size="11" fill="#475569">${escapeHtml(labels[0] || '')}</text>
+          <text x="${w - padR}" y="${h - 10}" text-anchor="end" font-size="11" fill="#475569">${escapeHtml(labels[labels.length - 1] || '')}</text>
+          ${polylines}
+          <text x="${padL}" y="18" font-size="12" fill="#1e1b4b" font-weight="700">Total Net Worth (${escapeHtml(labels[labels.length - 1] || '')}): ${formatGBP(totalData[totalData.length - 1])}</text>
         </svg>
       `;
     }
@@ -2329,7 +3110,7 @@
       document.getElementById('entrySubCash').textContent = `Cash: ${formatGBP(cash)}`;
       document.getElementById('entrySubShares').textContent = `Shares: ${formatGBP(shares)}`;
       document.getElementById('entrySubPension').textContent = `Pension: ${formatGBP(pension)}`;
-      document.getElementById('entryLiveNetWorth').textContent = `Total Net Wealth: ${formatGBP(total)}`;
+      document.getElementById('entryLiveNetWorth').textContent = `Total Net Worth: ${formatGBP(total)}`;
     }
 
     function handleAddNewFund() {
