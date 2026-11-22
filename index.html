@@ -7,28 +7,27 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Multi-CDN Fallback Loader for SheetJS (XLSX) and Chart.js (iPad Chrome & Safari safe) -->
+  <!-- Multi-CDN Fallback Loader for SheetJS (XLSX) and Chart.js (iPadOS Chrome & Safari safe) -->
   <script>
-    (function loadExternalLibrariesWithFallback() {
-      function loadScriptChain(urls, idx, globalName) {
-        if (idx >= urls.length) return;
-        if (window[globalName]) return;
-        var s = document.createElement('script');
-        s.src = urls[idx];
-        s.async = true;
-        s.onerror = function () {
-          loadScriptChain(urls, idx + 1, globalName);
+    (function loadLibrariesWithFallback() {
+      function loadChain(urls, index, globalName) {
+        if (index >= urls.length || window[globalName]) return;
+        var script = document.createElement('script');
+        script.src = urls[index];
+        script.async = true;
+        script.onerror = function () {
+          loadChain(urls, index + 1, globalName);
         };
-        document.head.appendChild(s);
+        document.head.appendChild(script);
       }
 
-      loadScriptChain([
+      loadChain([
         'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
         'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
         'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
       ], 0, 'XLSX');
 
-      loadScriptChain([
+      loadChain([
         'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
         'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'
@@ -39,16 +38,16 @@
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
-      background: linear-gradient(180deg, #f5f3ff 0%, #f8fafc 260px);
+      background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 280px);
       color: #0f172a;
     }
-    /* iPadOS Chrome & Safari compatible visually-hidden file input */
-    .ipad-file-input {
+    /* iPadOS Chrome & Safari compatible visually-positioned transparent file input */
+    .ipad-safe-file-input {
       position: fixed;
-      top: -100px;
-      left: -100px;
-      width: 1px;
-      height: 1px;
+      top: -120px;
+      left: -120px;
+      width: 2px;
+      height: 2px;
       opacity: 0.01;
       overflow: hidden;
       z-index: -1;
@@ -71,40 +70,40 @@
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-violet-200 selection:text-violet-950">
 
-  <!-- Native iPadOS-Safe Multi-File Input -->
-  <input id="excelFileInput" type="file" multiple class="ipad-file-input" />
+  <!-- Native Multi-File Input (No display:none and no restrictive MIME accept filter for iPadOS) -->
+  <input id="excelFileInput" type="file" multiple class="ipad-safe-file-input" />
 
   <!-- ===================================================================== -->
-  <!-- TOP HEADER WITH VIBRANT GRADIENT & TOP-RIGHT £25/DAY INTEREST COUNTER -->
+  <!-- TOP HEADER: INDIGO-VIOLET GRADIENT + TOP-RIGHT £25/DAY LIVE COUNTER   -->
   <!-- ===================================================================== -->
-  <header id="appHeader" class="bg-gradient-to-r from-indigo-950 via-violet-900 to-fuchsia-900 text-white shadow-md sticky top-0 z-30">
+  <header class="bg-gradient-to-r from-indigo-950 via-violet-950 to-purple-900 text-white shadow-md sticky top-0 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex flex-wrap items-center justify-between py-3.5 gap-3">
-        <!-- Brand & Local Privacy Status -->
+        <!-- Brand & 100% Local Security Pill -->
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center shadow-sm shrink-0">
             <svg class="w-5 h-5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
             </svg>
           </div>
           <div>
             <div class="flex flex-wrap items-center gap-2">
               <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">Wealth &amp; ISA Tracker</h1>
-              <button type="button" id="btnOpenSecurity" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 hover:bg-emerald-400/30 text-emerald-200 border border-emerald-300/35 transition cursor-pointer" title="Click to inspect local-only privacy & security details">
+              <button type="button" id="btnOpenSecurity" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 hover:bg-emerald-400/30 text-emerald-200 border border-emerald-300/35 transition cursor-pointer" title="Inspect local-only browser storage & privacy">
                 <svg class="w-3.5 h-3.5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
                 <span>100% Local &amp; Private</span>
               </button>
             </div>
-            <p class="text-xs text-indigo-200">Multi-sheet Excel &bull; Cash, Shares ISAs &amp; SIPP Pensions</p>
+            <p class="text-xs text-indigo-200">Cash &bull; Shares ISAs &bull; SIPP Pensions</p>
           </div>
         </div>
 
-        <!-- Right Side: Top-Right Live £25/day Counter + Native Label Upload + Actions -->
+        <!-- Right Side: Top-Right £25/day Counter + Upload / Export Actions -->
         <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 ml-auto">
-          <!-- TOP-RIGHT CORNER LIVE COUNTER: INTEREST EARNED THIS YEAR (£25/DAY) -->
-          <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border border-emerald-300/40 shadow-sm" title="Tracks £25/day since January 1st of the current year (Jan 1 = £25, Jan 3 = £75)">
+          <!-- TOP-RIGHT LIVE COUNTER: INTEREST EARNED THIS YEAR (£25/DAY) -->
+          <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border border-emerald-300/40 shadow-sm" title="Tracks £25/day since January 1st inclusive (Jan 1 = £25, Jan 3 = £75)">
             <div class="w-8 h-8 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center font-extrabold text-sm shadow-xs shrink-0">
               £
             </div>
@@ -115,37 +114,30 @@
               </div>
               <div class="flex items-baseline gap-2">
                 <span id="ytdInterestAmount" class="text-base sm:text-lg font-extrabold text-white tracking-tight">£0</span>
-                <span id="ytdInterestSubtext" class="text-[11px] font-medium text-emerald-200">+£25/day (Day 1)</span>
+                <span id="ytdInterestSubtext" class="text-[11px] font-medium text-emerald-200">+£25/day</span>
               </div>
             </div>
           </div>
 
-          <!-- Global Action Buttons -->
+          <!-- Header Action Buttons -->
           <div class="flex items-center gap-1.5 sm:gap-2">
-            <label for="excelFileInput" role="button" tabindex="0" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-indigo-950 bg-amber-300 hover:bg-amber-200 active:bg-amber-400 rounded-xl shadow-sm transition cursor-pointer select-none">
+            <label for="excelFileInput" role="button" tabindex="0" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-indigo-950 bg-amber-300 hover:bg-amber-200 active:bg-amber-400 rounded-xl shadow-sm transition cursor-pointer select-none">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
               </svg>
               <span>+ Import Excel</span>
             </label>
 
-            <button type="button" id="btnExportExcel" class="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-medium text-white bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl transition cursor-pointer">
-              <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-              <span class="hidden sm:inline">Export</span>
-            </button>
-
-            <button type="button" id="btnHeaderReset" class="inline-flex items-center gap-1 px-3 py-2.5 text-xs font-medium text-indigo-200 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl transition cursor-pointer" title="Return to Welcome Screen">
+            <button type="button" id="btnHeaderStart" class="inline-flex items-center gap-1 px-3 py-2.5 text-xs font-medium text-indigo-200 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl transition cursor-pointer" title="Return to Welcome Screen">
               <span>Start</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 4-Tab Navigation Bar -->
+      <!-- 4 Clean Navigation Tabs (NO Annual Feb Tab) -->
       <nav id="mainNavTabs" class="hidden flex space-x-1 sm:space-x-2 overflow-x-auto pt-1" aria-label="Tabs">
-        <button type="button" data-tab="overview" id="tab-overview" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-900 shadow-xs flex items-center gap-2 transition cursor-pointer">
+        <button type="button" data-tab="overview" id="tab-overview" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-950 shadow-xs flex items-center gap-2 transition cursor-pointer">
           <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>
           Overview
         </button>
@@ -153,19 +145,19 @@
           <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
           Providers &amp; Insights (<span id="navProviderCount">0</span>)
         </button>
-        <button type="button" data-tab="annual" id="tab-annual" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
-          <svg class="w-4 h-4 text-teal-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
-          Annual (Feb)
-        </button>
         <button type="button" data-tab="entry" id="tab-entry" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
           <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          Add / Edit Snapshot
+          Add / Edit Month
+        </button>
+        <button type="button" data-tab="history" id="tab-history" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-sky-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25" /></svg>
+          History &amp; Export (<span id="navHistoryCount">0</span>)
         </button>
       </nav>
     </div>
   </header>
 
-  <!-- Live Status Banner -->
+  <!-- Live Status Bar for File Parsing Feedback -->
   <div id="liveStatusBar" class="hidden bg-indigo-900 text-white text-xs sm:text-sm font-medium px-4 py-2.5 text-center border-b border-indigo-700">
     <span id="liveStatusText">Ready</span>
   </div>
@@ -177,7 +169,7 @@
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
     <!-- ===================================================================== -->
-    <!-- WELCOME / START SCREEN (ZERO PRE-LOADED PERSONAL FINANCIAL DATA)      -->
+    <!-- WELCOME / START SCREEN (COMPLETELY EMPTY — ZERO HARDCODED NUMBERS)    -->
     <!-- ===================================================================== -->
     <section id="welcomeScreen" class="max-w-4xl mx-auto my-4 sm:my-8">
       <div class="bg-white rounded-3xl border border-violet-100 shadow-lg overflow-hidden">
@@ -192,12 +184,12 @@
             Personal Wealth, ISA &amp; Pension Tracker
           </h2>
           <p class="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto mb-8 leading-relaxed">
-            Starts completely empty with zero stored financial numbers. Upload your multi-sheet Excel workbook(s) or start a blank workspace to record snapshots manually—everything stays 100% locally in your browser.
+            Starts completely empty with zero stored financial numbers. Upload your Excel spreadsheet(s) or start blank to enter monthly figures—everything stays 100% locally in your browser.
           </p>
 
-          <!-- Two Clean Launch Actions (No hardcoded personal figures) -->
+          <!-- Two Clean Launch Actions -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
-            <!-- Action 1: Upload Spreadsheet(s) -->
+            <!-- Action 1: Native Label File Picker -->
             <label for="excelFileInput" role="button" tabindex="0" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:from-violet-800 active:to-indigo-800 text-white shadow-md transition flex flex-col justify-between cursor-pointer select-none">
               <div class="flex items-center justify-between mb-4">
                 <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
@@ -205,17 +197,17 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                   </svg>
                 </div>
-                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20">Multi-Sheet .xlsx</span>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20">Multi-Sheet .xlsx / .xls</span>
               </div>
               <div>
-                <div class="text-lg font-bold mb-1">Upload Spreadsheet(s)</div>
+                <div class="text-lg font-bold mb-1">Upload Spreadsheet(s) (.xlsx / .xls)</div>
                 <p class="text-xs text-indigo-100 leading-relaxed">
-                  Reads exact dates (<code class="text-amber-200">Feb 1 23</code>, <code class="text-amber-200">April 10th</code>, <code class="text-amber-200">Nov 1</code>), detects shifted columns, skips <code class="text-amber-200">Summary</code>/<code class="text-amber-200">Sipp</code> calculator tabs, and deduplicates overlapping files.
+                  Select one or multiple Excel files. Automatically reads exact sheet dates, cross-references overlapping dates, and inherits categories backwards from your latest November sheet.
                 </p>
               </div>
             </label>
 
-            <!-- Action 2: Start Blank Workspace -->
+            <!-- Action 2: Start Blank & Add First Entry -->
             <button type="button" id="btnStartBlank" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:from-emerald-800 active:to-teal-900 text-white shadow-md transition flex flex-col justify-between cursor-pointer select-none">
               <div class="flex items-center justify-between mb-4">
                 <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
@@ -226,37 +218,37 @@
                 <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 text-emerald-100">Manual Entry</span>
               </div>
               <div>
-                <div class="text-lg font-bold mb-1">Start Empty Workspace</div>
+                <div class="text-lg font-bold mb-1">Start Blank &amp; Add First Entry</div>
                 <p class="text-xs text-emerald-50 leading-relaxed">
-                  Open an empty tracker right away to add your accounts and record your first snapshot manually without uploading a spreadsheet.
+                  Open an empty tracker right away to add your accounts and record your first monthly figures manually without uploading a spreadsheet.
                 </p>
               </div>
             </button>
           </div>
 
-          <!-- Resume Existing Session Banner -->
+          <!-- Resume Existing Browser Data Banner (Only shown if user previously imported/saved data) -->
           <div id="resumeSavedBanner" class="hidden max-w-2xl mx-auto mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-3 text-left">
             <div>
               <div class="text-sm font-bold text-amber-950">Saved Portfolio Found in Browser</div>
-              <div id="resumeSavedDetails" class="text-xs text-amber-800">You have existing snapshots saved locally.</div>
+              <div id="resumeSavedDetails" class="text-xs text-amber-800">Existing snapshots are saved locally on this device.</div>
             </div>
             <div class="flex items-center gap-2">
-              <button type="button" id="btnResumeSaved" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition cursor-pointer">
+              <button type="button" id="btnResumeSaved" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition cursor-pointer">
                 Return to Overview
               </button>
-              <button type="button" id="btnWipeSavedBanner" class="px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100 rounded-xl transition cursor-pointer">
+              <button type="button" id="btnWipeSavedBanner" class="px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 rounded-xl transition cursor-pointer">
                 Wipe Data
               </button>
             </div>
           </div>
 
-          <!-- Classification Rules Legend -->
+          <!-- Classification Rules Summary -->
           <div class="border-t border-slate-100 pt-5 text-xs text-slate-500 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            <span><strong class="text-violet-700">Shares ISA:</strong> HL isa / HS &amp; T212 isa</span>
+            <span><strong class="text-emerald-700">Cash:</strong> Bank accounts, Cash ISAs &amp; negative Barclaycard</span>
             <span>&bull;</span>
-            <span><strong class="text-amber-700">Pension (SIPP):</strong> HL sipp &amp; T212 sipp</span>
+            <span><strong class="text-violet-700">Shares:</strong> HL ISA, T212 ISA &amp; Minvest shares</span>
             <span>&bull;</span>
-            <span><strong class="text-emerald-700">Cash:</strong> All other accounts (Barclaycard negative)</span>
+            <span><strong class="text-amber-700">Pension:</strong> HL SIPP &amp; T212 SIPP</span>
           </div>
         </div>
       </div>
@@ -266,19 +258,19 @@
     <!-- TAB 1: OVERVIEW (4 KPI CARDS + ANIMATED RUNNING TIMELINE CHART)       -->
     <!-- ===================================================================== -->
     <section id="view-overview" class="space-y-6 hidden">
-      <!-- 4 Vibrant Headline KPI Cards -->
+      <!-- 4 Headline KPI Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Total Net Worth -->
-        <div class="bg-gradient-to-br from-indigo-900 via-violet-900 to-purple-900 text-white rounded-2xl p-5 shadow-md relative overflow-hidden">
+        <!-- Total Net Wealth -->
+        <div class="bg-gradient-to-br from-indigo-950 via-violet-900 to-purple-900 text-white rounded-2xl p-5 shadow-md">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold uppercase tracking-wider text-indigo-200">Total Net Worth</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-200">Total Net Wealth</span>
             <span id="kpiDateBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/15 text-amber-200">—</span>
           </div>
           <div id="kpiTotalWorth" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">£0</div>
           <div id="kpiTotalChange" class="mt-2 text-xs font-medium text-indigo-200">—</div>
         </div>
 
-        <!-- Cash & Cash ISAs -->
+        <!-- Cash -->
         <div class="bg-white rounded-2xl border-2 border-emerald-100 p-5 shadow-sm">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
@@ -291,12 +283,12 @@
           <div id="kpiCashSub" class="mt-2 text-xs font-medium text-emerald-700">—</div>
         </div>
 
-        <!-- Shares & S&S ISAs -->
+        <!-- Shares ISA -->
         <div class="bg-white rounded-2xl border-2 border-violet-100 p-5 shadow-sm">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold uppercase tracking-wider text-violet-700 flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span>
-              Shares ISA (HL &amp; T212)
+              <span class="w-2.5 h-2.5 rounded-full bg-violet-600"></span>
+              Shares ISA &amp; Invest
             </span>
             <span id="kpiSharesShare" class="text-xs font-bold text-violet-800 bg-violet-100 px-2.5 py-0.5 rounded-full">0%</span>
           </div>
@@ -304,7 +296,7 @@
           <div id="kpiSharesSub" class="mt-2 text-xs font-medium text-violet-700">—</div>
         </div>
 
-        <!-- Pensions / SIPPs -->
+        <!-- Pensions -->
         <div class="bg-white rounded-2xl border-2 border-amber-100 p-5 shadow-sm">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
@@ -318,15 +310,14 @@
         </div>
       </div>
 
-      <!-- Main Running Totals Over Time Chart with Animated Playback -->
+      <!-- Interactive Running Totals Over Time Chart with Play Growth Animation -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>
             <h2 class="text-base sm:text-lg font-bold text-slate-900">Running Totals Over Time</h2>
-            <p class="text-xs text-slate-500">Exact dates from your spreadsheets and recorded snapshots—no projected future dates</p>
+            <p class="text-xs text-slate-500">Exact chronological dates from your spreadsheets and recorded months</p>
           </div>
 
-          <!-- Animation & Chart Controls -->
           <div class="flex flex-wrap items-center gap-2">
             <!-- Animated Timeline Playback Controls -->
             <div class="inline-flex items-center gap-1 bg-violet-50 border border-violet-200 rounded-xl p-1">
@@ -334,22 +325,22 @@
                 <svg id="playIconSvg" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 <span id="playBtnLabel">Play Growth Animation</span>
               </button>
-              <button type="button" id="btnResetAnim" title="Reset Animation to Full View" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-violet-700 hover:bg-violet-100 transition cursor-pointer">
+              <button type="button" id="btnResetAnim" title="Show Full Timeline" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-violet-700 hover:bg-violet-100 transition cursor-pointer">
                 Full
               </button>
-              <button type="button" id="btnAnimSpeed" title="Change Playback Speed" class="px-2 py-1.5 rounded-lg text-xs font-bold text-violet-900 bg-white border border-violet-200 hover:bg-violet-100 transition cursor-pointer">
+              <button type="button" id="btnAnimSpeed" title="Cycle Playback Speed" class="px-2 py-1.5 rounded-lg text-xs font-bold text-violet-900 bg-white border border-violet-200 hover:bg-violet-100 transition cursor-pointer">
                 1x
               </button>
             </div>
 
-            <!-- View Mode Toggle -->
+            <!-- Chart Mode Toggles -->
             <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
-              <button type="button" data-mode="stacked" id="mode-stacked" class="chart-mode-btn px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">Stacked</button>
-              <button type="button" data-mode="lines" id="mode-lines" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Lines</button>
-              <button type="button" data-mode="total" id="mode-total" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Total</button>
+              <button type="button" data-mode="stacked" id="mode-stacked" class="chart-mode-btn px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">Stacked Area</button>
+              <button type="button" data-mode="lines" id="mode-lines" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Separate Lines</button>
+              <button type="button" data-mode="total" id="mode-total" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Total Line</button>
             </div>
 
-            <!-- Timeframe Filter -->
+            <!-- Timeframe Filters -->
             <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
               <button type="button" data-tf="6M" id="tf-6M" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">6M</button>
               <button type="button" data-tf="1Y" id="tf-1Y" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">1Y</button>
@@ -359,31 +350,31 @@
           </div>
         </div>
 
-        <!-- Animation Progress Scrubber Bar -->
+        <!-- Animation Progress Scrubber -->
         <div id="animationProgressWrapper" class="hidden mt-3 flex items-center gap-3">
           <span id="animCurrentMonthBadge" class="text-xs font-bold text-violet-700 bg-violet-100 px-2.5 py-0.5 rounded-md shrink-0">—</span>
           <div class="flex-1 h-2 bg-violet-100 rounded-full overflow-hidden">
-            <div id="animProgressBar" class="h-full bg-gradient-to-r from-emerald-500 via-violet-500 to-amber-500 transition-all duration-150" style="width: 100%"></div>
+            <div id="animProgressBar" class="h-full bg-gradient-to-r from-emerald-500 via-violet-600 to-amber-500 transition-all duration-150" style="width: 100%"></div>
           </div>
           <span id="animStepCounter" class="text-xs text-slate-500 shrink-0">0 / 0</span>
         </div>
 
-        <!-- Empty State Callout when workspace is blank -->
+        <!-- Empty State -->
         <div id="overviewEmptyState" class="hidden py-14 text-center">
-          <p class="text-sm font-semibold text-slate-700 mb-2">No snapshots recorded yet</p>
-          <p class="text-xs text-slate-500 mb-4">Import your Excel file(s) using the yellow button at the top or add your first snapshot.</p>
-          <div class="flex justify-center gap-3">
-            <label for="excelFileInput" class="px-4 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl cursor-pointer">
-              + Import Excel (.xlsx)
+          <p class="text-sm font-bold text-slate-700 mb-1.5">No portfolio snapshots yet</p>
+          <p class="text-xs text-slate-500 mb-5">Upload your Excel workbook(s) or add your first monthly entry to populate your charts.</p>
+          <div class="flex flex-wrap justify-center gap-3">
+            <label for="excelFileInput" class="px-4 py-2.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl cursor-pointer">
+              + Import Excel (.xlsx / .xls)
             </label>
-            <button type="button" id="btnEmptyGoAdd" class="px-4 py-2 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-xl cursor-pointer">
-              Add Snapshot Manually
+            <button type="button" id="btnEmptyGoAdd" class="px-4 py-2.5 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 rounded-xl cursor-pointer">
+              Add First Entry Manually
             </button>
           </div>
         </div>
 
-        <!-- Canvas Container with SVG Fallback -->
-        <div id="overviewChartWrapper" class="relative mt-4 h-[330px] sm:h-[380px] w-full">
+        <!-- Chart Canvas + SVG Offline Fallback -->
+        <div id="overviewChartWrapper" class="relative mt-4 h-[340px] sm:h-[390px] w-full">
           <canvas id="portfolioChartCanvas"></canvas>
           <div id="chartSvgFallback" class="hidden w-full h-full"></div>
         </div>
@@ -391,19 +382,19 @@
     </section>
 
     <!-- ===================================================================== -->
-    <!-- TAB 2: PROVIDERS & INSIGHTS (SECOND DASHBOARD TAB)                    -->
+    <!-- TAB 2: PROVIDERS & INSIGHTS                                           -->
     <!-- ===================================================================== -->
     <section id="view-insights" class="space-y-6 hidden">
-      <!-- Dynamic Portfolio Interpretation & Insights Panel -->
+      <!-- Dynamic Portfolio Interpretation Cards -->
       <div class="bg-white rounded-2xl border border-violet-100 shadow-sm p-5 sm:p-6">
-        <div class="flex items-center justify-between gap-2 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white flex items-center justify-center shadow-xs">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
             </div>
             <div>
               <h2 class="text-base sm:text-lg font-bold text-slate-900">Dynamic Portfolio Interpretation</h2>
-              <p class="text-xs text-slate-500">Live insights comparing Cash, Shares ISAs, and SIPP Pensions across your recorded dates</p>
+              <p class="text-xs text-slate-500">Automated insights across Cash, Shares ISAs, and SIPP Pensions</p>
             </div>
           </div>
           <span id="insightsSnapshotLabel" class="text-xs font-bold px-3 py-1 rounded-full bg-violet-100 text-violet-800">—</span>
@@ -414,12 +405,12 @@
         </div>
       </div>
 
-      <!-- Provider / Bank Breakdown Cards -->
+      <!-- Institution / Provider Breakdown -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>
-            <h3 class="text-base sm:text-lg font-bold text-slate-900">Provider &amp; Bank Breakdown</h3>
-            <p class="text-xs text-slate-500">Latest balances grouped by institution—including any new banks auto-detected from your sheets</p>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">Institution &amp; Provider Breakdown</h3>
+            <p class="text-xs text-slate-500">Latest balances grouped by bank or platform (including newly detected banks)</p>
           </div>
           <span id="providerCountBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">0 Providers</span>
         </div>
@@ -429,12 +420,12 @@
         </div>
       </div>
 
-      <!-- Account Category Quick Re-Classifier -->
+      <!-- Account Category Quick Toggle List -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>
-            <h3 class="text-base font-bold text-slate-900">Account Category Mapping (<span id="accountsMappingCount">0</span>)</h3>
-            <p class="text-xs text-slate-500">Adjust any account between <strong>Cash</strong>, <strong>Shares</strong> (ISA), and <strong>Pension</strong> (SIPP) or hide historic zero-balance accounts from monthly entry</p>
+            <h3 class="text-base font-bold text-slate-900">Account Categories (<span id="accountsMappingCount">0</span>)</h3>
+            <p class="text-xs text-slate-500">Override any account between <strong>Cash</strong>, <strong>Shares</strong>, and <strong>Pension</strong> or hide historic zero accounts</p>
           </div>
         </div>
         <div id="accountsRulesList" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto">
@@ -444,83 +435,14 @@
     </section>
 
     <!-- ===================================================================== -->
-    <!-- TAB 3: ANNUAL SNAPSHOT (AS NEAR TO FEBRUARY EACH YEAR)               -->
-    <!-- ===================================================================== -->
-    <section id="view-annual" class="space-y-6 hidden">
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div>
-            <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-base sm:text-lg font-bold text-slate-900">Annual Wealth Progress (February Snapshot)</h2>
-              <span id="annualYearSpanBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-800">—</span>
-            </div>
-            <p class="text-xs text-slate-500 mt-1">
-              Automatically picks each calendar year's sheet closest to <strong>February</strong> (falling back to January or the nearest available snapshot when February isn't recorded).
-            </p>
-          </div>
-
-          <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold self-start sm:self-auto shrink-0">
-            <button type="button" data-annual="stacked" id="annual-mode-stacked" class="annual-mode-btn px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">
-              Stacked Bar
-            </button>
-            <button type="button" data-annual="grouped" id="annual-mode-grouped" class="annual-mode-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
-              Grouped Bar
-            </button>
-          </div>
-        </div>
-
-        <div class="relative mt-5 h-[330px] sm:h-[370px] w-full">
-          <canvas id="annualBarChartCanvas"></canvas>
-          <div id="annualSvgFallback" class="hidden w-full h-full"></div>
-        </div>
-
-        <div id="annualFallbackNote" class="hidden mt-3 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2">
-          <strong>* Nearest-date match:</strong> Years marked with an asterisk did not have a February sheet, so the closest available snapshot (e.g., January) was automatically used.
-        </div>
-      </div>
-
-      <!-- Year-over-Year Summary Table -->
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="p-5 sm:p-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 class="text-base font-bold text-slate-900">Year-over-Year Breakdown</h3>
-            <p class="text-xs text-slate-500">Annual category totals and year-on-year net worth growth</p>
-          </div>
-          <span id="annualCagrBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 hidden">
-            —
-          </span>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                <th class="py-3.5 px-5">Year</th>
-                <th class="py-3.5 px-4">Snapshot Used</th>
-                <th class="py-3.5 px-4 text-right">Cash (£)</th>
-                <th class="py-3.5 px-4 text-right">Shares ISA (£)</th>
-                <th class="py-3.5 px-4 text-right">Pensions (£)</th>
-                <th class="py-3.5 px-4 text-right">Total Wealth (£)</th>
-                <th class="py-3.5 px-5 text-right">Annual Change</th>
-              </tr>
-            </thead>
-            <tbody id="annualSummaryTableBody" class="divide-y divide-slate-100 text-sm">
-              <!-- Populated dynamically -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===================================================================== -->
-    <!-- TAB 4: ADD / EDIT SNAPSHOT (PRE-FILLED + "+ ADD ANOTHER ACCOUNT")     -->
+    <!-- TAB 3: ADD / EDIT MONTH (PRE-FILLED + "+ ADD ANOTHER ACCOUNT")        -->
     <!-- ===================================================================== -->
     <section id="view-entry" class="max-w-4xl mx-auto space-y-6 hidden">
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200">
           <div>
-            <h2 class="text-lg font-bold text-slate-900">Add / Edit Snapshot</h2>
-            <p class="text-xs text-slate-500 mt-0.5">Defaults to your previous snapshot's balances and interest rates—plus add new accounts anytime.</p>
+            <h2 class="text-lg font-bold text-slate-900">Add / Edit Month</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Pre-filled automatically from your immediately preceding sheet's balances and AER (%).</p>
           </div>
 
           <div class="flex flex-wrap items-end gap-2">
@@ -534,34 +456,31 @@
           </div>
         </div>
 
-        <!-- Status, Filter & Live Total Bar -->
+        <!-- Status & Filter Bar -->
         <div class="mt-4 px-4 py-3 rounded-xl bg-gradient-to-r from-violet-50 via-indigo-50 to-emerald-50 border border-violet-200 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div id="entryModeBannerText" class="flex flex-wrap items-center gap-2 text-slate-700 font-medium">Creating new snapshot</div>
-          <div class="flex flex-wrap items-center gap-3">
-            <label class="inline-flex items-center gap-1.5 text-slate-700 font-semibold cursor-pointer select-none">
-              <input type="checkbox" id="cbHideZeroHistoric" checked class="rounded text-violet-600" />
-              <span>Hide £0 historic accounts</span>
-            </label>
-          </div>
+          <div id="entryModeBannerText" class="flex flex-wrap items-center gap-2 text-slate-700 font-medium">New monthly entry</div>
+          <label class="inline-flex items-center gap-1.5 text-slate-700 font-semibold cursor-pointer select-none">
+            <input type="checkbox" id="cbHideZeroHistoric" checked class="rounded text-violet-600" />
+            <span>Hide £0 historic accounts</span>
+          </label>
         </div>
 
+        <!-- Live Subtotals Bar -->
         <div class="mt-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
           <span class="text-emerald-300" id="entrySubCash">Cash: £0</span>
-          <span class="text-violet-300" id="entrySubShares">Shares ISA: £0</span>
+          <span class="text-violet-300" id="entrySubShares">Shares: £0</span>
           <span class="text-amber-300" id="entrySubPension">Pension: £0</span>
-          <span class="text-white text-sm" id="entryLiveNetWorth">Total Net Worth: £0</span>
+          <span class="text-white text-sm" id="entryLiveNetWorth">Total Net Wealth: £0</span>
         </div>
 
-        <!-- PROMINENT "+ ADD ANOTHER ACCOUNT" CARD -->
+        <!-- PROMINENT "+ ADD ANOTHER ACCOUNT" INLINE FORM -->
         <div class="mt-5 rounded-2xl bg-gradient-to-r from-violet-50 to-fuchsia-50 border-2 border-dashed border-violet-300 p-4 sm:p-5">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold shadow-xs">
-                +
-              </div>
+              <div class="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold shadow-xs">+</div>
               <div>
                 <h3 class="text-sm font-bold text-violet-950">Add Another Account</h3>
-                <p class="text-xs text-violet-700">Opened a new bank account, ISA, or SIPP? Add it here and it will carry forward every snapshot automatically.</p>
+                <p class="text-xs text-violet-700">Opened a new bank account, ISA, or SIPP? Add it below and it carries forward automatically.</p>
               </div>
             </div>
             <button type="button" id="btnToggleAddAccount" class="px-3.5 py-1.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-xs transition cursor-pointer">
@@ -571,19 +490,19 @@
 
           <div id="addAnotherAccountFields" class="mt-4 pt-4 border-t border-violet-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
             <div class="sm:col-span-3">
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Account Code / Name *</label>
-              <input type="text" id="addFundCode" placeholder="e.g. HL sipp / Chase sav" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Account Code *</label>
+              <input type="text" id="addFundCode" placeholder="e.g. T212 sipp shares" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
             </div>
             <div class="sm:col-span-3">
               <label class="block text-xs font-semibold text-slate-700 mb-1">Bank / Provider</label>
-              <input type="text" id="addFundProvider" placeholder="e.g. Hargreaves Lansdown" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              <input type="text" id="addFundProvider" placeholder="Auto-detected if blank" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
             </div>
             <div class="sm:col-span-2">
               <label class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
               <select id="addFundCategory" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500">
                 <option value="Cash" selected>Cash</option>
-                <option value="Shares">Shares (ISA)</option>
-                <option value="Pension">Pension (SIPP)</option>
+                <option value="Shares">Shares</option>
+                <option value="Pension">Pension</option>
               </select>
             </div>
             <div class="sm:col-span-4 flex gap-2 items-end">
@@ -602,19 +521,66 @@
           </div>
         </div>
 
-        <!-- Recurring Accounts Form -->
+        <!-- Monthly Form -->
         <form id="monthlyEntryForm" class="mt-6 space-y-6">
           <div id="entryGroupsContainer" class="space-y-6">
             <!-- Cash, Shares, and Pension groups injected here -->
           </div>
 
           <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
-            <p class="text-xs text-slate-500">Barclaycard is automatically deducted as negative even if typed as a positive balance.</p>
+            <p class="text-xs text-slate-500">Barclaycard is automatically deducted as negative even if entered as positive.</p>
             <button type="submit" class="px-6 py-3 text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-xl shadow-md transition cursor-pointer">
-              Save Snapshot
+              Save Month
             </button>
           </div>
         </form>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 4: HISTORY & EXPORT                                               -->
+    <!-- ===================================================================== -->
+    <section id="view-history" class="space-y-6 hidden">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-5 sm:p-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Recorded Dates &amp; Excel Export</h2>
+            <p class="text-xs text-slate-500">All imported spreadsheet tabs and monthly entries stored locally in your browser</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label for="excelFileInput" role="button" tabindex="0" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-violet-900 bg-violet-100 hover:bg-violet-200 rounded-xl transition cursor-pointer select-none">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              <span>+ Import Excel</span>
+            </label>
+
+            <button type="button" id="btnExportExcel" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              <span>Export to Excel (.xlsx)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <th class="py-3.5 px-5">Date</th>
+                <th class="py-3.5 px-4 text-right">Cash (£)</th>
+                <th class="py-3.5 px-4 text-right">Shares (£)</th>
+                <th class="py-3.5 px-4 text-right">Pension (£)</th>
+                <th class="py-3.5 px-4 text-right">Total Net Wealth</th>
+                <th class="py-3.5 px-5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-slate-100 text-sm">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -628,7 +594,7 @@
       <div class="px-6 py-4 bg-gradient-to-r from-indigo-950 to-violet-900 text-white flex items-center justify-between gap-2">
         <div>
           <h3 class="text-base sm:text-lg font-bold">Review Imported Excel Sheets</h3>
-          <p id="importReviewSubtitle" class="text-xs text-indigo-200">Verify detected snapshot dates, skipped calculator tabs, and account categories.</p>
+          <p id="importReviewSubtitle" class="text-xs text-indigo-200">Verify detected dates, deduplication, and retroactive classifications.</p>
         </div>
         <button type="button" id="btnCloseImportModal" class="p-1.5 text-indigo-200 hover:text-white rounded-lg cursor-pointer">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -636,12 +602,12 @@
       </div>
 
       <div class="p-6 overflow-y-auto space-y-5 flex-1">
-        <!-- Deduplication & Skipped Tabs Summary -->
-        <div id="dedupSummaryBox" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-1">
+        <!-- Smart Summary Box -->
+        <div id="dedupSummaryBox" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-1">
           <!-- Populated dynamically -->
         </div>
 
-        <!-- Import Strategy -->
+        <!-- Import Mode -->
         <div class="flex flex-wrap items-center gap-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
           <span class="font-bold text-slate-800">Import Mode:</span>
           <label class="inline-flex items-center gap-1.5 cursor-pointer">
@@ -650,7 +616,7 @@
           </label>
           <label class="inline-flex items-center gap-1.5 cursor-pointer">
             <input type="radio" name="importStrategy" value="replace" class="text-violet-600" />
-            <span><strong>Replace All</strong> (overwrite current app data)</span>
+            <span><strong>Replace All</strong> (overwrite current browser data)</span>
           </label>
         </div>
 
@@ -669,7 +635,7 @@
           </div>
         </div>
 
-        <!-- Detected Accounts & Category Assignment -->
+        <!-- Detected Accounts & Categories -->
         <div>
           <div class="mb-2">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Detected Accounts &amp; Categories (<span id="reviewAccountCount">0</span>)</span>
@@ -713,15 +679,15 @@
       <div class="p-6 space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
         <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-1.5">
           <div class="font-bold">Zero Cloud Uploads &amp; Zero Tracking</div>
-          <p class="text-xs">Your spreadsheets and monthly figures are parsed strictly inside your browser memory and stored only in this device's <code class="font-mono bg-white px-1 py-0.5 rounded">localStorage</code>. Nothing is ever sent to any external server.</p>
+          <p class="text-xs">Your spreadsheets and monthly figures are parsed strictly in browser memory and saved only in this device's <code class="font-mono bg-white px-1 py-0.5 rounded">localStorage</code>. Nothing is ever sent to any server.</p>
         </div>
 
         <div class="space-y-2 text-xs text-slate-600">
-          <div class="font-bold text-slate-900">Why your data has minimal exposure even if inspected locally:</div>
+          <div class="font-bold text-slate-900">Privacy Safeguards:</div>
           <ul class="list-disc pl-4 space-y-1">
-            <li><strong>No Account Numbers, Sort Codes, or Logins:</strong> Only shorthand labels (like <code class="font-mono">MC</code> or <code class="font-mono">HL isa</code>) and balances are saved.</li>
-            <li><strong>Read-Only Numbers:</strong> No bank tokens or payment credentials exist anywhere in this file.</li>
-            <li><strong>Best Practice:</strong> Use a device passcode/Face ID and avoid using this app on shared public computers.</li>
+            <li><strong>No Account Numbers, Sort Codes, or Logins:</strong> Only shorthand codes and balances are stored.</li>
+            <li><strong>Zero Hardcoded Personal Data:</strong> The app code contains zero personal balances or figures.</li>
+            <li><strong>One-Click Wipe:</strong> Clear all locally stored data from this browser anytime below.</li>
           </ul>
         </div>
 
@@ -738,31 +704,29 @@
   </div>
 
   <!-- ======================================================================= -->
-  <!-- JAVASCRIPT ENGINE (ADAPTED FOR FUTURE24.XLSX + ZERO HARDCODED NUMBERS)  -->
+  <!-- JAVASCRIPT ENGINE (ZERO HARDCODED FINANCIAL NUMBERS)                    -->
   <!-- ======================================================================= -->
   <script>
     /**
      * =========================================================================
-     * 1. STATE, VIBRANT PALETTE & CONSTANTS
+     * 1. APPLICATION STATE & CONSTANTS (ZERO PRE-LOADED PERSONAL DATA)
      * =========================================================================
      */
-    const STORAGE_KEY = 'uk_wealth_isa_tracker_v6_clean';
-    const DAILY_INTEREST_RATE_GBP = 25; // £25/day since Jan 1 (Jan 1 = £25, Jan 3 = £75)
+    const STORAGE_KEY = 'uk_wealth_isa_tracker_clean_v7';
+    const DAILY_INTEREST_GBP = 25; // £25/day since Jan 1 inclusive (Jan 1 = £25, Jan 3 = £75)
 
     let appState = {
       accounts: [],
       snapshots: [],
       preferences: {
-        chartMode: 'stacked',       // 'stacked' | 'lines' | 'total'
-        timeframe: 'ALL',           // '6M' | '1Y' | '3Y' | 'ALL'
-        annualBarMode: 'stacked',   // 'stacked' | 'grouped'
+        chartMode: 'stacked',   // 'stacked' | 'lines' | 'total'
+        timeframe: 'ALL',       // '6M' | '1Y' | '3Y' | 'ALL'
         hideZeroHistoric: true
       }
     };
 
     let pendingImportBatch = null;
     let chartInstance = null;
-    let annualChartInstance = null;
 
     let animationState = {
       isPlaying: false,
@@ -812,23 +776,31 @@
     };
 
     /**
-     * Exact classification rules matching Future24.xlsx:
-     * - ONLY HL ISA ('HL isa', 'HL isa shares', 'H isa', 'Hisa', 'HS') and T212 ISA ('T212 isa', 'T212 isa shares') are Shares ISA.
-     * - ONLY HL SIPP ('HL sipp', 'Hl sipp shares', 'H sipp') and T212 SIPP ('T212 sipp', 'T212 sipp shares') are Pensions.
-     * - ALL other accounts (including Monzo M/MC/Ms/Misa/MPB/M penny/Minvest, Nationwide Nw/Nwt/Nwe/Nwe sav/Nwe isa, Starling S, Barclays B, Premium Bonds PB/NSAI, Virgin V/Virisa, bare H, and negative Barclaycard) are Cash.
+     * Exact Account Classification Rules (3 buckets: Cash, Shares, Pension):
+     * - Pension: Any account containing 'sipp' (Hl sipp, HL sipp shares, T212 sipp, T212 sipp shares).
+     * - Shares: ONLY Stocks & Shares ISAs / share investments:
+     *     HL isa / HL isa shares / Hisa / H isa / HS
+     *     T212 / T212 isa / T212 isa shares
+     *     Minvest / Minvest shares
+     *   (Note: bare 'H' alone in 2023/2024 stays Cash unless explicitly annotated in the latest November sheet).
+     * - Cash: ALL other accounts (Virisa, Nwe isa, Nweisa, Misa, M, MC, Ms, M chall, M funpot, M penny, MPB,
+     *   Nw, Nwt, Nwe, Nw sav, Nwe sav, S, B, Barclays, PB, NSAI, NSAndi, V, Vir, and negative Barclaycard).
      */
     const KNOWN_ACCOUNT_CODES = {
-      // Shares ISAs (HL & Trading 212)
+      // Shares ISAs & Equity Investments
       'hl isa':           { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
       'hl isa shares':    { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
       'h isa':            { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
       'hisa':             { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
       'hs':               { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
+      't212':             { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
       't212 isa':         { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
       't212 isa shares':  { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
       'trading 212 isa':  { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
+      'minvest':          { displayName: 'Monzo Invest Shares',       provider: 'Monzo',               category: 'Shares',  isLiability: false },
+      'minvest shares':   { displayName: 'Monzo Invest Shares',       provider: 'Monzo',               category: 'Shares',  isLiability: false },
 
-      // Pensions (HL SIPP & Trading 212 SIPP)
+      // Pensions (SIPPs)
       'hl sipp':          { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown', category: 'Pension', isLiability: false },
       'hl sipp shares':   { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown', category: 'Pension', isLiability: false },
       'h sipp':           { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown', category: 'Pension', isLiability: false },
@@ -848,8 +820,6 @@
       'misa':             { displayName: 'Monzo Cash ISA (Misa)',     provider: 'Monzo',               category: 'Cash',    isLiability: false },
       'mpb':              { displayName: 'Monzo Pot (MPB)',           provider: 'Monzo',               category: 'Cash',    isLiability: false },
       'm penny':          { displayName: 'Monzo Penny Saver',         provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'minvest':          { displayName: 'Monzo Cash / Invest',       provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'minvest shares':   { displayName: 'Monzo Cash / Invest',       provider: 'Monzo',               category: 'Cash',    isLiability: false },
       'nw':               { displayName: 'Nationwide Current (Nw)',   provider: 'Nationwide',          category: 'Cash',    isLiability: false },
       'nwt':              { displayName: 'Nationwide Savings (Nwt)',  provider: 'Nationwide',          category: 'Cash',    isLiability: false },
       'nwe':              { displayName: 'Nationwide e-Savings (Nwe)',provider: 'Nationwide',          category: 'Cash',    isLiability: false },
@@ -911,7 +881,7 @@
 
     /**
      * =========================================================================
-     * 2. TOP-RIGHT COUNTER: INTEREST EARNED THIS YEAR (£25/DAY SINCE JAN 1)
+     * 2. TOP-RIGHT LIVE COUNTER: INTEREST EARNED THIS YEAR (£25/DAY SINCE JAN 1)
      * =========================================================================
      */
     function updateYtdInterestCounter() {
@@ -922,17 +892,17 @@
 
       // Jan 1 = Day 1 (£25), Jan 3 = Day 3 (£75)
       const dayOfYear = Math.floor((todayMidnight - startOfYear) / msPerDay) + 1;
-      const ytdAmount = dayOfYear * DAILY_INTEREST_RATE_GBP;
+      const ytdAmount = dayOfYear * DAILY_INTEREST_GBP;
 
       const amountEl = document.getElementById('ytdInterestAmount');
       const subEl = document.getElementById('ytdInterestSubtext');
       if (amountEl) amountEl.textContent = formatGBP(ytdAmount);
-      if (subEl) subEl.textContent = `+£${DAILY_INTEREST_RATE_GBP}/day (Day ${dayOfYear} of ${now.getFullYear()})`;
+      if (subEl) subEl.textContent = `+£${DAILY_INTEREST_GBP}/day (Day ${dayOfYear})`;
     }
 
     /**
      * =========================================================================
-     * 3. INITIALIZATION & UI EVENT BINDING
+     * 3. INITIALIZATION & UI EVENT LISTENERS
      * =========================================================================
      */
     document.addEventListener('DOMContentLoaded', () => {
@@ -955,7 +925,7 @@
 
       document.getElementById('btnOpenSecurity')?.addEventListener('click', openSecurityModal);
       document.getElementById('btnExportExcel')?.addEventListener('click', exportToExcel);
-      document.getElementById('btnHeaderReset')?.addEventListener('click', showWelcomeScreen);
+      document.getElementById('btnHeaderStart')?.addEventListener('click', showWelcomeScreen);
 
       document.getElementById('btnStartBlank')?.addEventListener('click', startBlankWorkspace);
       document.getElementById('btnEmptyGoAdd')?.addEventListener('click', () => switchTab('entry'));
@@ -978,10 +948,6 @@
       });
       document.querySelectorAll('.tf-btn').forEach(btn => {
         btn.addEventListener('click', () => setTimeframe(btn.getAttribute('data-tf')));
-      });
-
-      document.querySelectorAll('.annual-mode-btn').forEach(btn => {
-        btn.addEventListener('click', () => setAnnualBarMode(btn.getAttribute('data-annual')));
       });
 
       document.getElementById('entryDatePicker')?.addEventListener('change', renderMonthlyEntryForm);
@@ -1031,13 +997,13 @@
             accounts: parsed.accounts,
             snapshots: parsed.snapshots,
             preferences: Object.assign(
-              { chartMode: 'stacked', timeframe: 'ALL', annualBarMode: 'stacked', hideZeroHistoric: true },
+              { chartMode: 'stacked', timeframe: 'ALL', hideZeroHistoric: true },
               parsed.preferences || {}
             )
           };
         }
       } catch (err) {
-        console.warn('Could not read saved data from localStorage:', err);
+        console.warn('Could not load saved data from localStorage:', err);
       }
     }
 
@@ -1051,7 +1017,7 @@
 
     function startBlankWorkspace() {
       enterActiveWorkspace('entry');
-      showToast('Started blank workspace. Add your first account and snapshot below.', 'info');
+      showToast('Started blank workspace. Add your first account and monthly entry below.', 'info');
     }
 
     function enterActiveWorkspace(defaultTab = 'overview') {
@@ -1068,8 +1034,8 @@
       document.getElementById('mainNavTabs')?.classList.add('hidden');
       document.getElementById('view-overview')?.classList.add('hidden');
       document.getElementById('view-insights')?.classList.add('hidden');
-      document.getElementById('view-annual')?.classList.add('hidden');
       document.getElementById('view-entry')?.classList.add('hidden');
+      document.getElementById('view-history')?.classList.add('hidden');
       updateResumeBanner();
     }
 
@@ -1080,7 +1046,7 @@
       if (appState.accounts.length > 0 && appState.snapshots.length > 0) {
         const sorted = sortSnapshots(appState.snapshots);
         banner.classList.remove('hidden');
-        details.textContent = `${appState.accounts.length} accounts across ${sorted.length} snapshots (${sorted[0].label} to ${sorted[sorted.length - 1].label}).`;
+        details.textContent = `${appState.accounts.length} accounts across ${sorted.length} dates (${sorted[0].label} to ${sorted[sorted.length - 1].label}).`;
       } else {
         banner.classList.add('hidden');
       }
@@ -1108,20 +1074,20 @@
       clearSavedPortfolio();
       closeSecurityModal();
       showWelcomeScreen();
-      showToast('All local browser portfolio data has been permanently wiped.', 'success');
+      showToast('All local browser portfolio data has been wiped.', 'success');
     }
 
     function switchTab(tabName) {
       if (tabName !== 'overview') {
         stopTimelineAnimation();
       }
-      ['overview', 'insights', 'annual', 'entry'].forEach(t => {
+      ['overview', 'insights', 'entry', 'history'].forEach(t => {
         const viewEl = document.getElementById(`view-${t}`);
         const btnEl = document.getElementById(`tab-${t}`);
         if (!viewEl || !btnEl) return;
         if (t === tabName) {
           viewEl.classList.remove('hidden');
-          btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-900 shadow-xs flex items-center gap-2 transition cursor-pointer';
+          btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-950 shadow-xs flex items-center gap-2 transition cursor-pointer';
         } else {
           viewEl.classList.add('hidden');
           btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer';
@@ -1132,16 +1098,16 @@
         renderOverviewTab();
       } else if (tabName === 'insights') {
         renderInsightsAndProvidersTab();
-      } else if (tabName === 'annual') {
-        renderAnnualSnapshotTab();
       } else if (tabName === 'entry') {
         renderMonthlyEntryForm();
+      } else if (tabName === 'history') {
+        renderHistoryTable();
       }
     }
 
     /**
      * =========================================================================
-     * 4. ACCOUNT CLASSIFICATION & UNKNOWN BANK AUTO-DETECTION ENGINE
+     * 4. CANONICAL ACCOUNT KEYS & RETROACTIVE NOVEMBER CLASSIFICATION ENGINE
      * =========================================================================
      */
     function normalizeAccountKey(rawName) {
@@ -1152,8 +1118,26 @@
         .replace(/\s+/g, ' ');
     }
 
-    function slugifyId(rawName) {
-      return normalizeAccountKey(rawName).replace(/[^a-z0-9]+/g, '_') || 'acc_' + Math.random().toString(36).slice(2, 7);
+    /**
+     * Maps shorthand / unannotated earlier codes onto a unified canonical key
+     * so earlier unannotated months merge seamlessly with latest November entries.
+     */
+    function getCanonicalAccountKey(rawName) {
+      const k = normalizeAccountKey(rawName);
+      if (['hl isa', 'hl isa shares', 'h isa', 'hisa', 'hs'].includes(k)) return 'hl isa shares';
+      if (['hl sipp', 'hl sipp shares', 'h sipp'].includes(k)) return 'hl sipp shares';
+      if (['t212', 't212 isa', 't212 isa shares', 'trading 212 isa'].includes(k)) return 't212 isa shares';
+      if (['t212 sipp', 't212 sipp shares', 'trading 212 sipp'].includes(k)) return 't212 sipp shares';
+      if (['minvest', 'minvest shares'].includes(k)) return 'minvest shares';
+      if (['nwe isa', 'nweisa'].includes(k)) return 'nwe isa';
+      if (['nw sav', 'nwe sav'].includes(k)) return 'nwe sav';
+      if (['b', 'barclays'].includes(k)) return 'barclays';
+      if (['v', 'vir'].includes(k)) return 'virgin';
+      return k;
+    }
+
+    function slugifyId(canonicalKey) {
+      return canonicalKey.replace(/[^a-z0-9]+/g, '_') || 'acc_' + Math.random().toString(36).slice(2, 7);
     }
 
     function titleCaseWords(str) {
@@ -1165,35 +1149,53 @@
       });
     }
 
-    function classifyAccount(rawName) {
+    function classifyAccount(rawName, novemberDictionary = null) {
       const cleaned = String(rawName || '').trim();
-      const key = normalizeAccountKey(cleaned);
+      const normKey = normalizeAccountKey(cleaned);
+      const canonicalKey = getCanonicalAccountKey(cleaned);
 
-      if (KNOWN_ACCOUNT_CODES[key]) {
+      // 1. Check retroactive dictionary learned from the latest November sheet first
+      if (novemberDictionary && novemberDictionary.has(canonicalKey)) {
+        const novEntry = novemberDictionary.get(canonicalKey);
         return {
-          rawName: cleaned,
-          isNewBank: false,
-          ...KNOWN_ACCOUNT_CODES[key]
+          canonicalKey,
+          rawName: novEntry.rawName || cleaned,
+          displayName: novEntry.displayName,
+          provider: novEntry.provider,
+          category: novEntry.category,
+          isLiability: novEntry.isLiability,
+          isNewBank: novEntry.isNewBank,
+          inheritedFromNov: true
         };
       }
 
-      // Category rules:
-      // 1. SIPP -> Pension
-      // 2. HL ISA / T212 ISA (or any explicit 'isa' + 'shares') -> Shares
-      // 3. Everything else -> Cash
+      // 2. Check known account mappings
+      if (KNOWN_ACCOUNT_CODES[normKey] || KNOWN_ACCOUNT_CODES[canonicalKey]) {
+        const base = KNOWN_ACCOUNT_CODES[canonicalKey] || KNOWN_ACCOUNT_CODES[normKey];
+        return {
+          canonicalKey,
+          rawName: cleaned,
+          isNewBank: false,
+          inheritedFromNov: false,
+          ...base
+        };
+      }
+
+      // 3. Pattern-based fallback classification (3 buckets: Cash, Shares, Pension)
       let category = 'Cash';
-      if (/\bsipp\b|\bpension\b/i.test(key)) {
+      if (/\bsipp\b|\bpension\b/i.test(normKey)) {
         category = 'Pension';
       } else if (
-        /^(hl|h|t212|trading\s*212)\s*isa\b/i.test(key) ||
-        (/\bisa\b/i.test(key) && /\bshares?\b/i.test(key))
+        /^(hl|h|t212|trading\s*212)\s*isa\b/i.test(normKey) ||
+        /\bminvest\b/i.test(normKey) ||
+        (/\bisa\b/i.test(normKey) && /\bshares?\b/i.test(normKey))
       ) {
         category = 'Shares';
       }
 
       let provider = '';
       for (const item of KNOWN_BANK_KEYWORDS) {
-        if (item.pattern.test(key)) {
+        if (item.pattern.test(normKey)) {
           provider = item.provider;
           break;
         }
@@ -1207,16 +1209,18 @@
         isNewBank = true;
       }
 
-      const isLiability = /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(key);
+      const isLiability = /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(normKey);
       const displayName = titleCaseWords(cleaned);
 
       return {
+        canonicalKey,
         rawName: cleaned,
         displayName,
         provider,
         category,
         isLiability,
-        isNewBank
+        isNewBank,
+        inheritedFromNov: false
       };
     }
 
@@ -1235,19 +1239,24 @@
 
     /**
      * =========================================================================
-     * 5. EXACT DATE PARSER (HANDLES 'Feb 1 23', 'Feb 15 25', 'April 10th', 'Nov 1')
+     * 5. EXACT SHEET DATE PARSER
+     *    - Skips Summary / Salary proj / Sipp / Overview / Totals / Notes
+     *    - Handles 'Feb 1 23', 'Feb 1 24', 'Feb 1 25', 'Feb 1 26', 'Feb 15 25', 'March 15 25'
+     *    - Handles 'Jan 26', 'Feb 26' -> 2026-01-01, 2026-02-01 (never 2031)
+     *    - Yearless tabs ('March 18', 'April 10', 'May', 'May 31', 'Nov 30th', 'Dec 15'):
+     *      Default to current year (2026), rolling back 1 year (2025) if Nov/Dec precedes Jan/Feb 26.
      * =========================================================================
      */
-    const NON_SNAPSHOT_TAB_REGEX = /^(summary|sipp|notes?|template|calc|calculator|overview|dashboard|sheet\d*|totals?|income|earnings)$/i;
+    const NON_SNAPSHOT_TAB_REGEX = /^(summary|salary\s*proj|sipp|notes?|template|calc|calculator|overview|dashboard|sheet\d*|totals?|income|earnings)$/i;
 
     function parseSheetNameToDateParts(sheetName) {
       const raw = String(sheetName || '').trim();
       if (!raw || NON_SNAPSHOT_TAB_REGEX.test(raw)) return null;
 
-      // Strip ordinal suffixes (1st, 2nd, 3rd, 10th -> 1, 2, 3, 10)
+      // Remove ordinal suffixes: 1st -> 1, 2nd -> 2, 3rd -> 3, 10th -> 10, 30th -> 30
       const s = raw.replace(/\b(\d{1,2})(st|nd|rd|th)\b/gi, '$1').trim();
 
-      // 1. ISO date: '2025-02-01' or '2025-02'
+      // 1. ISO date: '2026-02-01' or '2026-02'
       let m = s.match(/^(\d{4})[-_/.\s](\d{1,2})(?:[-_/.\s](\d{1,2}))?$/);
       if (m) {
         const y = parseInt(m[1], 10);
@@ -1258,7 +1267,7 @@
         }
       }
 
-      // 2. UK slash date: '01/02/2025' or '01/02/25'
+      // 2. UK slash date: '01/02/2026' or '01/02/26'
       m = s.match(/^(\d{1,2})[-_/.](\d{1,2})[-_/.](\d{2}|\d{4})$/);
       if (m) {
         const d = parseInt(m[1], 10);
@@ -1270,22 +1279,30 @@
         }
       }
 
-      // Tokenize month-name formats:
-      // e.g. 'Feb 1 23', 'Feb 15 25', 'March 15 25', 'April 10', 'May 31', 'Oct 3', 'Nov 1'
       const cleaned = s.toLowerCase().replace(/[,._-]+/g, ' ').trim();
       const tokens = cleaned.split(/\s+/);
 
-      // Format A: [MonthName] [Day] [Optional 2-or-4-digit Year]
+      // 3. Single Month Name only: e.g. 'May', 'June' -> Day 1 of current year
+      if (tokens.length === 1 && MONTH_MAP[tokens[0]]) {
+        return { year: null, month: MONTH_MAP[tokens[0]], day: 1, explicitYear: false };
+      }
+
+      // 4. [MonthName] [Num1] [Optional Num2]
       if (tokens.length >= 2 && MONTH_MAP[tokens[0]]) {
         const mo = MONTH_MAP[tokens[0]];
         const num1 = parseInt(tokens[1], 10);
 
         if (tokens.length === 2 && !isNaN(num1)) {
           if (num1 >= 1990 && num1 <= 2099) {
-            // e.g. 'Feb 2025'
+            // e.g. 'Feb 2026'
             return { year: num1, month: mo, day: 1, explicitYear: true };
-          } else if (num1 >= 1 && num1 <= 31) {
-            // e.g. 'April 10', 'May 31', 'Nov 1' (yearless tab -> infer from preceding sheet!)
+          }
+          if (tokens[1].length === 2 && num1 >= 20 && num1 <= 29) {
+            // e.g. 'Jan 26', 'Feb 26' -> 2026-01-01, 2026-02-01
+            return { year: 2000 + num1, month: mo, day: 1, explicitYear: true };
+          }
+          if (num1 >= 1 && num1 <= 31) {
+            // e.g. 'March 18', 'April 10', 'May 31', 'Nov 30', 'Dec 15' (yearless -> current year)
             return { year: null, month: mo, day: num1, explicitYear: false };
           }
         } else if (tokens.length >= 3 && !isNaN(num1) && num1 >= 1 && num1 <= 31) {
@@ -1302,7 +1319,7 @@
         }
       }
 
-      // Format B: [Day] [MonthName] [Optional Year] e.g. '1 Feb 23', '10 April'
+      // 5. [Day] [MonthName] [Optional Year]: e.g. '1 Feb 26', '10 April'
       if (tokens.length >= 2 && MONTH_MAP[tokens[1]]) {
         const d = parseInt(tokens[0], 10);
         const mo = MONTH_MAP[tokens[1]];
@@ -1322,7 +1339,7 @@
         }
       }
 
-      // Format C: Compact 'Feb23' or 'Feb2023'
+      // 6. Compact 'Feb26' or 'Feb2026'
       const compact = cleaned.match(/^([a-z]{3,9})(\d{2}|\d{4})$/);
       if (compact && MONTH_MAP[compact[1]]) {
         let y = parseInt(compact[2], 10);
@@ -1349,7 +1366,7 @@
 
     /**
      * =========================================================================
-     * 6. DYNAMIC TABLE & INTEREST RATE PARSING (MATCHING FUTURE24.XLSX)
+     * 6. DYNAMIC TABLE & INTEREST RATE PARSING
      * =========================================================================
      */
     function parseCurrencyValue(val) {
@@ -1372,11 +1389,11 @@
       if (val === null || val === undefined || val === '') return null;
       if (typeof val === 'number') {
         if (!isFinite(val) || val <= 0) return null;
-        // Decimal Excel percentage (e.g. 0.041 -> 4.1%, 0.055 -> 5.5%)
+        // Decimal Excel percentage (e.g. 0.041 -> 4.1%)
         if (val > 0 && val < 0.25) return Math.round(val * 10000) / 100;
-        // Direct percentage number (e.g. 4.87 -> 4.87%, 4.1 -> 4.1%)
+        // Direct percentage number (e.g. 4.5 -> 4.5%)
         if (val >= 0.25 && val <= 30) return Math.round(val * 100) / 100;
-        // Ignore large annual interest pound amounts (> 30, like 3351 or 5600)
+        // Ignore large pound interest amounts (> 30)
         return null;
       }
       const str = String(val).trim();
@@ -1389,7 +1406,7 @@
     function parseSheetRows(rows) {
       if (!Array.isArray(rows) || rows.length === 0) return [];
 
-      // Step 1: Scan top 10 rows across columns A..D to locate 'Item' or 'Account' header
+      // Scan rows 1..10 across columns A..D to locate 'Item' or 'Account' header
       let headerRowIdx = -1;
       let itemCol = 0;
 
@@ -1407,7 +1424,7 @@
         if (headerRowIdx >= 0) break;
       }
 
-      // Fallback if no explicit header row: detect whether data starts in Col A or Col B
+      // Fallback if header row isn't explicitly labelled
       let startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
       if (headerRowIdx < 0) {
         for (let r = 0; r < Math.min(8, rows.length); r++) {
@@ -1438,7 +1455,7 @@
 
         const rawLabel = row[itemCol] !== null && row[itemCol] !== undefined ? String(row[itemCol]).trim() : '';
 
-        // Stop when reaching bottom summary / yearly earnings section
+        // Stop cleanly at blank rows, Total, or Current Yearly Earnings summaries
         if (!rawLabel) {
           if (parsedItems.length > 0) break;
           continue;
@@ -1452,9 +1469,9 @@
         const amount = parseCurrencyValue(row[valCol]);
         if (amount === null) continue;
 
-        // Look in valCol+1 .. valCol+3 for interest rate (ignoring large £ interest figures > 30)
+        // Check itemCol + 2 .. itemCol + 4 for interest rate (ignoring large £ interest figures > 30)
         let rate = null;
-        for (let c = valCol + 1; c <= Math.min(valCol + 3, row.length - 1); c++) {
+        for (let c = itemCol + 2; c <= Math.min(itemCol + 4, row.length - 1); c++) {
           const candidateRate = parseInterestRateCell(row[c]);
           if (candidateRate !== null) {
             rate = candidateRate;
@@ -1524,12 +1541,12 @@
 
     /**
      * =========================================================================
-     * 7. IPAD-COMPATIBLE MULTI-SPREADSHEET EXCEL IMPORTER
+     * 7. TWO-PASS MULTI-SPREADSHEET IMPORTER & LATEST-NOVEMBER DICTIONARY
      * =========================================================================
      */
     async function ensureXlsxLoaded() {
       if (typeof window.XLSX !== 'undefined') return true;
-      setLiveStatus('Loading Excel parser engine...');
+      setLiveStatus('Loading Excel parser...');
       const cdns = [
         'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
         'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
@@ -1552,9 +1569,7 @@
     }
 
     function readFileAsArrayBuffer(file) {
-      if (file.arrayBuffer) {
-        return file.arrayBuffer();
-      }
+      if (file.arrayBuffer) return file.arrayBuffer();
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
@@ -1567,10 +1582,9 @@
       const inputEl = event.target;
       const files = Array.from(inputEl.files || []);
       inputEl.value = '';
-
       if (files.length === 0) return;
 
-      setLiveStatus(`Selected ${files.length} file(s): ${files.map(f => f.name).join(', ')} — parsing...`);
+      setLiveStatus(`Reading ${files.length} spreadsheet(s)...`);
       showToast(`Reading ${files.length} spreadsheet(s)...`, 'info');
 
       const xlsxReady = await ensureXlsxLoaded();
@@ -1581,150 +1595,179 @@
       }
 
       try {
-        const discoveredAccountsMap = new Map();
-        const mergedSheetsMap = new Map();
+        const currentYear = new Date().getFullYear();
+        const extractedRawSheets = [];
         const skippedTabs = [];
-        let rawSheetCount = 0;
-        let duplicateRecordsMerged = 0;
-        let duplicateTabsMerged = 0;
 
+        // PASS 1A: Extract all tabs and resolve exact dates
         for (const file of files) {
           const buffer = await readFileAsArrayBuffer(file);
           const workbook = window.XLSX.read(new Uint8Array(buffer), { type: 'array' });
 
-          // Track sequential year across sheets in workbook so yearless tabs ('April 10th' -> 'Nov 1') inherit accurately
-          let runningYear = null;
-          let lastMonth = null;
+          // Pre-scan tab metadata in this workbook to check if yearless Nov/Dec precedes Jan/Feb of currentYear
+          const tabMetaList = workbook.SheetNames.map(sn => ({
+            sheetName: sn,
+            parts: parseSheetNameToDateParts(sn)
+          }));
 
-          // Seed runningYear from the first explicit-year tab in the workbook if present
-          for (const sn of workbook.SheetNames) {
-            const probe = parseSheetNameToDateParts(sn);
-            if (probe && probe.explicitYear && probe.year !== null) {
-              runningYear = probe.year;
-              break;
-            }
-          }
-          if (runningYear === null) {
-            runningYear = new Date().getFullYear();
-          }
-
-          for (const sheetName of workbook.SheetNames) {
-            const dateParts = parseSheetNameToDateParts(sheetName);
-            if (!dateParts) {
+          for (let i = 0; i < tabMetaList.length; i++) {
+            const { sheetName, parts } = tabMetaList[i];
+            if (!parts) {
               skippedTabs.push(sheetName);
               continue;
             }
 
-            let resolvedYear = dateParts.year;
-            if (dateParts.explicitYear && resolvedYear !== null) {
-              runningYear = resolvedYear;
-              lastMonth = dateParts.month;
-            } else {
-              // If month wraps backwards significantly (e.g. Dec -> Jan/Feb), advance year by 1
-              if (lastMonth !== null && dateParts.month < lastMonth && (lastMonth - dateParts.month) >= 6) {
-                runningYear += 1;
-              }
-              resolvedYear = runningYear;
-              lastMonth = dateParts.month;
-            }
-
-            const dateKey = buildDateKey(resolvedYear, dateParts.month, dateParts.day);
-            const ws = workbook.Sheets[sheetName];
-            const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-            const parsedRows = parseSheetRows(rows);
-
-            if (parsedRows.length === 0) {
-              skippedTabs.push(sheetName);
-              continue;
-            }
-            rawSheetCount += 1;
-
-            if (mergedSheetsMap.has(dateKey)) {
-              duplicateTabsMerged += 1;
-            } else {
-              mergedSheetsMap.set(dateKey, {
-                dateKey,
-                label: formatDateKeyToLabel(dateKey),
-                rawTabName: sheetName,
-                sourceSheets: [],
-                selected: true,
-                entriesByNormKey: new Map()
-              });
-            }
-
-            const sheetBucket = mergedSheetsMap.get(dateKey);
-            sheetBucket.sourceSheets.push(`${file.name} [${sheetName}]`);
-
-            for (const item of parsedRows) {
-              const normKey = normalizeAccountKey(item.rawName);
-              if (!discoveredAccountsMap.has(normKey)) {
-                const existingAcc = appState.accounts.find(a => normalizeAccountKey(a.rawName) === normKey);
-                if (existingAcc) {
-                  discoveredAccountsMap.set(normKey, {
-                    normKey,
-                    rawName: existingAcc.rawName,
-                    displayName: existingAcc.displayName,
-                    provider: existingAcc.provider,
-                    category: existingAcc.category,
-                    isLiability: existingAcc.isLiability,
-                    isNewBank: false
-                  });
-                } else {
-                  const meta = classifyAccount(item.rawName);
-                  discoveredAccountsMap.set(normKey, {
-                    normKey,
-                    rawName: item.rawName,
-                    displayName: meta.displayName,
-                    provider: meta.provider,
-                    category: meta.category,
-                    isLiability: meta.isLiability,
-                    isNewBank: meta.isNewBank
-                  });
+            let resolvedYear = parts.year;
+            if (!parts.explicitYear || resolvedYear === null) {
+              resolvedYear = currentYear;
+              // If a yearless Nov or Dec tab appears before an explicit Jan/Feb tab of currentYear (e.g., Nov 30th -> Dec 15 -> Jan 26), assign currentYear - 1
+              if (parts.month >= 11) {
+                for (let j = i + 1; j < tabMetaList.length; j++) {
+                  const nextParts = tabMetaList[j].parts;
+                  if (nextParts && nextParts.explicitYear && nextParts.year === currentYear && nextParts.month <= 2) {
+                    resolvedYear = currentYear - 1;
+                    break;
+                  }
                 }
               }
+            }
 
-              if (sheetBucket.entriesByNormKey.has(normKey)) {
-                duplicateRecordsMerged += 1;
-              }
-              const accMeta = discoveredAccountsMap.get(normKey);
-              sheetBucket.entriesByNormKey.set(normKey, {
-                amount: enforceAccountSign(item.amount, accMeta),
-                rate: item.rate
+            const dateKey = buildDateKey(resolvedYear, parts.month, parts.day);
+            const ws = workbook.Sheets[sheetName];
+            const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+            const parsedItems = parseSheetRows(rows);
+
+            if (parsedItems.length === 0) {
+              skippedTabs.push(sheetName);
+              continue;
+            }
+
+            extractedRawSheets.push({
+              fileName: file.name,
+              sheetName,
+              month: parts.month,
+              year: resolvedYear,
+              dateKey,
+              label: formatDateKeyToLabel(dateKey),
+              items: parsedItems
+            });
+          }
+        }
+
+        if (extractedRawSheets.length === 0) {
+          setLiveStatus('No valid snapshot tabs found in selected file(s).', 5000);
+          showToast('No date snapshot tabs with Item + Value columns were found.', 'error');
+          return;
+        }
+
+        // PASS 1B: Build Master Account Dictionary from the Latest November Sheet (and annotated entries across sheets)
+        const novemberSheets = extractedRawSheets
+          .filter(sh => sh.month === 11)
+          .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+        const latestNovSheet = novemberSheets.length > 0 ? novemberSheets[novemberSheets.length - 1] : null;
+        const novemberDictionary = new Map();
+
+        if (latestNovSheet) {
+          for (const item of latestNovSheet.items) {
+            const baseMeta = classifyAccount(item.rawName, null);
+            novemberDictionary.set(baseMeta.canonicalKey, {
+              ...baseMeta,
+              rawName: item.rawName
+            });
+          }
+        }
+
+        // Also enrich dictionary from any explicitly annotated sheet entries across all uploaded sheets
+        for (const sh of extractedRawSheets) {
+          for (const item of sh.items) {
+            const baseMeta = classifyAccount(item.rawName, null);
+            if (!novemberDictionary.has(baseMeta.canonicalKey)) {
+              novemberDictionary.set(baseMeta.canonicalKey, {
+                ...baseMeta,
+                rawName: item.rawName
               });
             }
           }
         }
 
-        if (mergedSheetsMap.size === 0) {
-          setLiveStatus('No date snapshot tabs found in selected file(s).', 5000);
-          showToast('No date snapshot tabs (e.g. "Feb 1 25", "April 10th") with Item + Value columns were found.', 'error');
-          return;
+        // PASS 2: Apply Master Dictionary retroactively across all sheets & deduplicate overlapping dates
+        const discoveredAccountsMap = new Map();
+        const mergedSheetsMap = new Map();
+        let duplicateTabsMerged = 0;
+        let duplicateRecordsMerged = 0;
+        let retroactiveCount = 0;
+
+        for (const sh of extractedRawSheets) {
+          if (mergedSheetsMap.has(sh.dateKey)) {
+            duplicateTabsMerged += 1;
+          } else {
+            mergedSheetsMap.set(sh.dateKey, {
+              dateKey: sh.dateKey,
+              label: sh.label,
+              rawTabName: sh.sheetName,
+              sourceSheets: [],
+              selected: true,
+              entriesByCanonicalKey: new Map()
+            });
+          }
+
+          const bucket = mergedSheetsMap.get(sh.dateKey);
+          bucket.sourceSheets.push(`${sh.fileName} [${sh.sheetName}]`);
+
+          for (const item of sh.items) {
+            const meta = classifyAccount(item.rawName, novemberDictionary);
+            const cKey = meta.canonicalKey;
+
+            if (!discoveredAccountsMap.has(cKey)) {
+              const existingAppAcc = appState.accounts.find(a => getCanonicalAccountKey(a.rawName) === cKey);
+              if (existingAppAcc) {
+                discoveredAccountsMap.set(cKey, {
+                  canonicalKey: cKey,
+                  rawName: existingAppAcc.rawName,
+                  displayName: existingAppAcc.displayName,
+                  provider: existingAppAcc.provider,
+                  category: existingAppAcc.category,
+                  isLiability: existingAppAcc.isLiability,
+                  isNewBank: false,
+                  inheritedFromNov: false
+                });
+              } else {
+                if (meta.inheritedFromNov && latestNovSheet && sh.dateKey !== latestNovSheet.dateKey) {
+                  retroactiveCount += 1;
+                }
+                discoveredAccountsMap.set(cKey, meta);
+              }
+            }
+
+            if (bucket.entriesByCanonicalKey.has(cKey)) {
+              duplicateRecordsMerged += 1;
+            }
+            const accMeta = discoveredAccountsMap.get(cKey);
+            bucket.entriesByCanonicalKey.set(cKey, {
+              amount: enforceAccountSign(item.amount, accMeta),
+              rate: item.rate
+            });
+          }
         }
 
         const sheetsList = Array.from(mergedSheetsMap.values()).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
         const accountsList = Array.from(discoveredAccountsMap.values());
         const uniqueNewBanks = Array.from(new Set(accountsList.filter(a => a.isNewBank).map(a => a.provider)));
 
-        let overlapWithAppCount = 0;
-        for (const sh of sheetsList) {
-          if (appState.snapshots.some(s => s.dateKey === sh.dateKey)) {
-            overlapWithAppCount += 1;
-          }
-        }
-
         pendingImportBatch = {
           fileCount: files.length,
-          rawSheetCount,
+          latestNovLabel: latestNovSheet ? latestNovSheet.label : null,
+          retroactiveCount,
           skippedTabs,
           duplicateTabsMerged,
           duplicateRecordsMerged,
-          overlapWithAppCount,
           uniqueNewBanks,
           sheets: sheetsList,
           accounts: accountsList
         };
 
-        setLiveStatus(`Parsed ${sheetsList.length} date sheet(s) & ${accountsList.length} account(s). Review below.`, 3000);
+        setLiveStatus(`Parsed ${sheetsList.length} snapshot date(s) & ${accountsList.length} account(s).`, 2500);
         openImportReviewModal();
       } catch (err) {
         console.error('Excel import error:', err);
@@ -1738,22 +1781,25 @@
       const b = pendingImportBatch;
 
       document.getElementById('importReviewSubtitle').textContent =
-        `Found ${b.sheets.length} snapshot tab(s) from ${b.sheets[0].label} to ${b.sheets[b.sheets.length - 1].label} (${b.accounts.length} accounts).`;
+        `Found ${b.sheets.length} exact date(s) from ${b.sheets[0].label} to ${b.sheets[b.sheets.length - 1].label} (${b.accounts.length} accounts).`;
 
-      const summaryBox = document.getElementById('dedupSummaryBox');
-      const skippedHtml = b.skippedTabs.length > 0
-        ? `<div>&bull; <strong>Skipped non-date tabs:</strong> ${b.skippedTabs.map(t => `<code class="bg-white px-1 rounded">${escapeHtml(t)}</code>`).join(', ')}</div>`
+      const novLine = b.latestNovLabel
+        ? `<div>&bull; <strong>Latest November Reference (${escapeHtml(b.latestNovLabel)}):</strong> Used to classify unannotated earlier accounts across previous months.</div>`
         : '';
-      const newBankHtml = b.uniqueNewBanks.length > 0
+      const skippedLine = b.skippedTabs.length > 0
+        ? `<div>&bull; <strong>Skipped non-snapshot tabs:</strong> ${b.skippedTabs.map(t => `<code class="bg-white px-1 rounded">${escapeHtml(t)}</code>`).join(', ')}</div>`
+        : '';
+      const newBankLine = b.uniqueNewBanks.length > 0
         ? `<div>&bull; <strong>New Banks Auto-Detected:</strong> ${b.uniqueNewBanks.map(nb => `<span class="inline-block px-2 py-0.5 rounded bg-violet-100 text-violet-900 font-semibold mr-1">${escapeHtml(nb)}</span>`).join('')}</div>`
         : '';
 
-      summaryBox.innerHTML = `
+      document.getElementById('dedupSummaryBox').innerHTML = `
         <div class="font-bold text-emerald-950">Smart Import &amp; Cross-Reference Summary</div>
-        <div>&bull; <strong>${b.sheets.length} exact snapshot date(s)</strong> parsed (${b.sheets[0].label} &rarr; ${b.sheets[b.sheets.length - 1].label}).</div>
-        ${skippedHtml}
-        <div>&bull; <strong>${b.duplicateTabsMerged} overlapping tab(s)</strong> &amp; <strong>${b.duplicateRecordsMerged} duplicate account cell(s)</strong> deduplicated across files.</div>
-        ${newBankHtml}
+        <div>&bull; <strong>${b.sheets.length} exact date(s)</strong> parsed (${b.sheets[0].label} &rarr; ${b.sheets[b.sheets.length - 1].label}).</div>
+        ${novLine}
+        ${skippedLine}
+        <div>&bull; <strong>${b.duplicateTabsMerged} overlapping tab(s)</strong> &amp; <strong>${b.duplicateRecordsMerged} duplicate entry cell(s)</strong> deduplicated.</div>
+        ${newBankLine}
       `;
 
       renderReviewModalLists();
@@ -1783,7 +1829,8 @@
       sheetsEl.querySelectorAll('.review-sheet-cb').forEach(cb => {
         cb.addEventListener('change', () => {
           const idx = parseInt(cb.getAttribute('data-sheet-idx'), 10);
-          toggleSingleReviewSheet(idx);
+          pendingImportBatch.sheets[idx].selected = !pendingImportBatch.sheets[idx].selected;
+          renderReviewModalLists();
         });
       });
 
@@ -1816,27 +1863,15 @@
       accsEl.querySelectorAll('.review-cat-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const idx = parseInt(btn.getAttribute('data-acc-idx'), 10);
-          const cat = btn.getAttribute('data-cat');
-          setReviewAccountCategory(idx, cat);
+          pendingImportBatch.accounts[idx].category = btn.getAttribute('data-cat');
+          renderReviewModalLists();
         });
       });
-    }
-
-    function toggleSingleReviewSheet(idx) {
-      if (!pendingImportBatch || !pendingImportBatch.sheets[idx]) return;
-      pendingImportBatch.sheets[idx].selected = !pendingImportBatch.sheets[idx].selected;
-      renderReviewModalLists();
     }
 
     function toggleReviewSheets(selectAll) {
       if (!pendingImportBatch) return;
       pendingImportBatch.sheets.forEach(s => { s.selected = selectAll; });
-      renderReviewModalLists();
-    }
-
-    function setReviewAccountCategory(idx, category) {
-      if (!pendingImportBatch || !pendingImportBatch.accounts[idx]) return;
-      pendingImportBatch.accounts[idx].category = category;
       renderReviewModalLists();
     }
 
@@ -1855,21 +1890,21 @@
         appState.snapshots = [];
       }
 
-      const normToId = new Map();
+      const canonicalToId = new Map();
       appState.accounts.forEach(a => {
-        normToId.set(normalizeAccountKey(a.rawName), a.id);
+        canonicalToId.set(getCanonicalAccountKey(a.rawName), a.id);
       });
 
       for (const revAcc of b.accounts) {
-        if (normToId.has(revAcc.normKey)) {
-          const existing = appState.accounts.find(a => a.id === normToId.get(revAcc.normKey));
+        if (canonicalToId.has(revAcc.canonicalKey)) {
+          const existing = appState.accounts.find(a => a.id === canonicalToId.get(revAcc.canonicalKey));
           if (existing) {
             existing.category = revAcc.category;
             existing.provider = revAcc.provider;
             existing.active = true;
           }
         } else {
-          let newId = slugifyId(revAcc.rawName);
+          let newId = slugifyId(revAcc.canonicalKey);
           while (appState.accounts.some(a => a.id === newId)) {
             newId += '_' + Math.floor(Math.random() * 100);
           }
@@ -1882,7 +1917,7 @@
             isLiability: revAcc.isLiability,
             active: true
           });
-          normToId.set(revAcc.normKey, newId);
+          canonicalToId.set(revAcc.canonicalKey, newId);
         }
       }
 
@@ -1892,8 +1927,8 @@
       for (const sh of selectedSheets) {
         const existingSnap = snapMap.get(sh.dateKey);
         const entries = existingSnap ? Object.assign({}, existingSnap.entries) : {};
-        sh.entriesByNormKey.forEach((valObj, normKey) => {
-          const accId = normToId.get(normKey);
+        sh.entriesByCanonicalKey.forEach((valObj, cKey) => {
+          const accId = canonicalToId.get(cKey);
           const accObj = appState.accounts.find(a => a.id === accId);
           if (accId) {
             entries[accId] = {
@@ -1913,12 +1948,12 @@
       saveToLocalStorage();
       closeImportReviewModal();
       enterActiveWorkspace('overview');
-      showToast(`Imported ${selectedSheets.length} snapshot(s) & ${b.accounts.length} account(s).`, 'success');
+      showToast(`Imported ${selectedSheets.length} date(s) & ${b.accounts.length} account(s).`, 'success');
     }
 
     /**
      * =========================================================================
-     * 8. EXCEL EXPORT (MATCHING ITEM / VALUE / RATE FORMAT)
+     * 8. EXCEL EXPORT (MULTI-SHEET .XLSX)
      * =========================================================================
      */
     async function exportToExcel() {
@@ -1955,29 +1990,25 @@
 
       const todayStr = new Date().toISOString().slice(0, 10);
       window.XLSX.writeFile(wb, `Wealth_ISA_Portfolio_${todayStr}.xlsx`);
-      showToast(`Exported ${sorted.length} snapshot sheet(s) to Excel.`, 'success');
+      showToast(`Exported ${sorted.length} date sheet(s) to Excel.`, 'success');
     }
 
     /**
      * =========================================================================
-     * 9. RENDER MASTER & TAB 1: OVERVIEW (KPI CARDS + ANIMATED TIMELINE)
+     * 9. MASTER RENDER & TAB 1: OVERVIEW (KPI CARDS + ANIMATED CHART)
      * =========================================================================
      */
     function renderAll() {
-      const providersCount = getUniqueProvidersCount();
+      const providersCount = new Set(appState.accounts.map(a => a.provider || 'Other')).size;
       const navProvEl = document.getElementById('navProviderCount');
+      const navHistEl = document.getElementById('navHistoryCount');
       if (navProvEl) navProvEl.textContent = providersCount;
+      if (navHistEl) navHistEl.textContent = appState.snapshots.length;
 
       renderOverviewTab();
       renderInsightsAndProvidersTab();
-      renderAnnualSnapshotTab();
       renderMonthlyEntryForm();
-    }
-
-    function getUniqueProvidersCount() {
-      const set = new Set();
-      appState.accounts.forEach(acc => set.add(acc.provider || 'Other'));
-      return set.size;
+      renderHistoryTable();
     }
 
     function getFilteredSnapshots() {
@@ -2035,7 +2066,7 @@
         chartWrap?.classList.add('hidden');
         document.getElementById('kpiDateBadge').textContent = 'Empty';
         document.getElementById('kpiTotalWorth').textContent = '£0';
-        document.getElementById('kpiTotalChange').textContent = 'Import or add a snapshot to begin';
+        document.getElementById('kpiTotalChange').textContent = 'Import or add a month to begin';
         document.getElementById('kpiCashTotal').textContent = '£0';
         document.getElementById('kpiCashShare').textContent = '0%';
         document.getElementById('kpiCashSub').textContent = '—';
@@ -2077,7 +2108,7 @@
         const cls = diff > 0 ? 'text-emerald-300' : diff < 0 ? 'text-rose-300' : 'text-indigo-200';
         changeEl.innerHTML = `<span class="${cls} font-bold">${formatSignedGBP(diff)} (${formatSignedPct(pct)})</span> vs ${prevSnap.label}`;
       } else {
-        changeEl.textContent = 'Starting baseline snapshot';
+        changeEl.textContent = 'Baseline snapshot';
       }
 
       const grossAssets = Math.max(0, curr.Cash) + Math.max(0, curr.Shares) + Math.max(0, curr.Pension);
@@ -2097,7 +2128,7 @@
         const sDiff = curr.Shares - prev.Shares;
         document.getElementById('kpiSharesSub').textContent = `${formatSignedGBP(sDiff)} vs ${prevSnap.label}`;
       } else {
-        document.getElementById('kpiSharesSub').textContent = 'HL & Trading 212 ISAs';
+        document.getElementById('kpiSharesSub').textContent = 'HL ISA, T212 ISA & Minvest';
       }
 
       document.getElementById('kpiPensionTotal').textContent = formatGBP(curr.Pension);
@@ -2106,13 +2137,13 @@
         const pDiff = curr.Pension - prev.Pension;
         document.getElementById('kpiPensionSub').textContent = `${formatSignedGBP(pDiff)} vs ${prevSnap.label}`;
       } else {
-        document.getElementById('kpiPensionSub').textContent = curr.Pension > 0 ? 'HL & T212 SIPPs' : 'No SIPP recorded at this date';
+        document.getElementById('kpiPensionSub').textContent = curr.Pension > 0 ? 'HL & T212 SIPPs' : 'No SIPP recorded yet';
       }
     }
 
     /**
      * =========================================================================
-     * 10. ANIMATED TIMELINE GROWTH PLAYBACK & CHART.JS WITH SVG FALLBACK
+     * 10. ANIMATED GROWTH TIMELINE PLAYBACK & CHART RENDERER
      * =========================================================================
      */
     function toggleTimelineAnimation() {
@@ -2189,7 +2220,7 @@
         labelEl.textContent = 'Pause';
         iconEl.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
       } else if (animationState.currentIndex !== null && animationState.currentIndex >= fullSlice.length - 1) {
-        labelEl.textContent = 'Replay Growth';
+        labelEl.textContent = 'Replay';
         iconEl.innerHTML = '<path d="M8 5v14l11-7z"/>';
       } else {
         labelEl.textContent = 'Play Growth Animation';
@@ -2231,7 +2262,7 @@
 
       if (mode === 'total') {
         datasets = [{
-          label: 'Total Net Worth',
+          label: 'Total Net Wealth',
           data: totalData,
           borderColor: '#6d28d9',
           backgroundColor: 'rgba(124, 58, 237, 0.16)',
@@ -2255,7 +2286,7 @@
             pointRadius: visibleSlice.length <= 24 ? 3.5 : 2
           },
           {
-            label: 'Shares ISA (HL & T212)',
+            label: 'Shares ISA & Invest',
             data: sharesData,
             borderColor: CATEGORY_STYLES.Shares.hex,
             backgroundColor: isStacked ? CATEGORY_STYLES.Shares.fill : 'transparent',
@@ -2306,7 +2337,7 @@
                 footer: (items) => {
                   if (mode === 'total' || !items.length) return '';
                   const idx = items[0].dataIndex;
-                  return `Net Worth: ${formatGBP(totalData[idx])}`;
+                  return `Total Net Wealth: ${formatGBP(totalData[idx])}`;
                 }
               }
             }
@@ -2348,14 +2379,14 @@
       container.innerHTML = `
         <svg viewBox="0 0 ${w} ${h}" class="w-full h-full">
           <polyline fill="none" stroke="#7c3aed" stroke-width="3.5" points="${pts}" />
-          <text x="${pad}" y="22" font-size="12" fill="#475569" font-weight="600">${escapeHtml(labels[0] || '')} → ${escapeHtml(labels[labels.length - 1] || '')}: ${formatGBP(values[values.length - 1])}</text>
+          <text x="${pad}" y="22" font-size="12" fill="#475569" font-weight="600">${escapeHtml(labels[0] || '')} &rarr; ${escapeHtml(labels[labels.length - 1] || '')}: ${formatGBP(values[values.length - 1])}</text>
         </svg>
       `;
     }
 
     /**
      * =========================================================================
-     * 11. TAB 2: PROVIDERS & INSIGHTS (SECOND DASHBOARD TAB)
+     * 11. TAB 2: PROVIDERS & INSIGHTS
      * =========================================================================
      */
     function renderInsightsAndProvidersTab() {
@@ -2363,13 +2394,13 @@
       const grid = document.getElementById('dynamicInsightsGrid');
       const provGrid = document.getElementById('providerBreakdownGrid');
       if (sorted.length === 0) {
-        if (grid) grid.innerHTML = `<p class="text-xs text-slate-500 col-span-full">Import or add snapshots to generate portfolio insights.</p>`;
+        if (grid) grid.innerHTML = `<p class="text-xs text-slate-500 col-span-full">Import or add monthly snapshots to generate portfolio insights.</p>`;
         if (provGrid) provGrid.innerHTML = '';
         renderAccountCategoryRules();
         return;
       }
-      const latestSnap = sorted[sorted.length - 1];
 
+      const latestSnap = sorted[sorted.length - 1];
       renderDynamicInsights(sorted);
       renderProviderBreakdown(latestSnap);
       renderAccountCategoryRules();
@@ -2390,7 +2421,7 @@
 
       const buckets = [
         { name: 'Cash', diff: latest.Cash - first.Cash, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
-        { name: 'Shares ISA', diff: latest.Shares - first.Shares, color: 'text-violet-700', bg: 'bg-violet-50 border-violet-200' },
+        { name: 'Shares ISA & Invest', diff: latest.Shares - first.Shares, color: 'text-violet-700', bg: 'bg-violet-50 border-violet-200' },
         { name: 'Pensions (SIPPs)', diff: latest.Pension - first.Pension, color: 'text-amber-800', bg: 'bg-amber-50 border-amber-200' }
       ].sort((a, b) => b.diff - a.diff);
       const topDriver = buckets[0];
@@ -2410,40 +2441,40 @@
 
       const cards = [
         {
-          title: 'Multi-Year Wealth Trajectory',
+          title: 'Overall Wealth Trajectory',
           accent: 'border-violet-200 bg-violet-50/60',
-          body: `Portfolio moved by <strong>${formatSignedGBP(netGain)}</strong> (${formatSignedPct(netGainPct)}) across ${slice.length} recorded snapshot(s).`
+          body: `Portfolio moved by <strong>${formatSignedGBP(netGain)}</strong> (${formatSignedPct(netGainPct)}) across ${slice.length} recorded date(s).`
         },
         {
-          title: 'Primary Growth Engine',
+          title: 'Top Wealth Driver',
           accent: topDriver.bg,
           body: `<strong class="${topDriver.color}">${topDriver.name}</strong> led portfolio gains with <strong>${formatSignedGBP(topDriver.diff)}</strong> added since ${slice[0].label}.`
         },
         {
-          title: 'Cash Yield & Rate Efficiency',
+          title: 'Weighted Cash AER & Yield',
           accent: 'border-emerald-200 bg-emerald-50/60',
           body: latest.avgCashRate > 0
             ? `Weighted cash AER is <strong>${latest.avgCashRate.toFixed(2)}%</strong>, generating ~<strong>${formatGBP(latest.projectedAnnualCashInterest)}/yr</strong> (${formatGBP(latest.projectedAnnualCashInterest / 12)}/mo).`
-            : `Add interest rates (%) on cash accounts to project annual cash yield automatically.`
+            : `Enter AER (%) rates on cash pots to calculate projected annual interest automatically.`
         },
         {
-          title: 'Growth vs. Liquid Split',
+          title: 'Cash vs. Equity Split',
           accent: 'border-amber-200 bg-amber-50/60',
-          body: `<strong>${equityPct}%</strong> is invested in Shares ISAs &amp; SIPPs, while <strong>${100 - equityPct}%</strong> sits in liquid cash.`
+          body: `<strong>${equityPct}%</strong> is invested in Shares ISAs &amp; SIPPs, while <strong>${100 - equityPct}%</strong> is held in liquid cash.`
         },
         {
-          title: 'SIPP Pension Timeline',
+          title: 'SIPP Pension Milestone',
           accent: 'border-fuchsia-200 bg-fuchsia-50/60',
           body: firstPensionSnap
-            ? `SIPP pension tracking started on <strong>${firstPensionSnap.label}</strong> and has reached <strong>${formatGBP(latest.Pension)}</strong>.`
+            ? `SIPP pension tracking started on <strong>${firstPensionSnap.label}</strong> and stands at <strong>${formatGBP(latest.Pension)}</strong>.`
             : `No SIPP balances recorded yet—add HL SIPP or T212 SIPP whenever opened.`
         },
         {
-          title: 'Momentum & Streak',
+          title: 'Latest Milestone & Momentum',
           accent: 'border-sky-200 bg-sky-50/60',
           body: growthStreak > 0
-            ? `On a <strong>${growthStreak}-snapshot consecutive growth streak</strong> heading into ${latestSnap.label}.`
-            : `Latest snapshot showed a minor dip—accessible ISAs &amp; Cash total <strong>${formatGBP(latest.Cash + latest.Shares)}</strong>.`
+            ? `On a <strong>${growthStreak}-period consecutive growth streak</strong> heading into ${latestSnap.label}.`
+            : `Accessible Cash &amp; Shares ISAs total <strong>${formatGBP(latest.Cash + latest.Shares)}</strong> as of ${latestSnap.label}.`
         }
       ];
 
@@ -2559,269 +2590,7 @@
 
     /**
      * =========================================================================
-     * 12. TAB 3: ANNUAL SNAPSHOT (AS NEAR TO FEBRUARY EACH YEAR)
-     * =========================================================================
-     */
-    function setAnnualBarMode(mode) {
-      appState.preferences.annualBarMode = mode;
-      saveToLocalStorage();
-      renderAnnualSnapshotTab();
-    }
-
-    function getAnnualFebruarySnapshots() {
-      const sorted = sortSnapshots(appState.snapshots);
-      const byYear = new Map();
-
-      sorted.forEach(snap => {
-        const parts = snap.dateKey.split('-');
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10);
-        const day = parts[2] ? parseInt(parts[2], 10) : 1;
-        if (isNaN(year) || isNaN(month)) return;
-        if (!byYear.has(year)) byYear.set(year, []);
-        byYear.get(year).push({ snap, year, month, day });
-      });
-
-      const years = Array.from(byYear.keys()).sort((a, b) => a - b);
-      return years.map(year => {
-        const candidates = byYear.get(year);
-        // Closest to Feb 1 (day-of-year ~32)
-        const targetDayOfYear = 32;
-        candidates.sort((a, b) => {
-          const doyA = (a.month - 1) * 30.5 + a.day;
-          const doyB = (b.month - 1) * 30.5 + b.day;
-          const distA = Math.abs(doyA - targetDayOfYear);
-          const distB = Math.abs(doyB - targetDayOfYear);
-          if (Math.abs(distA - distB) > 0.1) return distA - distB;
-          return a.snap.dateKey.localeCompare(b.snap.dateKey);
-        });
-
-        const chosen = candidates[0];
-        const isExactFeb = chosen.month === 2;
-        const monthShort = MONTH_NAMES[chosen.month - 1] || '';
-        const xAxisLabel = isExactFeb ? `${year} (Feb)` : `${year} (${monthShort})*`;
-        const totals = computeSnapshotTotals(chosen.snap);
-
-        return {
-          year,
-          month: chosen.month,
-          monthShort,
-          isExactFeb,
-          xAxisLabel,
-          snapshot: chosen.snap,
-          totals
-        };
-      });
-    }
-
-    function renderAnnualSnapshotTab() {
-      const annualRows = getAnnualFebruarySnapshots();
-      const mode = appState.preferences.annualBarMode || 'stacked';
-
-      ['stacked', 'grouped'].forEach(m => {
-        const btn = document.getElementById(`annual-mode-${m}`);
-        if (btn) {
-          btn.className = mode === m
-            ? 'annual-mode-btn px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
-            : 'annual-mode-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
-        }
-      });
-
-      const spanBadge = document.getElementById('annualYearSpanBadge');
-      const fallbackNote = document.getElementById('annualFallbackNote');
-      const cagrBadge = document.getElementById('annualCagrBadge');
-
-      if (annualRows.length === 0) {
-        if (spanBadge) spanBadge.textContent = '0 years';
-        document.getElementById('annualSummaryTableBody').innerHTML =
-          `<tr><td colspan="7" class="py-8 text-center text-slate-400 text-sm">No annual snapshots available yet.</td></tr>`;
-        return;
-      }
-
-      if (spanBadge) {
-        spanBadge.textContent = `${annualRows.length} year${annualRows.length === 1 ? '' : 's'} (${annualRows[0].year} – ${annualRows[annualRows.length - 1].year})`;
-      }
-
-      const hasAnyFallback = annualRows.some(r => !r.isExactFeb);
-      if (fallbackNote) {
-        fallbackNote.classList.toggle('hidden', !hasAnyFallback);
-      }
-
-      if (cagrBadge) {
-        if (annualRows.length > 1) {
-          const firstTotal = annualRows[0].totals.total;
-          const lastTotal = annualRows[annualRows.length - 1].totals.total;
-          const overallDiff = lastTotal - firstTotal;
-          const overallPct = firstTotal !== 0 ? (overallDiff / Math.abs(firstTotal)) * 100 : 0;
-          cagrBadge.textContent = `${annualRows[0].year} → ${annualRows[annualRows.length - 1].year}: ${formatSignedGBP(overallDiff)} (${formatSignedPct(overallPct)})`;
-          cagrBadge.classList.remove('hidden');
-        } else {
-          cagrBadge.classList.add('hidden');
-        }
-      }
-
-      renderAnnualBarChart(annualRows, mode);
-      renderAnnualSummaryTable(annualRows);
-    }
-
-    function renderAnnualBarChart(annualRows, mode) {
-      const labels = annualRows.map(r => r.xAxisLabel);
-      const cashData = annualRows.map(r => r.totals.Cash);
-      const sharesData = annualRows.map(r => r.totals.Shares);
-      const pensionData = annualRows.map(r => r.totals.Pension);
-      const isStacked = mode === 'stacked';
-
-      const canvas = document.getElementById('annualBarChartCanvas');
-      const svgFallback = document.getElementById('annualSvgFallback');
-      if (!canvas || !svgFallback) return;
-
-      if (typeof window.Chart === 'undefined') {
-        canvas.classList.add('hidden');
-        svgFallback.classList.remove('hidden');
-        renderSvgFallbackChart(svgFallback, labels, annualRows.map(r => r.totals.total));
-        return;
-      }
-
-      canvas.classList.remove('hidden');
-      svgFallback.classList.add('hidden');
-
-      const datasets = [
-        {
-          label: 'Cash & Cash ISAs',
-          data: cashData,
-          backgroundColor: CATEGORY_STYLES.Cash.hex,
-          borderRadius: isStacked ? 0 : 6,
-          maxBarThickness: 56
-        },
-        {
-          label: 'Shares ISA (HL & T212)',
-          data: sharesData,
-          backgroundColor: CATEGORY_STYLES.Shares.hex,
-          borderRadius: isStacked ? 0 : 6,
-          maxBarThickness: 56
-        },
-        {
-          label: 'Pensions (SIPPs)',
-          data: pensionData,
-          backgroundColor: CATEGORY_STYLES.Pension.hex,
-          borderRadius: isStacked ? { topLeft: 6, topRight: 6 } : 6,
-          maxBarThickness: 56
-        }
-      ];
-
-      if (annualChartInstance) {
-        annualChartInstance.data.labels = labels;
-        annualChartInstance.data.datasets = datasets;
-        annualChartInstance.options.scales.x.stacked = isStacked;
-        annualChartInstance.options.scales.y.stacked = isStacked;
-        annualChartInstance.update();
-        return;
-      }
-
-      annualChartInstance = new window.Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: { labels, datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            legend: {
-              position: 'top',
-              align: 'end',
-              labels: { usePointStyle: true, boxWidth: 10, font: { size: 12, weight: '600' } }
-            },
-            tooltip: {
-              backgroundColor: '#1e1b4b',
-              padding: 12,
-              callbacks: {
-                title: (items) => {
-                  const idx = items[0]?.dataIndex ?? 0;
-                  const row = annualRows[idx];
-                  if (!row) return '';
-                  return row.isExactFeb
-                    ? `${row.year} — February Snapshot (${row.snapshot.label})`
-                    : `${row.year} — Nearest to Feb (${row.snapshot.label})`;
-                },
-                label: (ctx) => `${ctx.dataset.label}: ${formatGBP(ctx.parsed.y)}`,
-                footer: (items) => {
-                  const idx = items[0]?.dataIndex ?? 0;
-                  const row = annualRows[idx];
-                  return row ? `Total Wealth: ${formatGBP(row.totals.total)}` : '';
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              stacked: isStacked,
-              grid: { display: false },
-              ticks: { font: { size: 12, weight: '600' }, color: '#334155' }
-            },
-            y: {
-              stacked: isStacked,
-              border: { display: false },
-              grid: { color: '#f1f5f9' },
-              ticks: {
-                font: { size: 11 },
-                color: '#64748b',
-                callback: (v) => '£' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(0) + 'k' : v)
-              }
-            }
-          }
-        }
-      });
-    }
-
-    function renderAnnualSummaryTable(annualRows) {
-      const tbody = document.getElementById('annualSummaryTableBody');
-      if (!tbody) return;
-
-      tbody.innerHTML = annualRows.map((row, idx) => {
-        const prevRow = idx > 0 ? annualRows[idx - 1] : null;
-        const diff = prevRow ? row.totals.total - prevRow.totals.total : null;
-        const pct = prevRow && prevRow.totals.total !== 0
-          ? (diff / Math.abs(prevRow.totals.total)) * 100
-          : null;
-
-        const badgeHtml = row.isExactFeb
-          ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-               Feb Match
-             </span>`
-          : `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900">
-               <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-               Nearest: ${escapeHtml(row.monthShort)}
-             </span>`;
-
-        let changeHtml = `<span class="text-slate-400 text-xs">Baseline</span>`;
-        if (diff !== null) {
-          const cls = diff > 0 ? 'text-emerald-600' : diff < 0 ? 'text-rose-600' : 'text-slate-500';
-          changeHtml = `<span class="font-bold ${cls}">${formatSignedGBP(diff)}</span> <span class="text-xs text-slate-500">(${formatSignedPct(pct)})</span>`;
-        }
-
-        return `
-          <tr class="hover:bg-violet-50/40 transition">
-            <td class="py-3.5 px-5 font-bold text-slate-900">${row.year}</td>
-            <td class="py-3.5 px-4">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-slate-700">${escapeHtml(row.snapshot.label)}</span>
-                ${badgeHtml}
-              </div>
-            </td>
-            <td class="py-3.5 px-4 text-right font-semibold text-emerald-700">${formatGBP(row.totals.Cash)}</td>
-            <td class="py-3.5 px-4 text-right font-semibold text-violet-700">${formatGBP(row.totals.Shares)}</td>
-            <td class="py-3.5 px-4 text-right font-semibold text-amber-700">${formatGBP(row.totals.Pension)}</td>
-            <td class="py-3.5 px-4 text-right font-extrabold text-slate-900">${formatGBP(row.totals.total)}</td>
-            <td class="py-3.5 px-5 text-right">${changeHtml}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    /**
-     * =========================================================================
-     * 13. TAB 4: ADD / EDIT SNAPSHOT & "+ ADD ANOTHER ACCOUNT"
+     * 12. TAB 3: ADD / EDIT MONTH & "+ ADD ANOTHER ACCOUNT"
      * =========================================================================
      */
     function toggleAddAccountPanel() {
@@ -2836,7 +2605,6 @@
     function setDefaultEntryDate() {
       const picker = document.getElementById('entryDatePicker');
       if (!picker) return;
-      // Default to today's actual date (never future projection years)
       picker.value = new Date().toISOString().slice(0, 10);
     }
 
@@ -2859,15 +2627,14 @@
         const rateInput = document.getElementById(`entry-rate-${acc.id}`);
         const prev = refSnap.entries[acc.id];
         if (amtInput) {
-          const val = prev ? enforceAccountSign(prev.amount, acc) : 0;
-          amtInput.value = val;
+          amtInput.value = prev ? enforceAccountSign(prev.amount, acc) : 0;
         }
         if (rateInput) {
           rateInput.value = prev && prev.rate !== null && prev.rate !== undefined ? prev.rate : '';
         }
       });
       recalcLiveEntryTotals();
-      showToast(`Reset all balances and interest rates to ${refSnap.label} values.`, 'info');
+      showToast(`Reset balances and AER (%) to ${refSnap.label} values.`, 'info');
     }
 
     function handleEntryAmountInput(accId) {
@@ -2901,12 +2668,12 @@
       const bannerText = document.getElementById('entryModeBannerText');
       if (existingSnap) {
         bannerText.innerHTML = `
-          <span>Editing existing snapshot: <strong class="text-violet-700">${existingSnap.label}</strong></span>
+          <span>Editing existing entry: <strong class="text-violet-700">${existingSnap.label}</strong></span>
           ${fallbackSnap ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white border border-violet-200 text-violet-800">Prior: ${escapeHtml(fallbackSnap.label)}</span>` : ''}
         `;
       } else {
         bannerText.innerHTML = `
-          <span>New snapshot: <strong class="text-slate-900">${formatDateKeyToLabel(targetDateKey)}</strong></span>
+          <span>New monthly entry: <strong class="text-slate-900">${formatDateKeyToLabel(targetDateKey)}</strong></span>
           ${fallbackSnap ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-violet-600 text-white shadow-2xs">Pre-filled from ${escapeHtml(fallbackSnap.label)}</span>` : ''}
         `;
       }
@@ -2939,7 +2706,7 @@
 
         if (catAccounts.length === 0) return '';
 
-        const catHeading = cat === 'Shares' ? 'Shares ISA (HL & T212)' : cat === 'Pension' ? 'Pensions (SIPPs)' : 'Cash Accounts & Cards';
+        const catHeading = cat === 'Shares' ? 'Shares ISA & Invest' : cat === 'Pension' ? 'Pensions (SIPPs)' : 'Cash Accounts & Cards';
 
         return `
           <div class="rounded-2xl border border-slate-200 overflow-hidden">
@@ -2948,7 +2715,7 @@
                 <span class="w-2.5 h-2.5 rounded-full ${style.dot}"></span>
                 <h3 class="text-sm font-bold text-slate-900">${catHeading} (${catAccounts.length})</h3>
               </div>
-              <span class="text-xs text-slate-500">Balance (£) &amp; Interest Rate (%)</span>
+              <span class="text-xs text-slate-500">Balance (£) &amp; AER (%)</span>
             </div>
 
             <div class="divide-y divide-slate-100 bg-white">
@@ -2986,7 +2753,7 @@
                     </div>
 
                     <div class="sm:col-span-2">
-                      <label class="block sm:hidden text-[11px] font-medium text-slate-500 mb-1">Interest Rate (%)</label>
+                      <label class="block sm:hidden text-[11px] font-medium text-slate-500 mb-1">AER (%)</label>
                       <div class="relative">
                         <input
                           type="number"
@@ -3032,9 +2799,9 @@
       });
       const total = cash + shares + pension;
       document.getElementById('entrySubCash').textContent = `Cash: ${formatGBP(cash)}`;
-      document.getElementById('entrySubShares').textContent = `Shares ISA: ${formatGBP(shares)}`;
+      document.getElementById('entrySubShares').textContent = `Shares: ${formatGBP(shares)}`;
       document.getElementById('entrySubPension').textContent = `Pension: ${formatGBP(pension)}`;
-      document.getElementById('entryLiveNetWorth').textContent = `Total Net Worth: ${formatGBP(total)}`;
+      document.getElementById('entryLiveNetWorth').textContent = `Total Net Wealth: ${formatGBP(total)}`;
     }
 
     function handleAddNewFund() {
@@ -3046,24 +2813,24 @@
 
       const rawCode = codeInput.value.trim();
       if (!rawCode) {
-        showToast('Please enter an account code or name.', 'error');
+        showToast('Please enter an account code.', 'error');
         codeInput.focus();
         return;
       }
 
-      const autoMeta = classifyAccount(rawCode);
+      const autoMeta = classifyAccount(rawCode, null);
       const displayName = autoMeta.displayName;
       const provider = provInput.value.trim() || autoMeta.provider;
       const category = catSelect.value || autoMeta.category;
       const initialAmt = enforceAccountSign(parseFloat(amtInput.value) || 0, autoMeta);
       const initialRate = rateInput.value !== '' ? parseFloat(rateInput.value) : null;
 
-      if (appState.accounts.some(a => normalizeAccountKey(a.rawName) === normalizeAccountKey(rawCode))) {
-        showToast(`An account named "${rawCode}" already exists.`, 'error');
+      if (appState.accounts.some(a => getCanonicalAccountKey(a.rawName) === autoMeta.canonicalKey)) {
+        showToast(`An account matching "${rawCode}" already exists.`, 'error');
         return;
       }
 
-      let newId = slugifyId(rawCode);
+      let newId = slugifyId(autoMeta.canonicalKey);
       while (appState.accounts.some(a => a.id === newId)) {
         newId += '_' + Math.floor(Math.random() * 100);
       }
@@ -3099,14 +2866,14 @@
       if (newRateEl && initialRate !== null) newRateEl.value = initialRate;
       recalcLiveEntryTotals();
 
-      showToast(`Added "${displayName}" (${provider} • ${category}) to your accounts.`, 'success');
+      showToast(`Added "${displayName}" (${provider} • ${category}).`, 'success');
     }
 
     function saveMonthlyEntry(event) {
       event.preventDefault();
       const targetDateKey = document.getElementById('entryDatePicker').value;
       if (!targetDateKey) {
-        showToast('Please select a snapshot date.', 'error');
+        showToast('Please select a date.', 'error');
         return;
       }
 
@@ -3122,7 +2889,6 @@
           const rate = rateEl && rateEl.value !== '' ? parseFloat(rateEl.value) : null;
           entries[acc.id] = { amount, rate };
         } else if (fallbackSnap && fallbackSnap.entries[acc.id]) {
-          // Preserve hidden zero-balance accounts cleanly
           entries[acc.id] = Object.assign({}, fallbackSnap.entries[acc.id]);
         }
       });
@@ -3138,12 +2904,63 @@
       saveToLocalStorage();
       renderAll();
       switchTab('overview');
-      showToast(`Saved ${label} snapshot and updated your Overview.`, 'success');
+      showToast(`Saved ${label} and updated your Overview.`, 'success');
     }
 
     /**
      * =========================================================================
-     * 14. UI HELPERS
+     * 13. TAB 4: HISTORY & EXPORT TABLE
+     * =========================================================================
+     */
+    function renderHistoryTable() {
+      const sorted = sortSnapshots(appState.snapshots).reverse();
+      const tbody = document.getElementById('historyTableBody');
+      if (!tbody) return;
+
+      if (sorted.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-slate-400 text-sm">No recorded snapshots yet. Import an Excel file or add an entry to begin.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = sorted.map(snap => {
+        const t = computeSnapshotTotals(snap);
+        return `
+          <tr class="hover:bg-violet-50/40 transition">
+            <td class="py-3.5 px-5 font-bold text-slate-900">${escapeHtml(snap.label)}</td>
+            <td class="py-3.5 px-4 text-right font-semibold text-emerald-700">${formatGBP(t.Cash)}</td>
+            <td class="py-3.5 px-4 text-right font-semibold text-violet-700">${formatGBP(t.Shares)}</td>
+            <td class="py-3.5 px-4 text-right font-semibold text-amber-700">${formatGBP(t.Pension)}</td>
+            <td class="py-3.5 px-4 text-right font-extrabold text-slate-900">${formatGBP(t.total)}</td>
+            <td class="py-3.5 px-5 text-right whitespace-nowrap">
+              <button type="button" data-edit-date="${snap.dateKey}" class="hist-edit-btn text-xs font-bold text-violet-700 hover:text-violet-900 mr-3 cursor-pointer">Edit</button>
+              <button type="button" data-del-date="${snap.dateKey}" class="hist-del-btn text-xs font-semibold text-rose-600 hover:text-rose-800 cursor-pointer">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.querySelectorAll('.hist-edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dk = btn.getAttribute('data-edit-date');
+          document.getElementById('entryDatePicker').value = dk;
+          switchTab('entry');
+        });
+      });
+
+      tbody.querySelectorAll('.hist-del-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dk = btn.getAttribute('data-del-date');
+          appState.snapshots = appState.snapshots.filter(s => s.dateKey !== dk);
+          saveToLocalStorage();
+          renderAll();
+          showToast('Deleted snapshot.', 'info');
+        });
+      });
+    }
+
+    /**
+     * =========================================================================
+     * 14. UI UTILITIES
      * =========================================================================
      */
     function escapeHtml(str) {
