@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Neon Wealth Tracker — Cash, ISA &amp; Pension</title>
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Multi-CDN Fallback Loader for SheetJS (XLSX) and Chart.js (iPad Chrome & Safari safe) -->
+  <!-- Multi-CDN Fallback Loader for SheetJS (XLSX) and Chart.js -->
   <script>
     (function loadLibrariesWithFallback() {
       function loadChain(urls, index, globalName) {
@@ -41,6 +42,7 @@
         radial-gradient(circle at 50% 100%, rgba(0, 245, 212, 0.07), transparent 45%);
       color: #e2e8f0;
     }
+
     /* iOS WebKit (iPad Chrome & Safari) reliable file input: never display:none or 0x0 */
     .ios-webkit-file-input {
       position: fixed;
@@ -51,6 +53,7 @@
       opacity: 0.01;
       z-index: -1;
     }
+
     /* Neon Dark Glass Cards & Glow Accents */
     .neon-card {
       background: rgba(15, 23, 42, 0.86);
@@ -64,7 +67,7 @@
       box-shadow: 0 0 24px rgba(56, 189, 248, 0.14), inset 0 1px 0 rgba(56, 189, 248, 0.2);
     }
     .glow-cash {
-      border-color: rgba(0, 245, 212, 0.36);
+      border-color: rgba(0, 245, 212, 0.38);
       box-shadow: 0 0 22px rgba(0, 245, 212, 0.11);
     }
     .glow-shares {
@@ -75,28 +78,39 @@
       border-color: rgba(251, 191, 36, 0.38);
       box-shadow: 0 0 22px rgba(251, 191, 36, 0.11);
     }
+
+    /* Smooth touch horizontal scrolling for the expanded month-by-month timeline */
+    .chart-scroll-container {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #38bdf8 #0b1120;
+    }
+
     input[type="date"]::-webkit-calendar-picker-indicator {
       filter: invert(0.85);
     }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0b1120; }
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #0b1120; border-radius: 9999px; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
     ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-cyan-400/30 selection:text-cyan-100">
 
-  <!-- Off-screen 24x24 file inputs (no display:none, no restrictive accept filter for iPadOS) -->
+  <!-- Accessible off-screen 24x24 file inputs for iPadOS Chrome & Safari -->
   <input id="excelFileInput" type="file" multiple class="ios-webkit-file-input" />
   <input id="jsonBackupInput" type="file" class="ios-webkit-file-input" />
 
   <!-- ===================================================================== -->
   <!-- TOP NEON HEADER BAR                                                   -->
   <!-- ===================================================================== -->
-  <header class="sticky top-0 z-30 bg-[#070b14]/90 backdrop-blur-md border-b border-sky-500/20 shadow-lg shadow-black/40">
+  <header class="sticky top-0 z-30 bg-[#070b14]/92 backdrop-blur-md border-b border-sky-500/20 shadow-lg shadow-black/40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex flex-wrap items-center justify-between py-3 gap-3">
-        <!-- Brand & 100% Local Security Trigger -->
+
+        <!-- Brand & Active Snapshot Badge -->
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500/25 via-violet-500/25 to-emerald-400/25 border border-sky-400/40 flex items-center justify-center shadow-[0_0_16px_rgba(56,189,248,0.28)] shrink-0">
             <svg class="w-5 h-5 text-[#00f5d4]" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
@@ -108,35 +122,24 @@
               <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">
                 Neon <span class="text-[#38bdf8]">Wealth</span> <span class="text-[#00f5d4]">Tracker</span>
               </h1>
-              <button type="button" id="btnOpenSecurity" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#00f5d4]/10 hover:bg-[#00f5d4]/20 text-[#00f5d4] border border-[#00f5d4]/35 transition cursor-pointer" title="Local-only browser storage & privacy">
+              <span id="headerActiveSnapshotBadge" class="hidden inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#38bdf8]/15 text-[#38bdf8] border border-[#38bdf8]/40">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]"></span>
+                <span id="headerActiveSnapshotText">—</span>
+              </span>
+              <button type="button" id="btnOpenSecurity" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#00f5d4]/10 hover:bg-[#00f5d4]/20 text-[#00f5d4] border border-[#00f5d4]/35 transition cursor-pointer" title="100% Local Browser Storage">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
-                <span>100% Local &amp; Private</span>
+                <span>100% Local</span>
               </button>
             </div>
             <p class="text-[11px] text-slate-400">Cash &bull; Shares ISAs &bull; SIPP Pensions</p>
           </div>
         </div>
 
-        <!-- Top-Right Live £25/day Counter + Action Buttons -->
+        <!-- Top-Right Action Controls & Live £25/Day Interest Ticker -->
         <div class="flex flex-wrap items-center gap-2 sm:gap-2.5 ml-auto">
-          <!-- LIVE NEON COUNTER: INTEREST EARNED THIS YEAR (£25/DAY) -->
-          <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-[#00f5d4]/10 border border-[#00f5d4]/40 shadow-[0_0_18px_rgba(0,245,212,0.16)]" title="£25/day inclusive since January 1st">
-            <div class="w-7 h-7 rounded-lg bg-[#00f5d4] text-[#070b14] flex items-center justify-center font-black text-sm shrink-0">£</div>
-            <div>
-              <div class="flex items-center gap-1.5">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-[#00f5d4]">Interest Earned This Year</span>
-                <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#00f5d4] animate-pulse"></span>
-              </div>
-              <div class="flex items-baseline gap-2">
-                <span id="ytdInterestAmount" class="text-sm sm:text-base font-extrabold text-white tracking-tight">£0</span>
-                <span id="ytdInterestSubtext" class="text-[10px] font-semibold text-cyan-200/80">+£25/day</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Header Actions -->
+          <!-- Action Buttons -->
           <div class="flex flex-wrap items-center gap-1.5">
             <label for="excelFileInput" role="button" tabindex="0" class="trigger-file-upload inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold text-[#070b14] bg-[#38bdf8] hover:bg-sky-300 active:bg-sky-400 rounded-xl shadow-[0_0_16px_rgba(56,189,248,0.4)] transition cursor-pointer select-none">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
@@ -145,14 +148,14 @@
               <span>+ Import Excel</span>
             </label>
 
-            <button type="button" id="btnOpenInspector" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#c084fc] bg-[#c084fc]/10 hover:bg-[#c084fc]/20 border border-[#c084fc]/35 rounded-xl transition cursor-pointer" title="Inspect every parsed sheet, date, total & raw account">
+            <button type="button" id="btnOpenInspector" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#c084fc] bg-[#c084fc]/10 hover:bg-[#c084fc]/20 border border-[#c084fc]/35 rounded-xl transition cursor-pointer" title="Inspect every parsed sheet & account">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
               </svg>
               <span class="hidden sm:inline">Sheet Inspector</span>
             </button>
 
-            <button type="button" id="btnHeaderExport" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#00f5d4] bg-[#00f5d4]/10 hover:bg-[#00f5d4]/20 border border-[#00f5d4]/35 rounded-xl transition cursor-pointer" title="Export all sheets to Excel (.xlsx)">
+            <button type="button" id="btnHeaderExport" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#00f5d4] bg-[#00f5d4]/10 hover:bg-[#00f5d4]/20 border border-[#00f5d4]/35 rounded-xl transition cursor-pointer" title="Export all snapshots to Excel (.xlsx)">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
               </svg>
@@ -163,28 +166,43 @@
               <span>Clear Data</span>
             </button>
           </div>
+
+          <!-- LIVE TICKER: INTEREST EARNED THIS YEAR (£25/DAY, TICKING EVERY SECOND) -->
+          <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-[#00f5d4]/10 border border-[#00f5d4]/40 shadow-[0_0_18px_rgba(0,245,212,0.16)]" title="Real-time YTD accrued interest at £25/day since January 1st">
+            <div class="w-7 h-7 rounded-lg bg-[#00f5d4] text-[#070b14] flex items-center justify-center font-black text-sm shrink-0">£</div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-[#00f5d4]">Interest Earned This Year</span>
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#00f5d4] animate-pulse"></span>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span id="ytdInterestAmount" class="text-sm sm:text-base font-extrabold text-white tracking-tight tabular-nums">£0.00</span>
+                <span id="ytdInterestSubtext" class="text-[10px] font-semibold text-cyan-200/80">+£25/day live</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- 3 De-cluttered Navigation Tabs -->
+      <!-- 2-Tab Navigation Bar -->
       <nav id="mainNavTabs" class="hidden flex space-x-1 sm:space-x-2 overflow-x-auto pt-1" aria-label="Main Tabs">
         <button type="button" data-tab="overview" id="tab-overview" class="tab-btn whitespace-nowrap py-2.5 px-4 text-xs sm:text-sm font-bold rounded-t-xl bg-[#0f172a] text-[#38bdf8] border-t border-x border-sky-400/40 flex items-center gap-2 transition cursor-pointer">
-          <svg class="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>
+          <svg class="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+          </svg>
           Overview
         </button>
-        <button type="button" data-tab="insights" id="tab-insights" class="tab-btn whitespace-nowrap py-2.5 px-4 text-xs sm:text-sm font-semibold rounded-t-xl text-slate-400 hover:text-white hover:bg-white/5 flex items-center gap-2 transition cursor-pointer">
-          <svg class="w-4 h-4 text-[#c084fc]" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
-          Providers &amp; Insights (<span id="navProviderCount">0</span>)
-        </button>
-        <button type="button" data-tab="entry" id="tab-entry" class="tab-btn whitespace-nowrap py-2.5 px-4 text-xs sm:text-sm font-semibold rounded-t-xl text-slate-400 hover:text-white hover:bg-white/5 flex items-center gap-2 transition cursor-pointer">
-          <svg class="w-4 h-4 text-[#00f5d4]" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          Add / Edit Month (<span id="navHistoryCount">0</span>)
+        <button type="button" data-tab="update" id="tab-update" class="tab-btn whitespace-nowrap py-2.5 px-4 text-xs sm:text-sm font-semibold rounded-t-xl text-slate-400 hover:text-white hover:bg-white/5 flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-[#00f5d4]" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Monthly Update (<span id="navHistoryCount">0</span>)
         </button>
       </nav>
     </div>
   </header>
 
-  <!-- Live Neon Loading / Progress Banner -->
+  <!-- Live Loading / Progress Banner -->
   <div id="liveStatusBar" class="hidden bg-sky-500/20 border-b border-sky-400/40 text-sky-200 text-xs sm:text-sm font-bold px-4 py-2.5 text-center backdrop-blur-md">
     <span id="liveStatusText">Reading spreadsheet(s)...</span>
   </div>
@@ -229,18 +247,18 @@
             Neon Wealth, ISA &amp; Pension Tracker
           </h2>
           <p class="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto mb-6 leading-relaxed">
-            Starts completely empty with <strong class="text-white">zero pre-loaded balances</strong>. Upload one or more Excel workbooks (<code class="font-mono text-xs bg-slate-800 px-1.5 py-0.5 rounded text-[#38bdf8]">.xlsx</code>) or start blank to enter monthly figures—all data stays 100% locally in your browser.
+            Starts completely empty with <strong class="text-white">zero pre-loaded balances</strong>. Upload your multi-sheet Excel workbook (<code class="font-mono text-xs bg-slate-800 px-1.5 py-0.5 rounded text-[#38bdf8]">.xlsx</code>) or start blank to enter monthly figures — plotted on a true <strong class="text-[#00f5d4]">uniform month-by-month</strong> timeline.
           </p>
 
-          <!-- Local Privacy Assurance Banner -->
+          <!-- Privacy Banner -->
           <div class="max-w-2xl mx-auto mb-7 px-4 py-3 rounded-2xl bg-[#00f5d4]/10 border border-[#00f5d4]/30 text-cyan-100 text-xs flex items-center justify-center gap-2.5">
             <svg class="w-4 h-4 text-[#00f5d4] shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
             </svg>
-            <span><strong>Zero Cloud Uploads:</strong> Parsed directly in iPad/desktop browser memory with dual SheetJS + native ZIP/XML offline fallback.</span>
+            <span><strong>100% Local &amp; Offline-Capable:</strong> Dual SheetJS + built-in native browser ZIP/XML parser with zero cloud uploads.</span>
           </div>
 
-          <!-- Two Primary Actions -->
+          <!-- Primary Upload / Start Blank Buttons -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
             <label for="excelFileInput" role="button" tabindex="0" class="trigger-file-upload group text-left p-6 rounded-2xl bg-gradient-to-br from-sky-500/20 via-indigo-600/20 to-violet-600/25 hover:from-sky-500/30 hover:to-violet-600/35 border border-sky-400/50 text-white shadow-[0_0_25px_rgba(56,189,248,0.18)] transition flex flex-col justify-between cursor-pointer select-none">
               <div class="flex items-center justify-between mb-4">
@@ -254,7 +272,7 @@
               <div>
                 <div class="text-lg font-extrabold mb-1 text-white">Upload Spreadsheet(s)</div>
                 <p class="text-xs text-slate-300 leading-relaxed">
-                  Reads every date tab cleanly, separates <strong class="text-[#fbbf24]">T212 SIPP</strong> &amp; <strong class="text-[#fbbf24]">HL SIPP</strong> pensions from Shares ISAs, and lets you verify exact totals per tab.
+                  Reads every date tab cleanly, applies latest-November retroactive tagging, and plots every calendar month at equal width.
                 </p>
               </div>
             </label>
@@ -288,21 +306,9 @@
     </section>
 
     <!-- ===================================================================== -->
-    <!-- TAB 1: OVERVIEW (FINAL SNAPSHOT BANNER + 4 NEON KPIS + CHART)         -->
+    <!-- TAB 1: OVERVIEW (KPIS + EXPANDED MONTH-BY-MONTH CHART + DONUT + LIST) -->
     <!-- ===================================================================== -->
     <section id="view-overview" class="space-y-6 hidden">
-      <!-- Prominent Final Snapshot Status Bar -->
-      <div class="neon-card glow-sky rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-        <div class="flex flex-wrap items-center gap-2.5">
-          <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#00f5d4] shadow-[0_0_10px_#00f5d4]"></span>
-          <span class="text-xs font-semibold text-slate-300">Active Final Snapshot:</span>
-          <span id="overviewLatestBannerBadge" class="text-xs sm:text-sm font-extrabold px-3 py-0.5 rounded-full bg-[#38bdf8]/20 text-[#38bdf8] border border-[#38bdf8]/40">Latest Snapshot: —</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <span id="overviewRangeSummary" class="text-xs font-medium text-slate-400">0 snapshots loaded</span>
-          <button type="button" id="btnOverviewInspect" class="text-xs font-bold text-[#c084fc] hover:underline cursor-pointer">Inspect All Tabs &rarr;</button>
-        </div>
-      </div>
 
       <!-- 4 Neon KPI Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -312,7 +318,7 @@
             <span class="text-xs font-bold uppercase tracking-wider text-[#38bdf8]">Total Net Worth</span>
             <span id="kpiDateBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#38bdf8]/15 text-sky-200 border border-[#38bdf8]/35">—</span>
           </div>
-          <div id="kpiTotalWorth" class="text-2xl sm:text-3xl font-black tracking-tight text-white">£0</div>
+          <div id="kpiTotalWorth" class="text-2xl sm:text-3xl font-black tracking-tight text-white tabular-nums">£0</div>
           <div id="kpiTotalChange" class="mt-2 text-xs font-medium text-slate-300">—</div>
         </div>
 
@@ -325,7 +331,7 @@
             </span>
             <span id="kpiCashShare" class="text-xs font-bold text-[#00f5d4] bg-[#00f5d4]/15 px-2.5 py-0.5 rounded-full">0%</span>
           </div>
-          <div id="kpiCashTotal" class="text-2xl sm:text-3xl font-black tracking-tight text-white">£0</div>
+          <div id="kpiCashTotal" class="text-2xl sm:text-3xl font-black tracking-tight text-white tabular-nums">£0</div>
           <div id="kpiCashSub" class="mt-2 text-xs font-medium text-cyan-200/80">—</div>
         </div>
 
@@ -338,7 +344,7 @@
             </span>
             <span id="kpiSharesShare" class="text-xs font-bold text-[#c084fc] bg-[#c084fc]/15 px-2.5 py-0.5 rounded-full">0%</span>
           </div>
-          <div id="kpiSharesTotal" class="text-2xl sm:text-3xl font-black tracking-tight text-white">£0</div>
+          <div id="kpiSharesTotal" class="text-2xl sm:text-3xl font-black tracking-tight text-white tabular-nums">£0</div>
           <div id="kpiSharesSub" class="mt-2 text-xs font-medium text-purple-200/80">—</div>
         </div>
 
@@ -351,63 +357,76 @@
             </span>
             <span id="kpiPensionShare" class="text-xs font-bold text-[#fbbf24] bg-[#fbbf24]/15 px-2.5 py-0.5 rounded-full">0%</span>
           </div>
-          <div id="kpiPensionTotal" class="text-2xl sm:text-3xl font-black tracking-tight text-white">£0</div>
+          <div id="kpiPensionTotal" class="text-2xl sm:text-3xl font-black tracking-tight text-white tabular-nums">£0</div>
           <div id="kpiPensionSub" class="mt-2 text-xs font-medium text-amber-200/80">—</div>
         </div>
       </div>
 
-      <!-- Loaded Sheets Chronological Strip -->
-      <div id="loadedSheetsStripCard" class="hidden neon-card rounded-2xl p-4">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Loaded Sheets Timeline (Chronological)</span>
-          <span class="text-[11px] text-slate-400">Final glowing card drives the KPI summary above</span>
-        </div>
-        <div id="loadedSheetsStripList" class="flex items-center gap-2 overflow-x-auto pb-1.5"></div>
-      </div>
-
-      <!-- Running Totals Over Time Chart (Proportional Calendar-Time X-Axis) -->
+      <!-- =================================================================== -->
+      <!-- EXPANDED UNIFORM MONTH-BY-MONTH RUNNING TOTALS OVER TIME CHART      -->
+      <!-- =================================================================== -->
       <div class="neon-card rounded-2xl p-5 sm:p-6">
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-slate-800">
           <div>
-            <h2 class="text-base sm:text-lg font-extrabold text-white">Running Totals Over Time</h2>
-            <p class="text-xs text-slate-400">True proportional calendar axis — spacing reflects exact elapsed months &amp; days</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-base sm:text-lg font-extrabold text-white">Running Totals Over Time</h2>
+              <span id="chartSpanBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#00f5d4]/15 text-[#00f5d4] border border-[#00f5d4]/30">0 months</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Strictly equal 1-month increments — empty months keep full calendar width &bull; scroll horizontally in Expanded mode</p>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
+            <!-- Expanded Month-by-Month vs Fit to Screen Toggle -->
+            <div class="inline-flex rounded-xl bg-slate-900/95 border border-sky-500/35 p-1 text-xs font-bold">
+              <button type="button" data-width-mode="expanded" id="wmode-expanded" class="width-mode-btn px-3 py-1.5 rounded-lg bg-[#38bdf8] text-[#070b14] transition cursor-pointer">
+                Month-by-Month (Expanded)
+              </button>
+              <button type="button" data-width-mode="fit" id="wmode-fit" class="width-mode-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">
+                Fit to Screen
+              </button>
+            </div>
+
             <!-- Animation Playback Controls -->
-            <div class="inline-flex items-center gap-1 bg-slate-900/90 border border-sky-500/30 rounded-xl p-1">
-              <button type="button" id="btnPlayAnimation" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold bg-[#38bdf8] text-[#070b14] hover:bg-sky-300 transition cursor-pointer">
+            <div class="inline-flex items-center gap-1 bg-slate-900/90 border border-purple-500/35 rounded-xl p-1">
+              <button type="button" id="btnPlayAnimation" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold bg-[#c084fc] text-[#070b14] hover:bg-purple-300 transition cursor-pointer">
                 <svg id="playIconSvg" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <span id="playBtnLabel">Play Growth Animation</span>
+                <span id="playBtnLabel">Play Growth</span>
               </button>
               <button type="button" id="btnResetAnim" class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800 transition cursor-pointer">Full</button>
-              <button type="button" id="btnAnimSpeed" class="px-2.5 py-1.5 rounded-lg text-xs font-extrabold text-[#38bdf8] bg-slate-800 border border-slate-700 hover:bg-slate-700 transition cursor-pointer">1x</button>
+              <button type="button" id="btnAnimSpeed" class="px-2.5 py-1.5 rounded-lg text-xs font-extrabold text-[#c084fc] bg-slate-800 border border-slate-700 hover:bg-slate-700 transition cursor-pointer">1x</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Secondary Control Row: Chart Mode + Range Filters + Scroll Hint -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-3 pb-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="inline-flex rounded-xl bg-slate-900/90 border border-slate-800 p-1 text-xs font-bold">
+              <button type="button" data-mode="stacked" id="mode-stacked" class="chart-mode-btn px-2.5 py-1 rounded-lg bg-slate-800 text-white transition cursor-pointer">Stacked Area</button>
+              <button type="button" data-mode="lines" id="mode-lines" class="chart-mode-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">Separate Lines</button>
+              <button type="button" data-mode="total" id="mode-total" class="chart-mode-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">Total Line</button>
             </div>
 
-            <!-- Chart Mode Toggles -->
             <div class="inline-flex rounded-xl bg-slate-900/90 border border-slate-800 p-1 text-xs font-bold">
-              <button type="button" data-mode="stacked" id="mode-stacked" class="chart-mode-btn px-2.5 py-1.5 rounded-lg bg-slate-800 text-white transition cursor-pointer">Stacked Area</button>
-              <button type="button" data-mode="lines" id="mode-lines" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">Separate Lines</button>
-              <button type="button" data-mode="total" id="mode-total" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">Total Line</button>
+              <button type="button" data-tf="6M" id="tf-6M" class="tf-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">6M</button>
+              <button type="button" data-tf="1Y" id="tf-1Y" class="tf-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">1Y</button>
+              <button type="button" data-tf="3Y" id="tf-3Y" class="tf-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">3Y</button>
+              <button type="button" data-tf="ALL" id="tf-ALL" class="tf-btn px-2.5 py-1 rounded-lg bg-slate-800 text-white transition cursor-pointer">All</button>
             </div>
+          </div>
 
-            <!-- Timeframe Filters -->
-            <div class="inline-flex rounded-xl bg-slate-900/90 border border-slate-800 p-1 text-xs font-bold">
-              <button type="button" data-tf="6M" id="tf-6M" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">6M</button>
-              <button type="button" data-tf="1Y" id="tf-1Y" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">1Y</button>
-              <button type="button" data-tf="3Y" id="tf-3Y" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">3Y</button>
-              <button type="button" data-tf="ALL" id="tf-ALL" class="tf-btn px-2.5 py-1.5 rounded-lg bg-slate-800 text-white transition cursor-pointer">All</button>
-            </div>
+          <div id="scrollHintPill" class="hidden text-[11px] font-semibold text-sky-300/90 flex items-center gap-1.5">
+            <span>&larr; Swipe / scroll to explore every month &rarr;</span>
           </div>
         </div>
 
         <!-- Animation Progress Scrubber -->
-        <div id="animationProgressWrapper" class="hidden mt-3 flex items-center gap-3">
-          <span id="animCurrentMonthBadge" class="text-xs font-extrabold text-[#38bdf8] bg-[#38bdf8]/15 border border-[#38bdf8]/35 px-2.5 py-0.5 rounded-md shrink-0">—</span>
+        <div id="animationProgressWrapper" class="hidden mt-2.5 flex items-center gap-3">
+          <span id="animCurrentMonthBadge" class="text-xs font-extrabold text-[#c084fc] bg-[#c084fc]/15 border border-[#c084fc]/35 px-2.5 py-0.5 rounded-md shrink-0 tabular-nums">—</span>
           <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-            <div id="animProgressBar" class="h-full bg-gradient-to-r from-[#00f5d4] via-[#c084fc] to-[#fbbf24] transition-all duration-150" style="width: 100%"></div>
+            <div id="animProgressBar" class="h-full bg-gradient-to-r from-[#00f5d4] via-[#c084fc] to-[#fbbf24]" style="width: 100%"></div>
           </div>
-          <span id="animStepCounter" class="text-xs text-slate-400 shrink-0">0 / 0</span>
+          <span id="animStepCounter" class="text-xs text-slate-300 font-bold shrink-0 tabular-nums">0%</span>
         </div>
 
         <!-- Empty State -->
@@ -420,61 +439,79 @@
           </div>
         </div>
 
-        <!-- Chart Canvas + Proportional SVG Fallback -->
-        <div id="overviewChartWrapper" class="relative mt-4 h-[340px] sm:h-[395px] w-full">
-          <canvas id="portfolioChartCanvas"></canvas>
-          <div id="chartSvgFallback" class="hidden w-full h-full"></div>
+        <!-- Smooth Horizontal Scroll Container + Inner Expanded Canvas / SVG Fallback -->
+        <div id="chartScrollContainer" class="chart-scroll-container mt-3 pb-2 rounded-xl">
+          <div id="chartInnerCanvasWrap" class="relative h-[350px] sm:h-[405px]" style="width: 100%;">
+            <canvas id="portfolioChartCanvas"></canvas>
+            <div id="chartSvgFallback" class="hidden w-full h-full"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================== -->
+      <!-- ASSET ALLOCATION DONUT + LATEST SNAPSHOT ACCOUNT BREAKDOWN          -->
+      <!-- =================================================================== -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Asset Allocation Donut Card (4 cols) -->
+        <div class="lg:col-span-4 neon-card rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h3 class="text-base font-extrabold text-white">Asset Allocation</h3>
+              <span id="donutDateLabel" class="text-[11px] font-bold text-slate-400">—</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">Cash vs Shares ISA vs SIPP Pensions</p>
+          </div>
+
+          <div class="relative h-[220px] w-full flex items-center justify-center">
+            <canvas id="allocationDonutCanvas"></canvas>
+            <div id="donutSvgFallback" class="hidden w-full h-full flex items-center justify-center"></div>
+          </div>
+
+          <div id="donutLegendList" class="mt-4 pt-4 border-t border-slate-800 space-y-2 text-xs"></div>
+        </div>
+
+        <!-- Latest Snapshot Account Breakdown Table (8 cols) -->
+        <div class="lg:col-span-8 neon-card rounded-2xl overflow-hidden flex flex-col">
+          <div class="p-5 sm:p-6 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-base font-extrabold text-white">Account Breakdown (<span id="breakdownDateLabel">—</span>)</h3>
+              <p class="text-xs text-slate-400">Filter by category or click any badge to reclassify an account instantly</p>
+            </div>
+            <div class="inline-flex rounded-xl bg-slate-900/90 border border-slate-800 p-1 text-xs font-bold">
+              <button type="button" data-acc-filter="all" id="af-all" class="acc-filter-btn px-2.5 py-1 rounded-lg bg-[#38bdf8] text-[#070b14] transition cursor-pointer">All</button>
+              <button type="button" data-acc-filter="cash" id="af-cash" class="acc-filter-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">Cash</button>
+              <button type="button" data-acc-filter="shares" id="af-shares" class="acc-filter-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">Shares</button>
+              <button type="button" data-acc-filter="pension" id="af-pension" class="acc-filter-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer">Pension</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto flex-1 max-h-[420px] overflow-y-auto">
+            <table class="w-full text-left border-collapse">
+              <thead class="sticky top-0 bg-slate-900/95 backdrop-blur-md z-10">
+                <tr class="border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <th class="py-3 px-5">Account</th>
+                  <th class="py-3 px-3">Provider</th>
+                  <th class="py-3 px-3">Category</th>
+                  <th class="py-3 px-4 text-right">Balance (£)</th>
+                  <th class="py-3 px-4 text-right">AER %</th>
+                </tr>
+              </thead>
+              <tbody id="accountBreakdownBody" class="divide-y divide-slate-800/80 text-xs sm:text-sm"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- ===================================================================== -->
-    <!-- TAB 2: PROVIDERS & INSIGHTS                                           -->
+    <!-- TAB 2: MONTHLY UPDATE (PRE-FILLED FORM + RECORDED HISTORY)            -->
     <!-- ===================================================================== -->
-    <section id="view-insights" class="space-y-6 hidden">
-      <!-- Dynamic Portfolio Interpretation -->
-      <div class="neon-card rounded-2xl p-5 sm:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div>
-            <h2 class="text-base sm:text-lg font-extrabold text-white">Dynamic Portfolio Interpretation</h2>
-            <p class="text-xs text-slate-400">Weighted Cash AER, projected annual interest, liquidity split, and wealth trajectory</p>
-          </div>
-          <span id="insightsSnapshotLabel" class="text-xs font-bold px-3 py-1 rounded-full bg-[#38bdf8]/15 text-[#38bdf8] border border-[#38bdf8]/35">—</span>
-        </div>
-        <div id="dynamicInsightsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-      </div>
-
-      <!-- Provider Breakdown -->
-      <div class="neon-card rounded-2xl p-5 sm:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div>
-            <h3 class="text-base sm:text-lg font-extrabold text-white">Provider &amp; Bank Breakdown</h3>
-            <p class="text-xs text-slate-400">Combined balances per institution as of your latest snapshot</p>
-          </div>
-          <span id="providerCountBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-[#00f5d4]/15 text-[#00f5d4] border border-[#00f5d4]/35">0 Providers</span>
-        </div>
-        <div id="providerBreakdownGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5"></div>
-      </div>
-
-      <!-- Quick 1-Click Account Category Switcher -->
-      <div class="neon-card rounded-2xl p-5 sm:p-6">
-        <div class="mb-4">
-          <h3 class="text-base font-extrabold text-white">Account Classification (<span id="accountsMappingCount">0</span>)</h3>
-          <p class="text-xs text-slate-400">Instantly switch any account between <strong class="text-[#00f5d4]">Cash</strong>, <strong class="text-[#c084fc]">Shares</strong>, and <strong class="text-[#fbbf24]">Pension</strong></p>
-        </div>
-        <div id="accountsRulesList" class="divide-y divide-slate-800 border border-slate-800 rounded-xl overflow-hidden max-h-96 overflow-y-auto"></div>
-      </div>
-    </section>
-
-    <!-- ===================================================================== -->
-    <!-- TAB 3: ADD / EDIT MONTH & RECORDED HISTORY                            -->
-    <!-- ===================================================================== -->
-    <section id="view-entry" class="max-w-4xl mx-auto space-y-6 hidden">
+    <section id="view-update" class="max-w-4xl mx-auto space-y-6 hidden">
       <div class="neon-card rounded-2xl p-5 sm:p-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-800">
           <div>
-            <h2 class="text-lg font-extrabold text-white">Add / Edit Month</h2>
-            <p class="text-xs text-slate-400 mt-0.5">Pre-filled automatically from your immediately preceding snapshot's balances &amp; AER (%).</p>
+            <h2 class="text-lg font-extrabold text-white">Monthly Update</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Cloned automatically from your latest snapshot so you only edit what changed.</p>
           </div>
           <div class="flex flex-wrap items-end gap-2">
             <div>
@@ -496,26 +533,31 @@
           </label>
         </div>
 
-        <!-- Live Subtotals Strip -->
-        <div class="mt-2 px-4 py-2.5 rounded-xl bg-[#070b14] border border-sky-500/30 flex flex-wrap items-center justify-between gap-3 text-xs font-extrabold">
-          <span class="text-[#00f5d4]" id="entrySubCash">Cash: £0</span>
-          <span class="text-[#c084fc]" id="entrySubShares">Shares: £0</span>
-          <span class="text-[#fbbf24]" id="entrySubPension">Pension: £0</span>
-          <span class="text-[#38bdf8] text-sm" id="entryLiveNetWorth">Total Net Worth: £0</span>
+        <!-- Live Subtotals & Delta Strip -->
+        <div class="mt-2 px-4 py-3 rounded-xl bg-[#070b14] border border-sky-500/35 flex flex-wrap items-center justify-between gap-3 text-xs font-extrabold">
+          <div class="flex flex-wrap items-center gap-4">
+            <span class="text-[#00f5d4]" id="entrySubCash">Cash: £0</span>
+            <span class="text-[#c084fc]" id="entrySubShares">Shares: £0</span>
+            <span class="text-[#fbbf24]" id="entrySubPension">Pension: £0</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-[#38bdf8] text-sm" id="entryLiveNetWorth">Total: £0</span>
+            <span id="entryLiveDelta" class="px-2.5 py-0.5 rounded-full text-[11px] bg-slate-800 text-slate-300">Delta: —</span>
+          </div>
         </div>
 
-        <!-- Prominent + Add Another Account Panel -->
+        <!-- Add Another Account Panel -->
         <div class="mt-5 rounded-2xl bg-[#c084fc]/10 border border-dashed border-[#c084fc]/40 p-4 sm:p-5">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-xl bg-[#c084fc] text-[#070b14] flex items-center justify-center font-black">+</div>
               <div>
                 <h3 class="text-sm font-extrabold text-white">Add Another Account</h3>
-                <p class="text-xs text-purple-200/80">Add a new bank pot, ISA, or SIPP — it carries forward to every future month.</p>
+                <p class="text-xs text-purple-200/80">Add a new Cash account, ISA, or SIPP — carries forward to future months.</p>
               </div>
             </div>
             <button type="button" id="btnToggleAddAccount" class="px-3.5 py-1.5 text-xs font-extrabold text-[#070b14] bg-[#c084fc] hover:bg-purple-300 rounded-xl transition cursor-pointer">
-              + Add Another Account
+              Toggle Form
             </button>
           </div>
 
@@ -556,20 +598,20 @@
         <form id="monthlyEntryForm" class="mt-6 space-y-6">
           <div id="entryGroupsContainer" class="space-y-6"></div>
           <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800">
-            <p class="text-xs text-slate-400">Barclaycard is automatically stored as negative even if typed positive.</p>
+            <p class="text-xs text-slate-400">Barclaycard is automatically saved as a negative liability balance.</p>
             <button type="submit" class="px-6 py-3 text-sm font-extrabold text-[#070b14] bg-[#38bdf8] hover:bg-sky-300 rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.35)] transition cursor-pointer">
-              Save Month
+              Save Snapshot
             </button>
           </div>
         </form>
       </div>
 
-      <!-- Recorded Dates & Backups Table -->
+      <!-- Recorded Snapshots & Backups Table -->
       <div class="neon-card rounded-2xl overflow-hidden">
         <div class="p-5 sm:p-6 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="text-base sm:text-lg font-extrabold text-white">Recorded Dates &amp; Backups</h2>
-            <p class="text-xs text-slate-400">Edit or delete any date, or export to Excel (.xlsx) / JSON</p>
+            <h2 class="text-base sm:text-lg font-extrabold text-white">Recorded Snapshots &amp; Backups</h2>
+            <p class="text-xs text-slate-400">Edit or delete any snapshot, or export to Excel (.xlsx) / JSON</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button type="button" id="btnExportJson" class="px-3.5 py-2 text-xs font-bold text-[#38bdf8] bg-[#38bdf8]/10 hover:bg-[#38bdf8]/20 border border-[#38bdf8]/35 rounded-xl transition cursor-pointer">Export JSON</button>
@@ -598,14 +640,14 @@
   </main>
 
   <!-- ======================================================================= -->
-  <!-- MODAL 1: TRANSPARENT IMPORT REVIEW MODAL                                -->
+  <!-- MODAL 1: IMPORT REVIEW MODAL                                            -->
   <!-- ======================================================================= -->
   <div id="importReviewModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="neon-card glow-sky rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
       <div class="px-6 py-4 bg-slate-900/95 border-b border-sky-500/30 flex items-center justify-between gap-2">
         <div>
           <h3 class="text-base sm:text-lg font-extrabold text-white">Review Imported Excel Sheets</h3>
-          <p id="importReviewSubtitle" class="text-xs text-sky-300">Verify EVERY tab, resolved date, account count, exact £ total, and category breakdown.</p>
+          <p id="importReviewSubtitle" class="text-xs text-sky-300">Verify every tab, ISO date, Cash/Shares/Pension split, and exact £ total.</p>
         </div>
         <button type="button" id="btnCloseImportModal" class="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -613,10 +655,9 @@
       </div>
 
       <div class="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1">
-        <!-- Smart Summary Box -->
         <div id="dedupSummaryBox" class="p-4 rounded-xl bg-[#00f5d4]/10 border border-[#00f5d4]/35 text-xs text-cyan-100 space-y-1"></div>
 
-        <!-- Clean Import Toggle (Default ON) -->
+        <!-- Clean Import Toggle (Default Checked) -->
         <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-[#38bdf8]/10 border border-[#38bdf8]/35 text-xs">
           <label class="inline-flex items-center gap-2 font-extrabold text-white cursor-pointer select-none">
             <input type="checkbox" id="cbReplaceExistingData" checked class="w-4 h-4 rounded text-sky-400 bg-slate-900 border-slate-600" />
@@ -625,7 +666,7 @@
           <span class="text-[11px] text-sky-200/80">Clears any older cached snapshots before importing</span>
         </div>
 
-        <!-- ALL Workbook Tabs (Included & Skipped) -->
+        <!-- Detected Tabs -->
         <div>
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-extrabold uppercase tracking-wider text-slate-300">All Workbook Tabs (<span id="reviewSheetCount">0</span> Included)</span>
@@ -657,14 +698,14 @@
   </div>
 
   <!-- ======================================================================= -->
-  <!-- MODAL 2: SHEET INSPECTOR (VIEW EVERY IMPORTED SHEET & RAW ACCOUNTS)     -->
+  <!-- MODAL 2: SHEET INSPECTOR                                                -->
   <!-- ======================================================================= -->
   <div id="sheetInspectorModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="neon-card glow-shares rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
       <div class="px-6 py-4 bg-slate-900/95 border-b border-purple-500/30 flex items-center justify-between gap-2">
         <div>
           <h3 class="text-base sm:text-lg font-extrabold text-white">Sheet Inspector &amp; Raw Account Audit</h3>
-          <p class="text-xs text-purple-300">Select any imported date tab to inspect its exact parsed accounts, categories, and £ totals.</p>
+          <p class="text-xs text-purple-300">Select any imported date tab to audit its accounts, categories, and £ totals.</p>
         </div>
         <button type="button" id="btnCloseInspector" class="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -690,13 +731,12 @@
       </div>
       <div class="p-6 space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
         <div class="p-3.5 rounded-xl bg-[#00f5d4]/10 border border-[#00f5d4]/30 text-cyan-100 space-y-1">
-          <div class="font-bold text-[#00f5d4]">Zero Servers &bull; Zero Cloud Uploads &bull; Zero Tracking</div>
-          <p class="text-xs">Your spreadsheets are parsed directly in browser memory and saved exclusively in this device's <code class="font-mono bg-slate-900 px-1 py-0.5 rounded">localStorage</code>.</p>
+          <div class="font-bold text-[#00f5d4]">Zero Servers &bull; Zero Cloud Uploads &bull; Zero Pre-Loaded Data</div>
+          <p class="text-xs">Spreadsheets are parsed strictly inside browser memory and stored only in this device's <code class="font-mono bg-slate-900 px-1 py-0.5 rounded">localStorage</code>.</p>
         </div>
         <ul class="list-disc pl-4 space-y-1.5 text-xs text-slate-300">
-          <li><strong>No Names, Logins, or Account Numbers:</strong> Only shorthand codes (e.g. <code class="font-mono text-sky-300">MC</code>, <code class="font-mono text-sky-300">T212 sipp</code>) and balances are stored.</li>
-          <li><strong>Zero Pre-Loaded Financial Figures:</strong> The HTML file starts completely empty on every fresh install.</li>
-          <li><strong>Instant Local Wipe:</strong> Use <strong>Wipe Browser Data</strong> anytime to erase browser storage completely.</li>
+          <li><strong>Zero Hardcoded Figures:</strong> Fresh launches contain zero personal financial numbers.</li>
+          <li><strong>Offline Ready:</strong> Built-in ZIP/XML `.xlsx` reader and proportional SVG chart fallback work even without internet.</li>
         </ul>
         <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
           <button type="button" id="btnWipeModalData" class="px-3.5 py-2 text-xs font-bold text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/35 rounded-xl cursor-pointer">Wipe Browser Data</button>
@@ -712,10 +752,10 @@
   <script>
     /**
      * =========================================================================
-     * 1. STATE, NEON PALETTE & TOP-RIGHT £25/DAY LIVE COUNTER
+     * 1. STATE, CONSTANTS & LIVE SECOND-BY-SECOND £25/DAY YTD TICKER
      * =========================================================================
      */
-    const STORAGE_KEY = 'neon_wealth_tracker_v17_clean';
+    const STORAGE_KEY = 'neon_wealth_tracker_uniform_v1';
     const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const MONTH_MAP = {
       jan: 1, january: 1,
@@ -733,9 +773,9 @@
     };
 
     const CATEGORY_META = {
-      cash:    { label: 'Cash',    hex: '#00f5d4', fill: 'rgba(0, 245, 212, 0.22)',   dot: 'bg-[#00f5d4]',   text: 'text-[#00f5d4]' },
-      shares:  { label: 'Shares',  hex: '#c084fc', fill: 'rgba(192, 132, 252, 0.22)', dot: 'bg-[#c084fc]',   text: 'text-[#c084fc]' },
-      pension: { label: 'Pension', hex: '#fbbf24', fill: 'rgba(251, 191, 36, 0.24)',  dot: 'bg-[#fbbf24]',   text: 'text-[#fbbf24]' }
+      cash:    { label: 'Cash',    hex: '#00f5d4', fill: 'rgba(0, 245, 212, 0.22)',   dot: 'bg-[#00f5d4]',   text: 'text-[#00f5d4]',   pill: 'bg-[#00f5d4]/15 text-[#00f5d4] border-[#00f5d4]/35' },
+      shares:  { label: 'Shares',  hex: '#c084fc', fill: 'rgba(192, 132, 252, 0.22)', dot: 'bg-[#c084fc]',   text: 'text-[#c084fc]',   pill: 'bg-[#c084fc]/15 text-[#c084fc] border-[#c084fc]/35' },
+      pension: { label: 'Pension', hex: '#fbbf24', fill: 'rgba(251, 191, 36, 0.24)',  dot: 'bg-[#fbbf24]',   text: 'text-[#fbbf24]',   pill: 'bg-[#fbbf24]/15 text-[#fbbf24] border-[#fbbf24]/35' }
     };
 
     const KNOWN_PROVIDERS = new Set([
@@ -743,28 +783,57 @@
       'Trading 212', 'Virgin Money', 'Barclays', 'Barclaycard'
     ]);
 
+    // Zero pre-loaded personal financial data
     let appState = {
       accounts: [],
       snapshots: [],
-      preferences: { chartMode: 'stacked', timeframe: 'ALL', hideZeroHistoric: true }
+      preferences: {
+        chartMode: 'stacked',
+        chartWidthMode: 'expanded', // 'expanded' (month-by-month scrollable) or 'fit'
+        timeframe: 'ALL',
+        accountFilter: 'all',
+        hideZeroHistoric: true
+      }
     };
 
     let currentTab = 'overview';
     let chartInstance = null;
+    let donutInstance = null;
     let pendingImportBatch = null;
     let statusHideTimer = null;
-    let animationState = { isPlaying: false, timerId: null, currentIndex: null, speed: 1 };
 
-    function updateYtdInterestCounter() {
+    // Smooth calendar-time animation state (advances uniform fractional months per frame)
+    let animState = {
+      isPlaying: false,
+      rafId: null,
+      lastFrameTs: 0,
+      cursorX: null,      // null = full timeline; otherwise fractional month index 0..maxDataX
+      maxDataX: 0,
+      speed: 1            // 1x = 6 months/sec, 2x = 12 months/sec, 4x = 24 months/sec
+    };
+
+    /**
+     * Live real-time YTD accrued interest ticker at £25/day since Jan 1 00:00:00.
+     * Updates every 1000ms for a smooth live-ticking display.
+     */
+    function updateYtdInterestTicker() {
       const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const dayOfYear = Math.floor((todayMidnight - startOfYear) / 86400000) + 1;
-      const earned = Math.max(1, dayOfYear) * 25;
+      const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+      const elapsedDays = Math.max(0, (now.getTime() - startOfYear.getTime()) / 86400000);
+      const accrued = elapsedDays * 25;
+      const dayNumber = Math.floor(elapsedDays) + 1;
+
       const amtEl = document.getElementById('ytdInterestAmount');
       const subEl = document.getElementById('ytdInterestSubtext');
-      if (amtEl) amtEl.textContent = `£${earned.toLocaleString('en-GB')}`;
-      if (subEl) subEl.textContent = `Day ${dayOfYear} of ${now.getFullYear()} (+£25/day)`;
+      if (amtEl) {
+        amtEl.textContent = '£' + accrued.toLocaleString('en-GB', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+      if (subEl) {
+        subEl.textContent = `Day ${dayNumber} of ${now.getFullYear()} (+£25/day)`;
+      }
     }
 
     function setLiveStatus(msg, autoHideMs = 0) {
@@ -774,9 +843,7 @@
       if (statusHideTimer) { clearTimeout(statusHideTimer); statusHideTimer = null; }
       txt.textContent = msg;
       bar.classList.remove('hidden');
-      if (autoHideMs > 0) {
-        statusHideTimer = setTimeout(() => bar.classList.add('hidden'), autoHideMs);
-      }
+      if (autoHideMs > 0) statusHideTimer = setTimeout(() => bar.classList.add('hidden'), autoHideMs);
     }
 
     function showDiagnosticAlert(title, message) {
@@ -797,8 +864,8 @@
      * =========================================================================
      */
     document.addEventListener('DOMContentLoaded', () => {
-      updateYtdInterestCounter();
-      setInterval(updateYtdInterestCounter, 60000);
+      updateYtdInterestTicker();
+      setInterval(updateYtdInterestTicker, 1000);
       loadFromLocalStorage();
       bindEvents();
 
@@ -823,8 +890,8 @@
       });
 
       document.getElementById('btnStartBlank')?.addEventListener('click', () => {
-        enterActiveWorkspace('entry');
-        showToast('Started empty workspace. Add your accounts below.', 'info');
+        enterActiveWorkspace('update');
+        showToast('Started blank workspace. Add your accounts below.', 'info');
       });
       document.getElementById('btnHeaderExport')?.addEventListener('click', exportToExcel);
       document.getElementById('btnHeaderClear')?.addEventListener('click', wipeBrowserData);
@@ -832,7 +899,6 @@
 
       // Inspector Modal
       document.getElementById('btnOpenInspector')?.addEventListener('click', openSheetInspector);
-      document.getElementById('btnOverviewInspect')?.addEventListener('click', openSheetInspector);
       document.getElementById('btnCloseInspector')?.addEventListener('click', () => {
         document.getElementById('sheetInspectorModal')?.classList.add('hidden');
       });
@@ -849,24 +915,43 @@
       });
       document.getElementById('btnWipeModalData')?.addEventListener('click', wipeBrowserData);
 
-      // Tabs
+      // 2-Tab Navigation
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
       });
 
       // Overview Chart Controls
-      document.getElementById('btnEmptyGoAdd')?.addEventListener('click', () => switchTab('entry'));
+      document.getElementById('btnEmptyGoAdd')?.addEventListener('click', () => switchTab('update'));
       document.getElementById('btnPlayAnimation')?.addEventListener('click', toggleTimelineAnimation);
       document.getElementById('btnResetAnim')?.addEventListener('click', resetTimelineAnimation);
       document.getElementById('btnAnimSpeed')?.addEventListener('click', cycleAnimationSpeed);
+
+      document.querySelectorAll('.width-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => setChartWidthMode(btn.getAttribute('data-width-mode')));
+      });
       document.querySelectorAll('.chart-mode-btn').forEach(btn => {
         btn.addEventListener('click', () => setChartMode(btn.getAttribute('data-mode')));
       });
       document.querySelectorAll('.tf-btn').forEach(btn => {
         btn.addEventListener('click', () => setTimeframe(btn.getAttribute('data-tf')));
       });
+      document.querySelectorAll('.acc-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          appState.preferences.accountFilter = btn.getAttribute('data-acc-filter');
+          saveToLocalStorage();
+          renderAccountBreakdown();
+        });
+      });
 
-      // Entry Controls
+      // Window resize: keep expanded/fit chart widths sharp
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        if (currentTab !== 'overview') return;
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => renderOverviewTab(), 160);
+      });
+
+      // Monthly Update Controls
       document.getElementById('entryDatePicker')?.addEventListener('change', renderMonthlyEntryForm);
       document.getElementById('btnResetEntryToPrev')?.addEventListener('click', prefillEntryFromLatest);
       document.getElementById('cbHideZeroHistoric')?.addEventListener('change', (e) => {
@@ -900,7 +985,7 @@
      * =========================================================================
      */
     function saveToLocalStorage() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); } catch (e) {}
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); } catch (_) {}
     }
 
     function loadFromLocalStorage() {
@@ -912,10 +997,16 @@
           appState = {
             accounts: parsed.accounts.map(a => ({ ...a, category: normalizeCategory(a.category) })),
             snapshots: sortSnapshots(parsed.snapshots),
-            preferences: Object.assign({ chartMode: 'stacked', timeframe: 'ALL', hideZeroHistoric: true }, parsed.preferences || {})
+            preferences: Object.assign({
+              chartMode: 'stacked',
+              chartWidthMode: 'expanded',
+              timeframe: 'ALL',
+              accountFilter: 'all',
+              hideZeroHistoric: true
+            }, parsed.preferences || {})
           };
         }
-      } catch (e) {}
+      } catch (_) {}
     }
 
     function normalizeCategory(cat) {
@@ -926,15 +1017,24 @@
     }
 
     function wipeBrowserData() {
+      stopTimelineAnimation();
       localStorage.removeItem(STORAGE_KEY);
       appState = {
         accounts: [],
         snapshots: [],
-        preferences: { chartMode: 'stacked', timeframe: 'ALL', hideZeroHistoric: true }
+        preferences: {
+          chartMode: 'stacked',
+          chartWidthMode: 'expanded',
+          timeframe: 'ALL',
+          accountFilter: 'all',
+          hideZeroHistoric: true
+        }
       };
       if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+      if (donutInstance) { donutInstance.destroy(); donutInstance = null; }
       document.getElementById('securityInfoModal')?.classList.add('hidden');
       document.getElementById('sheetInspectorModal')?.classList.add('hidden');
+      document.getElementById('headerActiveSnapshotBadge')?.classList.add('hidden');
       showWelcomeScreen();
       showToast('All browser data cleared.', 'info');
     }
@@ -943,7 +1043,7 @@
       stopTimelineAnimation();
       document.getElementById('welcomeScreen')?.classList.remove('hidden');
       document.getElementById('mainNavTabs')?.classList.add('hidden');
-      ['overview', 'insights', 'entry'].forEach(t => document.getElementById(`view-${t}`)?.classList.add('hidden'));
+      ['overview', 'update'].forEach(t => document.getElementById(`view-${t}`)?.classList.add('hidden'));
     }
 
     function enterActiveWorkspace(initialTab = 'overview') {
@@ -957,7 +1057,7 @@
     function switchTab(tabName) {
       currentTab = tabName;
       if (tabName !== 'overview') stopTimelineAnimation();
-      ['overview', 'insights', 'entry'].forEach(t => {
+      ['overview', 'update'].forEach(t => {
         const viewEl = document.getElementById(`view-${t}`);
         const btnEl = document.getElementById(`tab-${t}`);
         if (t === tabName) {
@@ -969,13 +1069,12 @@
         }
       });
       if (tabName === 'overview') renderOverviewTab();
-      if (tabName === 'insights') renderInsightsAndProvidersTab();
-      if (tabName === 'entry') { renderMonthlyEntryForm(); renderHistoryTable(); }
+      if (tabName === 'update') { renderMonthlyEntryForm(); renderHistoryTable(); }
     }
 
     /**
      * =========================================================================
-     * 4. EXACT ACCOUNT CLASSIFICATION & RETROACTIVE LATEST-SHEET MAPPING
+     * 4. ACCOUNT CLASSIFICATION & RETROACTIVE LATEST-NOVEMBER MAPPING
      * =========================================================================
      */
     function slugifyId(str) {
@@ -999,7 +1098,7 @@
       const clean = String(rawName || '').trim().toLowerCase().replace(/\s+/g, ' ');
       const compact = clean.replace(/[^a-z0-9]/g, '');
 
-      // PRIORITY 1: Pensions (strictly distinct from ISA accounts)
+      // Priority 1: Pensions (keep T212 SIPP strictly separate from T212 ISA)
       if ((compact.includes('t212') || compact.includes('trading212')) && (compact.includes('sipp') || compact.includes('pension'))) {
         return 't212_sipp';
       }
@@ -1010,7 +1109,7 @@
         return 'pension_' + compact;
       }
 
-      // PRIORITY 2: Shares ISAs & Minvest
+      // Priority 2: Shares ISAs & Minvest
       if (compact === 't212' || compact === 't212isa' || compact === 't212shares' || compact === 't212isashares' || compact === 'trading212isa' || compact === 'trading212isashares') {
         return 't212_isa';
       }
@@ -1021,7 +1120,7 @@
         return 'm_invest';
       }
 
-      // PRIORITY 3: Cash & Credit Card accounts
+      // Priority 3: Cash accounts & liabilities
       if (compact === 'nweisa') return 'nwe_isa';
       if (compact === 'nwesav') return 'nwe_sav';
       if (compact === 'nwsav') return 'nw_sav';
@@ -1034,18 +1133,17 @@
       return clean.replace(/[^a-z0-9]+/g, '_');
     }
 
-    function classifyAccount(rawName, latestSheetDictionary = null) {
+    function classifyAccount(rawName, referenceDict = null) {
       const raw = String(rawName || '').trim();
       const lower = raw.toLowerCase().replace(/\s+/g, ' ');
       const compact = lower.replace(/[^a-z0-9]/g, '');
       const canonicalKey = getCanonicalAccountKey(raw);
 
-      if (latestSheetDictionary && latestSheetDictionary.has(canonicalKey)) {
-        const ref = latestSheetDictionary.get(canonicalKey);
+      if (referenceDict && referenceDict.has(canonicalKey)) {
+        const ref = referenceDict.get(canonicalKey);
         return { ...ref, canonicalKey, rawName: raw, inheritedFromLatest: true };
       }
 
-      // Priority 1: Pension
       let category = 'cash';
       if (compact.includes('sipp') || compact.includes('pension')) {
         category = 'pension';
@@ -1055,11 +1153,9 @@
         canonicalKey === 'm_invest' ||
         compact.includes('shares')
       ) {
-        // Priority 2: Shares ISA
         category = 'shares';
       }
 
-      // Provider & Display Name resolution
       let provider = 'Other';
       let displayName = raw;
       let isLiability = false;
@@ -1139,7 +1235,7 @@
 
     /**
      * =========================================================================
-     * 5. EXACT SHEET DATE PARSER (SKIPS Summary / Salary proj / Sipp / Sheet1)
+     * 5. EXACT SHEET DATE PARSER & UNIFORM MONTH-INDEX MATH
      * =========================================================================
      */
     const SKIP_TAB_REGEX = /^(summary|salary\s*proj.*|salary|sipp|sheet\s*\d+|notes?|calc|calculator)$/i;
@@ -1162,7 +1258,6 @@
         if (sp) return sp;
       }
 
-      // UK numeric dates: '12/11/26', '12.11.26', '12-11-2026'
       const ukMatch = raw.match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2}|\d{4}))?$/);
       if (ukMatch) {
         const d = parseInt(ukMatch[1], 10);
@@ -1175,7 +1270,6 @@
         }
       }
 
-      // ISO dates: '2026-11-12', '2026-11'
       const isoMatch = raw.match(/^(\d{4})[./-\s](\d{1,2})(?:[./-\s](\d{1,2}))?$/);
       if (isoMatch) {
         const y = parseInt(isoMatch[1], 10);
@@ -1186,7 +1280,6 @@
         }
       }
 
-      // Normalize: replace dots/slashes/dashes/commas with spaces, split letter-digit boundaries, strip ordinals
       const normalized = raw
         .replace(/[.,/_-]+/g, ' ')
         .replace(/([a-zA-Z])(\d)/g, '$1 $2')
@@ -1199,27 +1292,20 @@
       const tokens = normalized.split(' ').filter(Boolean);
       if (tokens.length === 0) return null;
 
-      // Single Month Name only: e.g. 'May'
       if (tokens.length === 1 && MONTH_MAP[tokens[0]]) {
-        return { year: null, month: MONTH_MAP[tokens[0]], day: 1, explicitYear: false, isMonthOnly: true };
+        return { year: null, month: MONTH_MAP[tokens[0]], day: 1, explicitYear: false };
       }
 
-      // Pattern A: [Month] [Num1] [Optional Num2]
       if (tokens.length >= 2 && MONTH_MAP[tokens[0]]) {
         const mo = MONTH_MAP[tokens[0]];
         const n1 = parseInt(tokens[1], 10);
 
         if (tokens.length === 2 && !isNaN(n1)) {
-          if (n1 >= 1990 && n1 <= 2099) {
-            return { year: n1, month: mo, day: 1, explicitYear: true };
-          }
-          // 2-part Month + 23..29 -> Year 2023..2029 (e.g. 'Sept 26', 'Jan 26')
+          if (n1 >= 1990 && n1 <= 2099) return { year: n1, month: mo, day: 1, explicitYear: true };
           if (tokens[1].length === 2 && n1 >= 23 && n1 <= 29) {
             return { year: 2000 + n1, month: mo, day: 1, explicitYear: true, ambiguousTwoPartYearNum: n1 };
           }
-          if (n1 >= 1 && n1 <= 31) {
-            return { year: null, month: mo, day: n1, explicitYear: false };
-          }
+          if (n1 >= 1 && n1 <= 31) return { year: null, month: mo, day: n1, explicitYear: false };
         } else if (tokens.length >= 3 && !isNaN(n1) && n1 >= 1 && n1 <= 31) {
           const n2 = parseInt(tokens[2], 10);
           if (!isNaN(n2)) {
@@ -1231,7 +1317,6 @@
         }
       }
 
-      // Pattern B: [Day] [Month] [Optional Year]
       if (tokens.length >= 2 && MONTH_MAP[tokens[1]]) {
         const d = parseInt(tokens[0], 10);
         const mo = MONTH_MAP[tokens[1]];
@@ -1254,24 +1339,37 @@
       return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     }
 
-    function dateKeyToUtcMs(dateKey) {
-      const [y, m, d] = String(dateKey).split('-').map(Number);
-      return Date.UTC(y || 2026, (m || 1) - 1, d || 1);
-    }
-
     function formatDateKeyToLabel(dateKey) {
       const [y, m, d] = String(dateKey).split('-');
       return `${parseInt(d || '1', 10)} ${MONTH_NAMES[parseInt(m, 10) - 1] || m} ${y}`;
     }
 
-    function formatMonthYearFromMs(utcMs) {
-      const dt = new Date(utcMs);
-      return `${MONTH_NAMES[dt.getUTCMonth()]} ${String(dt.getUTCFullYear()).slice(-2)}`;
+    /**
+     * Exact fractional month position on the uniform month-by-month axis:
+     * x = (year - startYear) * 12 + (month - startMonth) + (day - 1) / daysInThatMonth
+     */
+    function dateKeyToMonthPos(dateKey, startYear, startMonth) {
+      const [y, m, d] = String(dateKey).split('-').map(Number);
+      const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate() || 30;
+      return (y - startYear) * 12 + (m - startMonth) + (d - 1) / daysInMonth;
+    }
+
+    function monthIndexToCalendarInfo(monthIdx, startYear, startMonth) {
+      const totalM = (startYear * 12 + (startMonth - 1)) + Math.round(monthIdx);
+      const year = Math.floor(totalM / 12);
+      const monthZeroBased = ((totalM % 12) + 12) % 12;
+      return {
+        year,
+        monthZeroBased,
+        isYearStart: monthZeroBased === 0,
+        shortLabel: `${MONTH_NAMES[monthZeroBased]} ${String(year).slice(-2)}`,
+        longLabel: `${MONTH_NAMES[monthZeroBased]} ${year}`
+      };
     }
 
     /**
      * =========================================================================
-     * 6. BULLETPROOF ROW & ACCOUNT EXTRACTOR (ROWS 1-100, HEADER SCAN 1-25)
+     * 6. DEEP ROW & ACCOUNT EXTRACTOR (COLS A-E, ROWS 1-100)
      * =========================================================================
      */
     function parseCurrencyValue(val) {
@@ -1310,17 +1408,16 @@
 
     function extractAccountsFromRows(rows) {
       if (!Array.isArray(rows) || rows.length === 0) return [];
-      const headerScanMax = Math.min(25, rows.length);
+      const headerScanMax = Math.min(15, rows.length);
       const maxRows = Math.min(100, rows.length);
       let headerRowIdx = -1;
       let itemCol = -1;
       let valCol = -1;
 
-      // Step 1: Locate explicit header row (Item/Account/Fund/Bank + Cost/Value/Amount/Balance)
       for (let r = 0; r < headerScanMax; r++) {
         const row = rows[r];
         if (!Array.isArray(row)) continue;
-        for (let c = 0; c <= Math.min(5, row.length - 1); c++) {
+        for (let c = 0; c <= Math.min(4, row.length - 1); c++) {
           const cell = row[c] !== null && row[c] !== undefined ? String(row[c]).trim() : '';
           if (/^(item|items|account|accounts|fund|funds|bank|provider)$/i.test(cell)) {
             headerRowIdx = r;
@@ -1338,22 +1435,20 @@
 
       let startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
 
-      // Step 2: Fallback auto-detection of primary [text label, numeric value] column pair
       if (headerRowIdx < 0) {
-        const scores = [0, 0, 0, 0, 0, 0];
+        const scores = [0, 0, 0, 0, 0];
         for (let r = 0; r < maxRows; r++) {
           const row = rows[r];
           if (!Array.isArray(row)) continue;
-          for (let c = 0; c <= Math.min(5, row.length - 2); c++) {
+          for (let c = 0; c <= Math.min(4, row.length - 2); c++) {
             const lbl = row[c] !== null && row[c] !== undefined ? String(row[c]).trim() : '';
             if (lbl && isNaN(Number(lbl)) && !SKIP_ROW_LABELS_REGEX.test(lbl) && parseCurrencyValue(row[c + 1]) !== null) {
               scores[c] += 1;
             }
           }
         }
-        let bestCol = -1;
-        let bestScore = 0;
-        for (const c of [1, 0, 2, 3, 4, 5]) {
+        let bestCol = -1, bestScore = 0;
+        for (const c of [1, 0, 2, 3, 4]) {
           if (scores[c] > bestScore) { bestScore = scores[c]; bestCol = c; }
         }
         if (bestCol >= 0) { itemCol = bestCol; valCol = bestCol + 1; startRow = 0; }
@@ -1366,14 +1461,11 @@
       for (let r = startRow; r < maxRows; r++) {
         const row = rows[r];
         if (!Array.isArray(row)) continue;
-
         const rawLabel = row[itemCol] !== null && row[itemCol] !== undefined ? String(row[itemCol]).trim() : '';
-        // Never stop early on blank separator rows
-        if (!rawLabel) continue;
+        if (!rawLabel) continue; // never stop early on blank separator rows
         if (SKIP_ROW_LABELS_REGEX.test(rawLabel) || /^(total|grand\s*total|subtotal|sum|end\s*of\s*year)\b/i.test(rawLabel)) {
           continue;
         }
-
         const amount = parseCurrencyValue(row[valCol]);
         if (amount === null) continue;
 
@@ -1382,7 +1474,6 @@
           const cand = parseInterestRateCell(row[c]);
           if (cand !== null) { rate = cand; break; }
         }
-
         parsedItems.push({ rawName: rawLabel, amount, rate });
       }
       return parsedItems;
@@ -1390,7 +1481,7 @@
 
     /**
      * =========================================================================
-     * 7. DUAL .XLSX ENGINE (SHEETJS + ZERO-DEPENDENCY NATIVE ZIP/XML READER)
+     * 7. DUAL .XLSX ENGINE (SHEETJS + PURE-JS NATIVE ZIP/XML FALLBACK)
      * =========================================================================
      */
     async function ensureXlsxLoaded() {
@@ -1450,8 +1541,7 @@
       }
 
       async function readZipText(path) {
-        const key = path.replace(/^\/+/, '');
-        const entry = zipEntries.get(key);
+        const entry = zipEntries.get(path.replace(/^\/+/, ''));
         if (!entry) return null;
         if (entry.compression === 0) return decoder.decode(entry.slice);
         if (entry.compression === 8) {
@@ -1591,8 +1681,8 @@
 
     async function handleExcelFilesSelected(event) {
       const inputEl = event.target;
-      // Copy FileList immediately & defer reset by 600ms for iOS WebKit reliability
       const files = Array.from(inputEl.files || []);
+      // Delayed reset for iOS WebKit reliability
       setTimeout(() => { try { inputEl.value = ''; } catch (_) {} }, 600);
       if (files.length === 0) return;
 
@@ -1624,7 +1714,7 @@
                 fileName: file.name,
                 sheetName,
                 reason: SKIP_TAB_REGEX.test(String(sheetName || '').trim())
-                  ? 'Non-snapshot tab (Summary / Salary / Sipp / Sheet1)'
+                  ? 'Non-snapshot tab (Summary / Salary proj / Sipp / Sheet1)'
                   : 'Unrecognized date format in tab name'
               });
               continue;
@@ -1635,7 +1725,6 @@
 
             if (!parts.explicitYear || resolvedYear === null) {
               resolvedYear = currentYear;
-              // Year-rollover rule: yearless Nov/Dec tabs appearing BEFORE Jan/Feb of currentYear roll to previous year
               if (parts.month >= 11) {
                 for (let j = i + 1; j < tabMetaList.length; j++) {
                   const np = tabMetaList[j].parts;
@@ -1648,7 +1737,6 @@
             }
 
             let dateKey = buildDateKey(resolvedYear, parts.month, resolvedDay);
-
             if (parts.ambiguousTwoPartYearNum && usedDateKeysInFile.has(dateKey)) {
               resolvedDay = parts.ambiguousTwoPartYearNum;
               dateKey = buildDateKey(resolvedYear, parts.month, resolvedDay);
@@ -1669,39 +1757,41 @@
           setLiveStatus('No valid date tabs found.', 3500);
           showDiagnosticAlert(
             'No Date Snapshot Tabs Found',
-            `Read ${files.length} file(s), but no date tabs were recognized. Make sure tabs are named with dates like "Feb 1 25", "May 31", or "Nov 12th 26".`
+            `Read ${files.length} file(s), but no date tabs were recognized. Make sure tabs are named like "Feb 1 25", "May 31", or "Nov 12th 26".`
           );
           return;
         }
 
-        // Build Master Account Dictionary from the LATEST chronological populated snapshot
+        // Retroactive Latest-November (or Latest Overall) Master Account Dictionary
         const populatedSorted = extractedSnapshots
           .filter(s => s.items.length > 0)
           .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
 
-        const latestPopulated = populatedSorted.length > 0 ? populatedSorted[populatedSorted.length - 1] : null;
-        const latestDictionary = new Map();
+        const novemberPopulated = populatedSorted.filter(s => s.dateKey.slice(5, 7) === '11');
+        const referenceSheet = novemberPopulated.length > 0
+          ? novemberPopulated[novemberPopulated.length - 1]
+          : (populatedSorted.length > 0 ? populatedSorted[populatedSorted.length - 1] : null);
 
-        if (latestPopulated) {
-          for (const item of latestPopulated.items) {
+        const referenceDict = new Map();
+        if (referenceSheet) {
+          for (const item of referenceSheet.items) {
             const meta = classifyAccount(item.rawName, null);
-            latestDictionary.set(meta.canonicalKey, { ...meta, rawName: item.rawName });
+            referenceDict.set(meta.canonicalKey, { ...meta, rawName: item.rawName });
           }
         }
-        for (const sh of extractedSnapshots) {
-          for (const item of sh.items) {
+        // Also pick up any newer non-November accounts not in the reference sheet
+        for (let i = populatedSorted.length - 1; i >= 0; i--) {
+          for (const item of populatedSorted[i].items) {
             const meta = classifyAccount(item.rawName, null);
-            if (!latestDictionary.has(meta.canonicalKey)) {
-              latestDictionary.set(meta.canonicalKey, { ...meta, rawName: item.rawName });
+            if (!referenceDict.has(meta.canonicalKey)) {
+              referenceDict.set(meta.canonicalKey, { ...meta, rawName: item.rawName });
             }
           }
         }
 
-        // Apply dictionary retroactively & deduplicate across multiple uploaded files
         const discoveredAccountsMap = new Map();
         const mergedSheetsMap = new Map();
         let duplicateTabsMerged = 0;
-        let duplicateCellsMerged = 0;
 
         for (const sh of extractedSnapshots) {
           if (mergedSheetsMap.has(sh.dateKey)) {
@@ -1721,12 +1811,9 @@
           if (!bucket.sourceFiles.includes(sh.fileName)) bucket.sourceFiles.push(sh.fileName);
 
           for (const item of sh.items) {
-            const meta = classifyAccount(item.rawName, latestDictionary);
+            const meta = classifyAccount(item.rawName, referenceDict);
             if (!discoveredAccountsMap.has(meta.canonicalKey)) {
               discoveredAccountsMap.set(meta.canonicalKey, meta);
-            }
-            if (bucket.entriesByCanonicalKey.has(meta.canonicalKey)) {
-              duplicateCellsMerged += 1;
             }
             const accMeta = discoveredAccountsMap.get(meta.canonicalKey);
             bucket.entriesByCanonicalKey.set(meta.canonicalKey, {
@@ -1741,10 +1828,9 @@
 
         pendingImportBatch = {
           fileCount: files.length,
-          latestRefLabel: latestPopulated ? latestPopulated.label : null,
+          referenceLabel: referenceSheet ? referenceSheet.label : null,
           skippedTabs,
           duplicateTabsMerged,
-          duplicateCellsMerged,
           sheets: sheetsList,
           accounts: accountsList
         };
@@ -1785,8 +1871,8 @@
       document.getElementById('dedupSummaryBox').innerHTML = `
         <div class="font-extrabold text-[#00f5d4]">Workbook Diagnostic Summary</div>
         <div>&bull; <strong>Final Chronological Sheet:</strong> <span class="text-white font-bold">${escapeHtml(lastS.rawTabName)}</span> &rarr; <strong class="text-[#38bdf8]">${lastS.label}</strong> | Net Worth: <strong class="text-white">${formatGBP(lastBreak.total)}</strong> | Pensions: <strong class="text-[#fbbf24]">${formatGBP(lastBreak.pension)}</strong></div>
-        <div>&bull; <strong>Latest-Sheet Retroactive Classification:</strong> Applied from <strong>${escapeHtml(b.latestRefLabel || lastS.label)}</strong> across earlier unannotated tabs (T212 SIPP &amp; HL SIPP kept strictly separate from ISAs).</div>
-        <div>&bull; <strong>Deduplication:</strong> ${b.duplicateTabsMerged} overlapping tab(s) &amp; ${b.duplicateCellsMerged} duplicate entry cell(s) merged. ${b.skippedTabs.length} non-snapshot tab(s) skipped.</div>
+        <div>&bull; <strong>Latest-November Retroactive Tagging:</strong> Applied from <strong>${escapeHtml(b.referenceLabel || lastS.label)}</strong> across earlier unannotated sheets.</div>
+        <div>&bull; <strong>Skipped Non-Snapshot Tabs:</strong> ${b.skippedTabs.length} (${b.duplicateTabsMerged} duplicate date tab(s) merged).</div>
       `;
 
       renderReviewModalLists();
@@ -1801,7 +1887,6 @@
     function renderReviewModalLists() {
       if (!pendingImportBatch) return;
       const b = pendingImportBatch;
-
       const selectedCount = b.sheets.filter(s => s.selected).length;
       document.getElementById('reviewSheetCount').textContent = `${selectedCount}/${b.sheets.length}`;
 
@@ -1810,7 +1895,6 @@
         const count = sh.entriesByCanonicalKey.size;
         const br = computeReviewSheetBreakdown(sh, b.accounts);
         const isZero = count === 0;
-
         return `
           <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-xs ${isZero ? 'bg-rose-950/50 border-rose-500/40 text-rose-200' : sh.selected ? 'bg-slate-900/90 border-sky-500/35 text-slate-100' : 'bg-slate-950 border-slate-800 text-slate-500'}">
             <div class="flex items-center gap-2 min-w-0">
@@ -1870,7 +1954,6 @@
             <div class="flex items-center gap-2">
               <span class="text-sm font-bold text-white">${escapeHtml(acc.displayName)}</span>
               <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">${escapeHtml(acc.rawName)}</span>
-              ${acc.isNewBank ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#c084fc]/20 text-[#c084fc]">New Bank</span>` : ''}
             </div>
             <div class="text-xs text-slate-400">Provider: <strong class="text-slate-200">${escapeHtml(acc.provider)}</strong></div>
           </div>
@@ -1968,7 +2051,9 @@
       appState.snapshots = sortSnapshots(Array.from(snapMap.values()));
       saveToLocalStorage();
       closeImportReviewModal();
+      resetTimelineAnimation();
       enterActiveWorkspace('overview');
+
       const newest = appState.snapshots[appState.snapshots.length - 1];
       const newestTotals = newest ? computeSnapshotTotals(newest) : { total: 0 };
       showToast(`Imported ${selectedSheets.length} sheet(s). Latest: ${newest.label} (${formatGBP(newestTotals.total)}).`, 'success');
@@ -1976,7 +2061,7 @@
 
     /**
      * =========================================================================
-     * 8. SHEET INSPECTOR MODAL (AUDIT EVERY IMPORTED SHEET & ACCOUNT)
+     * 8. SHEET INSPECTOR MODAL
      * =========================================================================
      */
     function openSheetInspector() {
@@ -2110,13 +2195,9 @@
     }
 
     function renderAll() {
-      const provCount = new Set(appState.accounts.map(a => a.provider || 'Other')).size;
-      const np = document.getElementById('navProviderCount');
       const nh = document.getElementById('navHistoryCount');
-      if (np) np.textContent = provCount;
       if (nh) nh.textContent = appState.snapshots.length;
       renderOverviewTab();
-      renderInsightsAndProvidersTab();
       renderMonthlyEntryForm();
       renderHistoryTable();
     }
@@ -2139,82 +2220,77 @@
       renderOverviewTab();
     }
 
+    function setChartWidthMode(widthMode) {
+      appState.preferences.chartWidthMode = widthMode;
+      saveToLocalStorage();
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+      renderOverviewTab();
+    }
+
     function setTimeframe(tf) {
       stopTimelineAnimation();
+      animState.cursorX = null;
+      document.getElementById('animationProgressWrapper')?.classList.add('hidden');
       appState.preferences.timeframe = tf;
       saveToLocalStorage();
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
       renderOverviewTab();
     }
 
     function renderOverviewTab() {
-      const allSorted = sortSnapshots(appState.snapshots);
       const fullSlice = getFilteredSnapshots();
       const emptyEl = document.getElementById('overviewEmptyState');
-      const chartWrap = document.getElementById('overviewChartWrapper');
+      const scrollWrap = document.getElementById('chartScrollContainer');
+      const headerBadge = document.getElementById('headerActiveSnapshotBadge');
+      const headerText = document.getElementById('headerActiveSnapshotText');
 
+      // Update toggle pill styles
+      ['expanded', 'fit'].forEach(wm => {
+        const btn = document.getElementById(`wmode-${wm}`);
+        if (btn) btn.className = appState.preferences.chartWidthMode === wm
+          ? 'width-mode-btn px-3 py-1.5 rounded-lg bg-[#38bdf8] text-[#070b14] transition cursor-pointer'
+          : 'width-mode-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer';
+      });
       ['stacked', 'lines', 'total'].forEach(m => {
         const btn = document.getElementById(`mode-${m}`);
         if (btn) btn.className = appState.preferences.chartMode === m
-          ? 'chart-mode-btn px-2.5 py-1.5 rounded-lg bg-[#38bdf8] text-[#070b14] transition cursor-pointer'
-          : 'chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer';
+          ? 'chart-mode-btn px-2.5 py-1 rounded-lg bg-[#38bdf8] text-[#070b14] transition cursor-pointer'
+          : 'chart-mode-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer';
       });
       ['6M', '1Y', '3Y', 'ALL'].forEach(t => {
         const btn = document.getElementById(`tf-${t}`);
         if (btn) btn.className = appState.preferences.timeframe === t
-          ? 'tf-btn px-2.5 py-1.5 rounded-lg bg-[#38bdf8] text-[#070b14] transition cursor-pointer'
-          : 'tf-btn px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer';
+          ? 'tf-btn px-2.5 py-1 rounded-lg bg-[#38bdf8] text-[#070b14] transition cursor-pointer'
+          : 'tf-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer';
       });
 
       if (fullSlice.length === 0) {
         emptyEl?.classList.remove('hidden');
-        chartWrap?.classList.add('hidden');
-        document.getElementById('loadedSheetsStripCard')?.classList.add('hidden');
-        document.getElementById('overviewLatestBannerBadge').textContent = 'Latest Snapshot: —';
-        document.getElementById('overviewRangeSummary').textContent = '0 snapshots loaded';
+        scrollWrap?.classList.add('hidden');
+        headerBadge?.classList.add('hidden');
         document.getElementById('kpiTotalWorth').textContent = '£0';
         document.getElementById('kpiCashTotal').textContent = '£0';
         document.getElementById('kpiSharesTotal').textContent = '£0';
         document.getElementById('kpiPensionTotal').textContent = '£0';
+        document.getElementById('accountBreakdownBody').innerHTML = '';
         return;
       }
 
       emptyEl?.classList.add('hidden');
-      chartWrap?.classList.remove('hidden');
+      scrollWrap?.classList.remove('hidden');
 
-      const activeEndIndex = animationState.currentIndex !== null
-        ? Math.min(animationState.currentIndex, fullSlice.length - 1)
-        : fullSlice.length - 1;
-      const visibleSlice = fullSlice.slice(0, activeEndIndex + 1);
-      const latestSnap = visibleSlice[visibleSlice.length - 1];
-      const prevSnap = visibleSlice.length > 1 ? visibleSlice[visibleSlice.length - 2] : null;
-
-      document.getElementById('overviewLatestBannerBadge').textContent = `Latest Snapshot: ${latestSnap.label}`;
-      document.getElementById('overviewRangeSummary').textContent =
-        `${allSorted.length} snapshot(s) (${allSorted[0].label} → ${allSorted[allSorted.length - 1].label})`;
-
-      // Loaded sheets chronological strip
-      const stripCard = document.getElementById('loadedSheetsStripCard');
-      const stripList = document.getElementById('loadedSheetsStripList');
-      if (stripCard && stripList) {
-        stripCard.classList.remove('hidden');
-        stripList.innerHTML = allSorted.map(snap => {
-          const totals = computeSnapshotTotals(snap);
-          const isLatest = snap.dateKey === latestSnap.dateKey;
-          return `
-            <div class="shrink-0 px-3 py-2 rounded-xl border text-xs transition ${isLatest ? 'bg-[#38bdf8]/15 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.28)] text-white' : 'bg-slate-900/90 border-slate-800 text-slate-300'}">
-              <div class="flex items-center gap-1.5">
-                <span class="font-bold">${escapeHtml(snap.label)}</span>
-                ${isLatest ? '<span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#38bdf8] text-[#070b14]">FINAL</span>' : ''}
-              </div>
-              <div class="font-extrabold mt-0.5 ${isLatest ? 'text-[#00f5d4]' : 'text-white'}">${formatGBP(totals.total)}</div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      // KPI Cards
+      const latestSnap = fullSlice[fullSlice.length - 1];
+      const prevSnap = fullSlice.length > 1 ? fullSlice[fullSlice.length - 2] : null;
       const curr = computeSnapshotTotals(latestSnap);
       const prev = prevSnap ? computeSnapshotTotals(prevSnap) : null;
+
+      // Active snapshot badge in top header
+      if (headerBadge && headerText) {
+        headerBadge.classList.remove('hidden');
+        headerText.textContent = latestSnap.label;
+      }
+
+      // KPI Cards (always anchored to the final chronological snapshot)
       document.getElementById('kpiDateBadge').textContent = latestSnap.label;
       document.getElementById('kpiTotalWorth').textContent = formatGBP(curr.total);
       const changeEl = document.getElementById('kpiTotalChange');
@@ -2250,177 +2326,235 @@
         ? `${formatSignedGBP(curr.pension - prev.pension)} vs ${prevSnap.label}`
         : 'HL & T212 SIPPs';
 
-      renderTimelineChart(visibleSlice, fullSlice);
+      renderUniformMonthTimelineChart(fullSlice);
+      renderAllocationDonut(latestSnap, curr);
+      renderAccountBreakdown();
     }
 
     /**
      * =========================================================================
-     * 10. ANIMATED PROPORTIONAL CALENDAR-TIME CHART (CHART.JS + SVG FALLBACK)
+     * 10. TRUE UNIFORM MONTH-BY-MONTH TIMELINE CHART + SMOOTH CALENDAR PLAYBACK
      * =========================================================================
      */
-    function toggleTimelineAnimation() {
-      if (animationState.isPlaying) stopTimelineAnimation();
-      else startTimelineAnimation();
+    function buildTimelineSeriesModel(fullSlice) {
+      const [startYear, startMonth] = fullSlice[0].dateKey.split('-').map(Number);
+      const allPts = fullSlice.map(snap => ({
+        dateKey: snap.dateKey,
+        label: snap.label,
+        x: dateKeyToMonthPos(snap.dateKey, startYear, startMonth),
+        totals: computeSnapshotTotals(snap)
+      }));
+      const maxDataX = allPts.length > 0 ? allPts[allPts.length - 1].x : 0;
+      // Axis spans from month 0 to the next whole month boundary past the final snapshot
+      const axisMaxX = Math.max(1, Math.floor(maxDataX) + 1);
+      return { startYear, startMonth, allPts, maxDataX, axisMaxX };
     }
 
-    function startTimelineAnimation() {
-      const fullSlice = getFilteredSnapshots();
-      if (fullSlice.length < 2) { showToast('Need at least 2 snapshots to animate.', 'info'); return; }
-      animationState.isPlaying = true;
-      if (animationState.currentIndex === null || animationState.currentIndex >= fullSlice.length - 1) {
-        animationState.currentIndex = 0;
+    /**
+     * Slices & linearly interpolates data points up to cursorX along the uniform calendar axis,
+     * so animation glides steadily across empty months (e.g. Feb 23 -> Feb 24) before dense 2026 updates.
+     */
+    function buildAnimatedVisiblePoints(allPts, cursorX) {
+      if (cursorX === null || cursorX >= allPts[allPts.length - 1].x) {
+        return allPts;
       }
-      updatePlayButtonUi();
-      document.getElementById('animationProgressWrapper')?.classList.remove('hidden');
-      const interval = Math.max(80, Math.round(420 / animationState.speed));
-      renderOverviewTab();
-      animationState.timerId = setInterval(() => {
-        const slice = getFilteredSnapshots();
-        if (animationState.currentIndex < slice.length - 1) {
-          animationState.currentIndex += 1;
-          renderOverviewTab();
+      const visible = [];
+      for (let i = 0; i < allPts.length; i++) {
+        const pt = allPts[i];
+        if (pt.x <= cursorX) {
+          visible.push(pt);
         } else {
-          stopTimelineAnimation();
+          if (visible.length > 0) {
+            const prev = visible[visible.length - 1];
+            const span = Math.max(0.0001, pt.x - prev.x);
+            const t = Math.max(0, Math.min(1, (cursorX - prev.x) / span));
+            visible.push({
+              dateKey: '',
+              label: 'Animating...',
+              x: cursorX,
+              isInterpolatedHead: true,
+              totals: {
+                cash: prev.totals.cash + (pt.totals.cash - prev.totals.cash) * t,
+                shares: prev.totals.shares + (pt.totals.shares - prev.totals.shares) * t,
+                pension: prev.totals.pension + (pt.totals.pension - prev.totals.pension) * t,
+                total: prev.totals.total + (pt.totals.total - prev.totals.total) * t
+              }
+            });
+          }
+          break;
         }
-      }, interval);
+      }
+      return visible.length > 0 ? visible : [allPts[0]];
     }
 
-    function stopTimelineAnimation() {
-      animationState.isPlaying = false;
-      if (animationState.timerId) { clearInterval(animationState.timerId); animationState.timerId = null; }
-      updatePlayButtonUi();
-    }
+    function renderUniformMonthTimelineChart(fullSlice, isAnimFrame = false) {
+      const model = buildTimelineSeriesModel(fullSlice);
+      animState.maxDataX = model.maxDataX;
+      const totalMonths = Math.max(1, model.axisMaxX);
 
-    function resetTimelineAnimation() {
-      stopTimelineAnimation();
-      animationState.currentIndex = null;
-      document.getElementById('animationProgressWrapper')?.classList.add('hidden');
-      renderOverviewTab();
-    }
+      document.getElementById('chartSpanBadge').textContent =
+        `${totalMonths} month${totalMonths === 1 ? '' : 's'} (${monthIndexToCalendarInfo(0, model.startYear, model.startMonth).shortLabel} – ${monthIndexToCalendarInfo(Math.floor(model.maxDataX), model.startYear, model.startMonth).shortLabel})`;
 
-    function cycleAnimationSpeed() {
-      const speeds = [1, 2, 4];
-      animationState.speed = speeds[(speeds.indexOf(animationState.speed) + 1) % speeds.length];
-      document.getElementById('btnAnimSpeed').textContent = `${animationState.speed}x`;
-      if (animationState.isPlaying) { stopTimelineAnimation(); startTimelineAnimation(); }
-    }
+      const scrollEl = document.getElementById('chartScrollContainer');
+      const innerWrap = document.getElementById('chartInnerCanvasWrap');
+      const scrollHint = document.getElementById('scrollHintPill');
+      const isExpanded = appState.preferences.chartWidthMode === 'expanded';
 
-    function updatePlayButtonUi() {
-      const lbl = document.getElementById('playBtnLabel');
-      const icon = document.getElementById('playIconSvg');
-      const fullSlice = getFilteredSnapshots();
-      if (!lbl || !icon) return;
-      if (animationState.isPlaying) {
-        lbl.textContent = 'Pause';
-        icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
-      } else if (animationState.currentIndex !== null && animationState.currentIndex >= fullSlice.length - 1) {
-        lbl.textContent = 'Replay';
-        icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+      const containerW = scrollEl ? (scrollEl.clientWidth || 760) : 760;
+      const expandedW = Math.max(containerW, totalMonths * 42);
+
+      if (isExpanded) {
+        innerWrap.style.width = `${expandedW}px`;
+        if (expandedW > containerW + 20) scrollHint?.classList.remove('hidden');
+        else scrollHint?.classList.add('hidden');
       } else {
-        lbl.textContent = 'Play Growth Animation';
-        icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+        innerWrap.style.width = '100%';
+        scrollHint?.classList.add('hidden');
       }
-    }
 
-    function buildProportionalMonthTicks(minMs, maxMs) {
-      const s = new Date(minMs), e = new Date(maxMs);
-      const totalMonths = (e.getUTCFullYear() - s.getUTCFullYear()) * 12 + (e.getUTCMonth() - s.getUTCMonth());
-      const step = totalMonths > 48 ? 6 : totalMonths > 24 ? 3 : totalMonths > 14 ? 2 : 1;
-      const ticks = [];
-      let y = s.getUTCFullYear(), m = s.getUTCMonth();
-      while (true) {
-        const ms = Date.UTC(y, m, 1);
-        if (ms > maxMs + 15 * 86400000) break;
-        if (ms >= minMs - 15 * 86400000) ticks.push(ms);
-        m += step;
-        while (m >= 12) { m -= 12; y += 1; }
-      }
-      return ticks;
-    }
+      const visiblePts = buildAnimatedVisiblePoints(model.allPts, animState.cursorX);
+      const mode = appState.preferences.chartMode;
 
-    function renderTimelineChart(visibleSlice, fullSlice) {
-      const points = visibleSlice.map(s => ({ label: s.label, ts: dateKeyToUtcMs(s.dateKey), totals: computeSnapshotTotals(s) }));
-      const fullMinTs = dateKeyToUtcMs(fullSlice[0].dateKey);
-      let fullMaxTs = dateKeyToUtcMs(fullSlice[fullSlice.length - 1].dateKey);
-      if (fullMaxTs <= fullMinTs) fullMaxTs = fullMinTs + 365 * 86400000;
-      const monthTicks = buildProportionalMonthTicks(fullMinTs, fullMaxTs);
-
-      if (animationState.currentIndex !== null) {
-        const pct = Math.round(((animationState.currentIndex + 1) / fullSlice.length) * 100);
-        document.getElementById('animCurrentMonthBadge').textContent = points[points.length - 1]?.label || '';
+      // Update animation scrubber UI & gently auto-scroll container to follow moving cursor
+      if (animState.cursorX !== null) {
+        const pct = model.maxDataX > 0 ? Math.min(100, Math.round((animState.cursorX / model.maxDataX) * 100)) : 100;
+        const calInfo = monthIndexToCalendarInfo(Math.floor(animState.cursorX), model.startYear, model.startMonth);
+        document.getElementById('animCurrentMonthBadge').textContent = calInfo.longLabel;
         document.getElementById('animProgressBar').style.width = `${pct}%`;
-        document.getElementById('animStepCounter').textContent = `${animationState.currentIndex + 1} / ${fullSlice.length}`;
+        document.getElementById('animStepCounter').textContent = `${pct}%`;
+
+        if (isExpanded && scrollEl && expandedW > containerW) {
+          const cursorRatio = animState.cursorX / Math.max(1, model.axisMaxX);
+          const cursorPx = cursorRatio * expandedW;
+          const desiredScroll = Math.max(0, Math.min(expandedW - containerW, cursorPx - containerW * 0.65));
+          scrollEl.scrollLeft = desiredScroll;
+        }
       }
 
       const canvas = document.getElementById('portfolioChartCanvas');
       const svgFallback = document.getElementById('chartSvgFallback');
-      const mode = appState.preferences.chartMode;
 
       if (typeof window.Chart === 'undefined') {
         canvas.classList.add('hidden');
         svgFallback.classList.remove('hidden');
-        renderSvgFallbackChart(svgFallback, points, fullMinTs, fullMaxTs, monthTicks, mode);
+        renderUniformSvgFallback(svgFallback, visiblePts, model, mode, isExpanded ? expandedW : containerW);
         return;
       }
 
       canvas.classList.remove('hidden');
       svgFallback.classList.add('hidden');
 
-      const mapPts = (fn) => points.map(p => ({ x: p.ts, y: fn(p.totals), label: p.label, total: p.totals.total }));
-      const ptRadius = visibleSlice.length <= 32 ? 4 : 2.5;
+      const mapPts = (fn) => visiblePts.map(p => ({
+        x: p.x,
+        y: fn(p.totals),
+        label: p.isInterpolatedHead
+          ? monthIndexToCalendarInfo(Math.floor(p.x), model.startYear, model.startMonth).longLabel
+          : p.label,
+        total: p.totals.total,
+        isHead: Boolean(p.isInterpolatedHead)
+      }));
+
+      const ptRadii = (pts) => pts.map(p => p.isHead ? 6 : 3.5);
       let datasets = [];
 
       if (mode === 'total') {
+        const dTotal = mapPts(t => t.total);
         datasets = [{
           label: 'Total Net Worth',
-          data: mapPts(t => t.total),
+          data: dTotal,
           borderColor: '#38bdf8',
           backgroundColor: 'rgba(56, 189, 248, 0.18)',
           borderWidth: 3,
           fill: true,
-          tension: 0.2,
-          pointRadius: ptRadius,
+          tension: 0.12,
+          pointRadius: ptRadii(dTotal),
+          pointHoverRadius: 6,
           pointBackgroundColor: '#38bdf8'
         }];
       } else {
         const isStacked = mode === 'stacked';
+        const dCash = mapPts(t => t.cash);
+        const dShares = mapPts(t => t.shares);
+        const dPension = mapPts(t => t.pension);
         datasets = [
           {
             label: 'Cash & Cash ISAs',
-            data: mapPts(t => t.cash),
+            data: dCash,
             borderColor: CATEGORY_META.cash.hex,
             backgroundColor: isStacked ? CATEGORY_META.cash.fill : 'transparent',
-            borderWidth: 2.5, fill: isStacked, tension: 0.2, pointRadius: ptRadius
+            borderWidth: 2.5,
+            fill: isStacked,
+            tension: 0.12,
+            pointRadius: ptRadii(dCash),
+            pointHoverRadius: 6,
+            pointBackgroundColor: CATEGORY_META.cash.hex
           },
           {
             label: 'Shares (ISA)',
-            data: mapPts(t => t.shares),
+            data: dShares,
             borderColor: CATEGORY_META.shares.hex,
             backgroundColor: isStacked ? CATEGORY_META.shares.fill : 'transparent',
-            borderWidth: 2.5, fill: isStacked, tension: 0.2, pointRadius: ptRadius
+            borderWidth: 2.5,
+            fill: isStacked,
+            tension: 0.12,
+            pointRadius: ptRadii(dShares),
+            pointHoverRadius: 6,
+            pointBackgroundColor: CATEGORY_META.shares.hex
           },
           {
             label: 'Pensions (SIPP)',
-            data: mapPts(t => t.pension),
+            data: dPension,
             borderColor: CATEGORY_META.pension.hex,
             backgroundColor: isStacked ? CATEGORY_META.pension.fill : 'transparent',
-            borderWidth: 2.5, fill: isStacked, tension: 0.2, pointRadius: ptRadius
+            borderWidth: 2.5,
+            fill: isStacked,
+            tension: 0.12,
+            pointRadius: ptRadii(dPension),
+            pointHoverRadius: 6,
+            pointBackgroundColor: CATEGORY_META.pension.hex
           }
         ];
       }
 
+      // Compute fixed Y-axis max from FULL series so animation never jumps vertically
+      const fullMaxY = Math.max(1000, ...model.allPts.map(p => p.totals.total)) * 1.08;
+      const fullMinY = Math.min(0, ...model.allPts.map(p => Math.min(p.totals.cash, p.totals.shares, p.totals.pension, p.totals.total)));
+
       const xScaleConfig = {
         type: 'linear',
-        min: fullMinTs,
-        max: fullMaxTs,
-        grid: { color: 'rgba(148, 163, 184, 0.12)' },
-        afterBuildTicks: (axis) => { axis.ticks = monthTicks.map(v => ({ value: v })); },
+        min: 0,
+        max: model.axisMaxX,
+        grid: {
+          color: (ctx) => {
+            if (!ctx.tick) return 'rgba(148, 163, 184, 0.12)';
+            const info = monthIndexToCalendarInfo(ctx.tick.value, model.startYear, model.startMonth);
+            return info.isYearStart ? 'rgba(56, 189, 248, 0.42)' : 'rgba(148, 163, 184, 0.13)';
+          },
+          lineWidth: (ctx) => {
+            if (!ctx.tick) return 1;
+            const info = monthIndexToCalendarInfo(ctx.tick.value, model.startYear, model.startMonth);
+            return info.isYearStart ? 1.6 : 1;
+          }
+        },
         ticks: {
-          autoSkip: true,
-          maxRotation: 0,
-          color: '#94a3b8',
-          font: { size: 11, weight: '600' },
-          callback: (val) => formatMonthYearFromMs(Number(val))
+          stepSize: 1,
+          autoSkip: !isExpanded,
+          maxTicksLimit: isExpanded ? undefined : 14,
+          maxRotation: isExpanded ? 45 : 0,
+          minRotation: isExpanded ? 35 : 0,
+          color: (ctx) => {
+            if (!ctx.tick) return '#94a3b8';
+            const info = monthIndexToCalendarInfo(ctx.tick.value, model.startYear, model.startMonth);
+            return info.isYearStart ? '#38bdf8' : '#94a3b8';
+          },
+          font: (ctx) => {
+            const isJan = ctx.tick ? monthIndexToCalendarInfo(ctx.tick.value, model.startYear, model.startMonth).isYearStart : false;
+            return { size: 11, weight: isJan ? '800' : '600' };
+          },
+          callback: (val) => {
+            if (Math.abs(val - Math.round(val)) > 0.01) return '';
+            return monthIndexToCalendarInfo(val, model.startYear, model.startMonth).shortLabel;
+          }
         }
       };
 
@@ -2428,7 +2562,10 @@
         chartInstance.data.datasets = datasets;
         chartInstance.options.scales.x = xScaleConfig;
         chartInstance.options.scales.y.stacked = (mode === 'stacked');
-        chartInstance.update(animationState.isPlaying ? 'none' : 'default');
+        chartInstance.options.scales.y.suggestedMax = fullMaxY;
+        chartInstance.options.scales.y.suggestedMin = fullMinY;
+        chartInstance.resize();
+        chartInstance.update(isAnimFrame ? 'none' : 'default');
         return;
       }
 
@@ -2438,22 +2575,23 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          animation: { duration: 240 },
           interaction: { mode: 'nearest', axis: 'x', intersect: false },
           plugins: {
             legend: {
               position: 'top',
-              align: 'end',
+              align: 'start',
               labels: { color: '#e2e8f0', usePointStyle: true, boxWidth: 8, font: { size: 12, weight: '600' } }
             },
             tooltip: {
               backgroundColor: '#0f172a',
-              borderColor: 'rgba(56, 189, 248, 0.4)',
+              borderColor: 'rgba(56, 189, 248, 0.45)',
               borderWidth: 1,
               titleColor: '#38bdf8',
               bodyColor: '#f8fafc',
               padding: 12,
               callbacks: {
-                title: (items) => items[0]?.raw?.label || formatMonthYearFromMs(items[0]?.parsed?.x || 0),
+                title: (items) => items[0]?.raw?.label || '',
                 label: (ctx) => `${ctx.dataset.label}: ${formatGBP(ctx.parsed.y)}`,
                 footer: (items) => (mode === 'total' || !items.length) ? '' : `Total Net Worth: ${formatGBP(items[0].raw.total)}`
               }
@@ -2463,6 +2601,8 @@
             x: xScaleConfig,
             y: {
               stacked: (mode === 'stacked'),
+              suggestedMin: fullMinY,
+              suggestedMax: fullMaxY,
               border: { display: false },
               grid: { color: 'rgba(148, 163, 184, 0.12)' },
               ticks: {
@@ -2476,153 +2616,287 @@
       });
     }
 
-    function renderSvgFallbackChart(container, points, minTs, maxTs, monthTicks, mode) {
-      if (!points.length) return;
-      const w = 860, h = 340, padL = 62, padR = 26, padT = 34, padB = 38;
-      const allVals = mode === 'total'
-        ? points.map(p => p.totals.total)
-        : points.flatMap(p => [p.totals.cash, p.totals.shares, p.totals.pension, p.totals.total]);
-      const minV = Math.min(...allVals, 0), maxV = Math.max(...allVals, 100);
-      const valSpan = Math.max(1, maxV - minV), timeSpan = Math.max(1, maxTs - minTs);
-      const toX = (ts) => padL + ((ts - minTs) / timeSpan) * (w - padL - padR);
-      const toY = (v) => h - padB - ((v - minV) / valSpan) * (h - padT - padB);
-      const ptsStr = (fn) => points.map(p => `${toX(p.ts).toFixed(1)},${toY(fn(p.totals)).toFixed(1)}`).join(' ');
+    /**
+     * Zero-dependency Offline SVG Fallback using the EXACT same uniform month-by-month axis & expanded width.
+     */
+    function renderUniformSvgFallback(container, visiblePts, model, mode, widthPx) {
+      if (!visiblePts.length) return;
+      const w = Math.max(600, Math.round(widthPx));
+      const h = 360, padL = 62, padR = 26, padT = 28, padB = 52;
+      const allVals = model.allPts.flatMap(p => [p.totals.cash, p.totals.shares, p.totals.pension, p.totals.total]);
+      const minV = Math.min(0, ...allVals);
+      const maxV = Math.max(1000, ...allVals) * 1.06;
+      const valSpan = Math.max(1, maxV - minV);
+      const axisMaxX = Math.max(1, model.axisMaxX);
 
-      const ticksSvg = monthTicks.map(ms => {
-        const x = toX(ms).toFixed(1);
-        return `<line x1="${x}" y1="${padT}" x2="${x}" y2="${h - padB}" stroke="#1e293b" stroke-width="1" />
-                <text x="${x}" y="${h - 12}" text-anchor="middle" font-size="10.5" fill="#94a3b8">${escapeHtml(formatMonthYearFromMs(ms))}</text>`;
-      }).join('');
+      const toX = (mx) => padL + (mx / axisMaxX) * (w - padL - padR);
+      const toY = (v) => h - padB - ((v - minV) / valSpan) * (h - padT - padB);
+      const ptsStr = (fn) => visiblePts.map(p => `${toX(p.x).toFixed(1)},${toY(fn(p.totals)).toFixed(1)}`).join(' ');
+
+      let gridSvg = '';
+      for (let m = 0; m <= axisMaxX; m++) {
+        const x = toX(m).toFixed(1);
+        const info = monthIndexToCalendarInfo(m, model.startYear, model.startMonth);
+        const stroke = info.isYearStart ? 'rgba(56,189,248,0.45)' : 'rgba(148,163,184,0.14)';
+        const sw = info.isYearStart ? 1.5 : 1;
+        const fill = info.isYearStart ? '#38bdf8' : '#94a3b8';
+        const fw = info.isYearStart ? '700' : '500';
+        gridSvg += `
+          <line x1="${x}" y1="${padT}" x2="${x}" y2="${h - padB}" stroke="${stroke}" stroke-width="${sw}" />
+          <text x="${x}" y="${h - padB + 16}" transform="rotate(-35 ${x} ${h - padB + 16})" text-anchor="end" font-size="10.5" font-weight="${fw}" fill="${fill}">${escapeHtml(info.shortLabel)}</text>
+        `;
+      }
 
       const linesSvg = mode === 'total'
-        ? `<polyline fill="none" stroke="#38bdf8" stroke-width="3.2" points="${ptsStr(t => t.total)}" />`
-        : `<polyline fill="none" stroke="#00f5d4" stroke-width="2.6" points="${ptsStr(t => t.cash)}" />
-           <polyline fill="none" stroke="#c084fc" stroke-width="2.6" points="${ptsStr(t => t.shares)}" />
-           <polyline fill="none" stroke="#fbbf24" stroke-width="2.6" points="${ptsStr(t => t.pension)}" />
-           <polyline fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="5,4" points="${ptsStr(t => t.total)}" />`;
+        ? `<polyline fill="none" stroke="#38bdf8" stroke-width="3" points="${ptsStr(t => t.total)}" />`
+        : `<polyline fill="none" stroke="#00f5d4" stroke-width="2.5" points="${ptsStr(t => t.cash)}" />
+           <polyline fill="none" stroke="#c084fc" stroke-width="2.5" points="${ptsStr(t => t.shares)}" />
+           <polyline fill="none" stroke="#fbbf24" stroke-width="2.5" points="${ptsStr(t => t.pension)}" />
+           <polyline fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-dasharray="5,4" points="${ptsStr(t => t.total)}" />`;
 
-      const latest = points[points.length - 1];
+      const head = visiblePts[visiblePts.length - 1];
+      const headDot = `<circle cx="${toX(head.x).toFixed(1)}" cy="${toY(head.totals.total).toFixed(1)}" r="5" fill="#38bdf8" />`;
+
       container.innerHTML = `
-        <svg viewBox="0 0 ${w} ${h}" class="w-full h-full">
-          ${ticksSvg}
+        <svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="block">
+          ${gridSvg}
           <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${h - padB}" stroke="#334155" />
           <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#334155" />
           <text x="${padL - 8}" y="${padT + 4}" text-anchor="end" font-size="11" fill="#94a3b8">${formatGBP(maxV)}</text>
           <text x="${padL - 8}" y="${h - padB}" text-anchor="end" font-size="11" fill="#94a3b8">${formatGBP(minV)}</text>
           ${linesSvg}
-          <text x="${padL}" y="18" font-size="12" fill="#38bdf8" font-weight="700">Total Net Worth (${escapeHtml(latest.label)}): ${formatGBP(latest.totals.total)}</text>
+          ${headDot}
         </svg>
       `;
     }
 
     /**
+     * Smooth Calendar-Time Animation Controls (Play, Pause, Replay, 1x/2x/4x)
+     */
+    function toggleTimelineAnimation() {
+      if (animState.isPlaying) stopTimelineAnimation();
+      else startTimelineAnimation();
+    }
+
+    function startTimelineAnimation() {
+      const fullSlice = getFilteredSnapshots();
+      if (fullSlice.length < 2) { showToast('Need at least 2 snapshots to animate.', 'info'); return; }
+      const model = buildTimelineSeriesModel(fullSlice);
+      animState.maxDataX = model.maxDataX;
+      if (animState.cursorX === null || animState.cursorX >= model.maxDataX - 0.01) {
+        animState.cursorX = 0;
+        const scrollEl = document.getElementById('chartScrollContainer');
+        if (scrollEl) scrollEl.scrollLeft = 0;
+      }
+      animState.isPlaying = true;
+      animState.lastFrameTs = performance.now();
+      document.getElementById('animationProgressWrapper')?.classList.remove('hidden');
+      updatePlayButtonUi();
+
+      const step = (nowTs) => {
+        if (!animState.isPlaying) return;
+        const dtSec = Math.min(0.1, (nowTs - animState.lastFrameTs) / 1000);
+        animState.lastFrameTs = nowTs;
+        // 6 calendar months per second at 1x speed
+        animState.cursorX += dtSec * 6 * animState.speed;
+
+        if (animState.cursorX >= animState.maxDataX) {
+          animState.cursorX = animState.maxDataX;
+          renderUniformMonthTimelineChart(getFilteredSnapshots(), true);
+          stopTimelineAnimation();
+          return;
+        }
+        renderUniformMonthTimelineChart(getFilteredSnapshots(), true);
+        animState.rafId = requestAnimationFrame(step);
+      };
+      animState.rafId = requestAnimationFrame(step);
+    }
+
+    function stopTimelineAnimation() {
+      animState.isPlaying = false;
+      if (animState.rafId) { cancelAnimationFrame(animState.rafId); animState.rafId = null; }
+      updatePlayButtonUi();
+    }
+
+    function resetTimelineAnimation() {
+      stopTimelineAnimation();
+      animState.cursorX = null;
+      document.getElementById('animationProgressWrapper')?.classList.add('hidden');
+      if (currentTab === 'overview') renderOverviewTab();
+    }
+
+    function cycleAnimationSpeed() {
+      const speeds = [1, 2, 4];
+      animState.speed = speeds[(speeds.indexOf(animState.speed) + 1) % speeds.length];
+      document.getElementById('btnAnimSpeed').textContent = `${animState.speed}x`;
+    }
+
+    function updatePlayButtonUi() {
+      const lbl = document.getElementById('playBtnLabel');
+      const icon = document.getElementById('playIconSvg');
+      if (!lbl || !icon) return;
+      if (animState.isPlaying) {
+        lbl.textContent = 'Pause';
+        icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+      } else if (animState.cursorX !== null && animState.cursorX >= animState.maxDataX - 0.01) {
+        lbl.textContent = 'Replay';
+        icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+      } else {
+        lbl.textContent = 'Play Growth';
+        icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+      }
+    }
+
+    /**
      * =========================================================================
-     * 11. TAB 2: PROVIDERS & INSIGHTS
+     * 11. ASSET ALLOCATION DONUT & LATEST SNAPSHOT ACCOUNT BREAKDOWN
      * =========================================================================
      */
-    function renderInsightsAndProvidersTab() {
-      const sorted = sortSnapshots(appState.snapshots);
-      const grid = document.getElementById('dynamicInsightsGrid');
-      const provGrid = document.getElementById('providerBreakdownGrid');
-      if (sorted.length === 0) {
-        if (grid) grid.innerHTML = `<p class="text-xs text-slate-400 col-span-full">Import or add monthly snapshots to view insights.</p>`;
-        if (provGrid) provGrid.innerHTML = '';
-        renderAccountCategoryRules();
+    function renderAllocationDonut(latestSnap, curr) {
+      document.getElementById('donutDateLabel').textContent = latestSnap.label;
+      const cashVal = Math.max(0, curr.cash);
+      const sharesVal = Math.max(0, curr.shares);
+      const pensionVal = Math.max(0, curr.pension);
+      const sum = Math.max(1, cashVal + sharesVal + pensionVal);
+
+      const items = [
+        { key: 'cash', label: 'Cash & Cash ISAs', val: cashVal, pct: Math.round((cashVal / sum) * 100), color: CATEGORY_META.cash.hex },
+        { key: 'shares', label: 'Shares (ISA)', val: sharesVal, pct: Math.round((sharesVal / sum) * 100), color: CATEGORY_META.shares.hex },
+        { key: 'pension', label: 'Pensions (SIPP)', val: pensionVal, pct: Math.max(0, 100 - Math.round((cashVal / sum) * 100) - Math.round((sharesVal / sum) * 100)), color: CATEGORY_META.pension.hex }
+      ];
+
+      document.getElementById('donutLegendList').innerHTML = items.map(it => `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full" style="background:${it.color}"></span>
+            <span class="text-slate-300 font-semibold">${it.label}</span>
+          </div>
+          <div class="font-extrabold text-white tabular-nums">${formatGBP(it.val)} <span class="text-slate-400 font-semibold">(${it.pct}%)</span></div>
+        </div>
+      `).join('');
+
+      const canvas = document.getElementById('allocationDonutCanvas');
+      const fallback = document.getElementById('donutSvgFallback');
+
+      if (typeof window.Chart === 'undefined') {
+        canvas.classList.add('hidden');
+        fallback.classList.remove('hidden');
+        const r = 72, circ = 2 * Math.PI * r;
+        let offset = 0;
+        const segs = items.map(it => {
+          const len = (it.val / sum) * circ;
+          const seg = `<circle cx="95" cy="95" r="${r}" fill="transparent" stroke="${it.color}" stroke-width="24" stroke-dasharray="${len.toFixed(1)} ${circ.toFixed(1)}" stroke-dashoffset="${(-offset).toFixed(1)}" transform="rotate(-90 95 95)" />`;
+          offset += len;
+          return seg;
+        }).join('');
+        fallback.innerHTML = `<svg viewBox="0 0 190 190" class="w-48 h-48">${segs}<text x="95" y="99" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="800">${formatGBP(curr.total)}</text></svg>`;
         return;
       }
 
-      const first = computeSnapshotTotals(sorted[0]);
-      const latestSnap = sorted[sorted.length - 1];
-      const latest = computeSnapshotTotals(latestSnap);
-      document.getElementById('insightsSnapshotLabel').textContent = `${sorted[0].label} → ${latestSnap.label}`;
+      canvas.classList.remove('hidden');
+      fallback.classList.add('hidden');
 
-      const netGain = latest.total - first.total;
-      const netPct = first.total !== 0 ? (netGain / Math.abs(first.total)) * 100 : 0;
-      const gross = Math.max(1, Math.max(0, latest.cash) + Math.max(0, latest.shares) + Math.max(0, latest.pension));
-      const liquidPct = Math.round((Math.max(0, latest.cash) / gross) * 100);
-      const investedPct = Math.round(((Math.max(0, latest.shares) + Math.max(0, latest.pension)) / gross) * 100);
+      if (donutInstance) {
+        donutInstance.data.datasets[0].data = [cashVal, sharesVal, pensionVal];
+        donutInstance.update();
+        return;
+      }
 
-      const cards = [
-        { title: 'Wealth Trajectory', border: 'border-[#38bdf8]/35', body: `Net worth changed by <strong class="text-[#38bdf8]">${formatSignedGBP(netGain)}</strong> (${formatSignedPct(netPct)}) across ${sorted.length} snapshots.` },
-        { title: 'Weighted Cash AER', border: 'border-[#00f5d4]/35', body: latest.avgCashRate > 0 ? `Weighted cash AER is <strong class="text-[#00f5d4]">${latest.avgCashRate.toFixed(2)}%</strong> (~<strong>${formatGBP(latest.projectedAnnualCashInterest)}/yr</strong>).` : `Add AER (%) rates on cash pots to project annual interest.` },
-        { title: 'Liquidity vs. Invested', border: 'border-[#c084fc]/35', body: `<strong class="text-[#00f5d4]">${liquidPct}%</strong> is liquid Cash while <strong class="text-[#c084fc]">${investedPct}%</strong> is invested in Shares ISAs &amp; SIPPs.` },
-        { title: 'Shares ISA Value', border: 'border-[#c084fc]/35', body: `Stocks &amp; Shares ISAs &amp; Invest stand at <strong class="text-[#c084fc]">${formatGBP(latest.shares)}</strong> (${formatSignedGBP(latest.shares - first.shares)} since ${sorted[0].label}).` },
-        { title: 'SIPP Pensions Total', border: 'border-[#fbbf24]/35', body: `Combined SIPP pensions total <strong class="text-[#fbbf24]">${formatGBP(latest.pension)}</strong> as of ${latestSnap.label}.` },
-        { title: 'Accessible Wealth', border: 'border-slate-700', body: `Pre-retirement accessible Cash + Shares ISA total <strong class="text-white">${formatGBP(latest.cash + latest.shares)}</strong>.` }
-      ];
-
-      grid.innerHTML = cards.map(c => `
-        <div class="p-4 rounded-xl bg-slate-900/80 border ${c.border}">
-          <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">${c.title}</div>
-          <p class="text-xs sm:text-sm text-slate-200 leading-relaxed">${c.body}</p>
-        </div>
-      `).join('');
-
-      const provMap = new Map();
-      appState.accounts.forEach(acc => {
-        const ent = latestSnap.entries[acc.id];
-        const amt = ent ? Number(ent.amount) || 0 : 0;
-        if (!provMap.has(acc.provider)) provMap.set(acc.provider, { provider: acc.provider, total: 0, count: 0, cats: new Set() });
-        const item = provMap.get(acc.provider);
-        item.total += amt;
-        if (ent) item.count += 1;
-        item.cats.add(CATEGORY_META[acc.category].label);
+      donutInstance = new window.Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Cash', 'Shares (ISA)', 'Pensions (SIPP)'],
+          datasets: [{
+            data: [cashVal, sharesVal, pensionVal],
+            backgroundColor: [CATEGORY_META.cash.hex, CATEGORY_META.shares.hex, CATEGORY_META.pension.hex],
+            borderColor: '#0f172a',
+            borderWidth: 3,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '66%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              borderColor: 'rgba(56, 189, 248, 0.4)',
+              borderWidth: 1,
+              callbacks: {
+                label: (ctx) => `${ctx.label}: ${formatGBP(ctx.parsed)}`
+              }
+            }
+          }
+        }
       });
-      const provList = Array.from(provMap.values()).sort((a, b) => b.total - a.total);
-      document.getElementById('providerCountBadge').textContent = `${provList.length} Provider${provList.length === 1 ? '' : 's'}`;
-      provGrid.innerHTML = provList.map(p => `
-        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-[#38bdf8]/40 transition">
-          <div class="flex items-center justify-between gap-2 mb-1">
-            <span class="text-sm font-bold text-white truncate">${escapeHtml(p.provider)}</span>
-            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-[#38bdf8]">${p.count} pot${p.count === 1 ? '' : 's'}</span>
-          </div>
-          <div class="text-lg font-black ${p.total < 0 ? 'text-rose-400' : 'text-white'} my-1">${formatGBP(p.total)}</div>
-          <div class="text-[11px] text-slate-400">${escapeHtml(Array.from(p.cats).join(' • '))}</div>
-        </div>
-      `).join('');
-
-      renderAccountCategoryRules();
     }
 
-    function renderAccountCategoryRules() {
-      const list = document.getElementById('accountsRulesList');
-      document.getElementById('accountsMappingCount').textContent = appState.accounts.length;
-      if (!list) return;
-      list.innerHTML = appState.accounts.map(acc => `
-        <div class="p-3.5 bg-slate-950/70 flex flex-wrap items-center justify-between gap-3">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-sm font-bold ${acc.active ? 'text-white' : 'text-slate-500 line-through'}">${escapeHtml(acc.displayName)}</span>
-            <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">${escapeHtml(acc.rawName)}</span>
-            <span class="text-xs text-[#38bdf8]">&bull; ${escapeHtml(acc.provider)}</span>
-          </div>
-          <div class="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-1 text-xs font-bold">
-            ${['cash', 'shares', 'pension'].map(cat => {
-              const active = acc.category === cat;
-              let cls = 'text-slate-400 hover:text-white';
-              if (active && cat === 'cash') cls = 'bg-[#00f5d4] text-[#070b14]';
-              if (active && cat === 'shares') cls = 'bg-[#c084fc] text-[#070b14]';
-              if (active && cat === 'pension') cls = 'bg-[#fbbf24] text-[#070b14]';
-              return `<button type="button" data-acc-id="${acc.id}" data-cat="${cat}" class="rule-cat-btn px-2.5 py-1 rounded-lg transition cursor-pointer ${cls}">${CATEGORY_META[cat].label}</button>`;
-            }).join('')}
-          </div>
-        </div>
-      `).join('');
+    function renderAccountBreakdown() {
+      const sorted = sortSnapshots(appState.snapshots);
+      const tbody = document.getElementById('accountBreakdownBody');
+      if (!tbody || sorted.length === 0) return;
 
-      list.querySelectorAll('.rule-cat-btn').forEach(btn => {
+      const latestSnap = sorted[sorted.length - 1];
+      document.getElementById('breakdownDateLabel').textContent = latestSnap.label;
+
+      const filter = appState.preferences.accountFilter || 'all';
+      ['all', 'cash', 'shares', 'pension'].forEach(f => {
+        const btn = document.getElementById(`af-${f}`);
+        if (btn) btn.className = filter === f
+          ? 'acc-filter-btn px-2.5 py-1 rounded-lg bg-[#38bdf8] text-[#070b14] transition cursor-pointer'
+          : 'acc-filter-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer';
+      });
+
+      const rows = appState.accounts
+        .filter(acc => latestSnap.entries[acc.id] !== undefined)
+        .filter(acc => filter === 'all' || acc.category === filter)
+        .sort((a, b) => (latestSnap.entries[b.id].amount || 0) - (latestSnap.entries[a.id].amount || 0));
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-500">No accounts in this category on ${escapeHtml(latestSnap.label)}.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(acc => {
+        const ent = latestSnap.entries[acc.id];
+        const cm = CATEGORY_META[acc.category] || CATEGORY_META.cash;
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-3 px-5">
+              <div class="font-bold text-white">${escapeHtml(acc.displayName)}</div>
+              <div class="text-[11px] font-mono text-slate-400">${escapeHtml(acc.rawName)}</div>
+            </td>
+            <td class="py-3 px-3 text-slate-300 font-medium">${escapeHtml(acc.provider)}</td>
+            <td class="py-3 px-3">
+              <button type="button" data-cycle-acc="${acc.id}" class="cycle-cat-btn inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${cm.pill} hover:opacity-85 transition cursor-pointer" title="Click to switch category">
+                <span class="w-1.5 h-1.5 rounded-full ${cm.dot}"></span>
+                ${cm.label}
+              </button>
+            </td>
+            <td class="py-3 px-4 text-right font-extrabold tabular-nums ${ent.amount < 0 ? 'text-rose-400' : 'text-white'}">${formatGBP(ent.amount)}</td>
+            <td class="py-3 px-4 text-right text-slate-400 tabular-nums">${ent.rate !== null && ent.rate !== undefined ? ent.rate + '%' : '—'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.querySelectorAll('.cycle-cat-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          const acc = appState.accounts.find(a => a.id === btn.getAttribute('data-acc-id'));
+          const acc = appState.accounts.find(a => a.id === btn.getAttribute('data-cycle-acc'));
           if (!acc) return;
-          acc.category = btn.getAttribute('data-cat');
+          const order = ['cash', 'shares', 'pension'];
+          acc.category = order[(order.indexOf(acc.category) + 1) % order.length];
           saveToLocalStorage();
           renderAll();
-          showToast(`Updated "${acc.displayName}" to ${CATEGORY_META[acc.category].label}.`, 'success');
+          showToast(`Switched "${acc.displayName}" to ${CATEGORY_META[acc.category].label}.`, 'success');
         });
       });
     }
 
     /**
      * =========================================================================
-     * 12. TAB 3: ADD / EDIT MONTH & HISTORY TABLE
+     * 12. TAB 2: MONTHLY UPDATE & HISTORY TABLE
      * =========================================================================
      */
     function setDefaultEntryDate() {
@@ -2649,7 +2923,7 @@
         if (rateEl) rateEl.value = prev && prev.rate !== null && prev.rate !== undefined ? prev.rate : '';
       });
       recalcLiveEntryTotals();
-      showToast(`Pre-filled from ${refSnap.label}.`, 'info');
+      showToast(`Reset values from ${refSnap.label}.`, 'info');
     }
 
     function renderMonthlyEntryForm() {
@@ -2669,7 +2943,7 @@
       const banner = document.getElementById('entryModeBannerText');
       banner.innerHTML = existingSnap
         ? `<span>Editing <strong class="text-[#38bdf8]">${existingSnap.label}</strong></span>`
-        : `<span>New entry: <strong class="text-white">${formatDateKeyToLabel(targetDateKey)}</strong></span>` +
+        : `<span>New snapshot: <strong class="text-white">${formatDateKeyToLabel(targetDateKey)}</strong></span>` +
           (fallbackSnap ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#38bdf8]/20 text-[#38bdf8]">Pre-filled from ${escapeHtml(fallbackSnap.label)}</span>` : '');
 
       const container = document.getElementById('entryGroupsContainer');
@@ -2709,11 +2983,10 @@
                 const isCard = isAccountLiability(acc);
                 return `
                   <div class="p-3.5 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center ${isCard ? 'bg-rose-950/20' : ''}">
-                    <div class="sm:col-span-6">
+                    <div class="sm:col-span-5">
                       <div class="flex flex-wrap items-center gap-1.5">
                         <span class="text-sm font-bold text-white">${escapeHtml(acc.displayName)}</span>
                         <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">${escapeHtml(acc.rawName)}</span>
-                        ${isCard ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300">Auto-negative</span>` : ''}
                       </div>
                       <div class="text-xs text-slate-400">${escapeHtml(acc.provider)}</div>
                     </div>
@@ -2726,6 +2999,9 @@
                       <input type="number" step="0.01" id="entry-rate-${acc.id}" value="${rawEnt.rate !== null && rawEnt.rate !== undefined ? rawEnt.rate : ''}" placeholder="AER"
                         class="w-full pl-2.5 pr-6 py-1.5 text-sm text-slate-200 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#38bdf8]" />
                       <span class="absolute right-2.5 top-2 text-xs text-slate-500">%</span>
+                    </div>
+                    <div class="sm:col-span-1 text-right">
+                      <button type="button" data-archive-acc="${acc.id}" class="archive-acc-btn text-[11px] font-semibold text-rose-400 hover:text-rose-300 cursor-pointer" title="Remove account from future entries">Hide</button>
                     </div>
                   </div>
                 `;
@@ -2744,6 +3020,18 @@
         inp.addEventListener('input', enforce);
         inp.addEventListener('blur', enforce);
       });
+
+      container.querySelectorAll('.archive-acc-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const acc = appState.accounts.find(a => a.id === btn.getAttribute('data-archive-acc'));
+          if (!acc) return;
+          acc.active = false;
+          saveToLocalStorage();
+          renderMonthlyEntryForm();
+          showToast(`Hidden "${acc.displayName}" from entry form.`, 'info');
+        });
+      });
+
       recalcLiveEntryTotals();
     }
 
@@ -2756,10 +3044,24 @@
         else if (inp.dataset.category === 'shares') shares += val;
         else if (inp.dataset.category === 'pension') pension += val;
       });
+      const total = cash + shares + pension;
       document.getElementById('entrySubCash').textContent = `Cash: ${formatGBP(cash)}`;
       document.getElementById('entrySubShares').textContent = `Shares: ${formatGBP(shares)}`;
       document.getElementById('entrySubPension').textContent = `Pension: ${formatGBP(pension)}`;
-      document.getElementById('entryLiveNetWorth').textContent = `Total Net Worth: ${formatGBP(cash + shares + pension)}`;
+      document.getElementById('entryLiveNetWorth').textContent = `Total: ${formatGBP(total)}`;
+
+      const targetDateKey = document.getElementById('entryDatePicker')?.value || '';
+      const prevSnap = getPrecedingSnapshot(targetDateKey);
+      const deltaEl = document.getElementById('entryLiveDelta');
+      if (prevSnap && deltaEl) {
+        const prevTotal = computeSnapshotTotals(prevSnap).total;
+        const diff = total - prevTotal;
+        deltaEl.textContent = `Delta vs ${prevSnap.label}: ${formatSignedGBP(diff)}`;
+        deltaEl.className = `px-2.5 py-0.5 rounded-full text-[11px] font-bold ${diff >= 0 ? 'bg-[#00f5d4]/15 text-[#00f5d4]' : 'bg-rose-500/20 text-rose-300'}`;
+      } else if (deltaEl) {
+        deltaEl.textContent = 'Baseline';
+        deltaEl.className = 'px-2.5 py-0.5 rounded-full text-[11px] bg-slate-800 text-slate-300';
+      }
     }
 
     function handleAddNewFund() {
@@ -2774,8 +3076,12 @@
       const rateRaw = document.getElementById('addFundRate').value;
       const rate = rateRaw !== '' ? parseFloat(rateRaw) : null;
 
-      if (appState.accounts.some(a => getCanonicalAccountKey(a.rawName) === meta.canonicalKey)) {
-        showToast(`Account matching "${rawCode}" already exists.`, 'error');
+      const existing = appState.accounts.find(a => getCanonicalAccountKey(a.rawName) === meta.canonicalKey);
+      if (existing) {
+        existing.active = true;
+        saveToLocalStorage();
+        renderMonthlyEntryForm();
+        showToast(`Re-enabled "${existing.displayName}".`, 'info');
         return;
       }
 
@@ -2815,7 +3121,7 @@
             amount: enforceAccountSign(parseFloat(amtEl.value) || 0, acc),
             rate: rateEl && rateEl.value !== '' ? parseFloat(rateEl.value) : null
           };
-        } else if (fallbackSnap && fallbackSnap.entries[acc.id]) {
+        } else if (fallbackSnap && fallbackSnap.entries[acc.id] && acc.active) {
           entries[acc.id] = { ...fallbackSnap.entries[acc.id] };
         }
       });
@@ -2827,6 +3133,7 @@
 
       appState.snapshots = sortSnapshots(appState.snapshots);
       saveToLocalStorage();
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
       renderAll();
       switchTab('overview');
       showToast(`Saved ${label}.`, 'success');
@@ -2845,10 +3152,10 @@
         return `
           <tr class="hover:bg-slate-800/40 transition">
             <td class="py-3.5 px-5 font-bold text-white">${escapeHtml(snap.label)}</td>
-            <td class="py-3.5 px-4 text-right font-semibold text-[#00f5d4]">${formatGBP(t.cash)}</td>
-            <td class="py-3.5 px-4 text-right font-semibold text-[#c084fc]">${formatGBP(t.shares)}</td>
-            <td class="py-3.5 px-4 text-right font-semibold text-[#fbbf24]">${formatGBP(t.pension)}</td>
-            <td class="py-3.5 px-4 text-right font-extrabold text-[#38bdf8]">${formatGBP(t.total)}</td>
+            <td class="py-3.5 px-4 text-right font-semibold text-[#00f5d4] tabular-nums">${formatGBP(t.cash)}</td>
+            <td class="py-3.5 px-4 text-right font-semibold text-[#c084fc] tabular-nums">${formatGBP(t.shares)}</td>
+            <td class="py-3.5 px-4 text-right font-semibold text-[#fbbf24] tabular-nums">${formatGBP(t.pension)}</td>
+            <td class="py-3.5 px-4 text-right font-extrabold text-[#38bdf8] tabular-nums">${formatGBP(t.total)}</td>
             <td class="py-3.5 px-5 text-right whitespace-nowrap">
               <button type="button" data-edit-date="${snap.dateKey}" class="hist-edit-btn text-xs font-bold text-[#38bdf8] hover:underline mr-3 cursor-pointer">Edit</button>
               <button type="button" data-del-date="${snap.dateKey}" class="hist-del-btn text-xs font-semibold text-rose-400 hover:underline cursor-pointer">Delete</button>
@@ -2868,6 +3175,7 @@
         btn.addEventListener('click', () => {
           appState.snapshots = appState.snapshots.filter(s => s.dateKey !== btn.getAttribute('data-del-date'));
           saveToLocalStorage();
+          if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
           renderAll();
           showToast('Deleted snapshot.', 'info');
         });
@@ -2876,7 +3184,7 @@
 
     /**
      * =========================================================================
-     * 13. EXPORT (.XLSX & JSON) + UTILITIES
+     * 13. EXPORT (.XLSX & JSON) & UTILITIES
      * =========================================================================
      */
     async function exportToExcel() {
@@ -2925,9 +3233,16 @@
         appState = {
           accounts: parsed.accounts.map(a => ({ ...a, category: normalizeCategory(a.category) })),
           snapshots: sortSnapshots(parsed.snapshots),
-          preferences: Object.assign({ chartMode: 'stacked', timeframe: 'ALL', hideZeroHistoric: true }, parsed.preferences || {})
+          preferences: Object.assign({
+            chartMode: 'stacked',
+            chartWidthMode: 'expanded',
+            timeframe: 'ALL',
+            accountFilter: 'all',
+            hideZeroHistoric: true
+          }, parsed.preferences || {})
         };
         saveToLocalStorage();
+        if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
         enterActiveWorkspace('overview');
         showToast(`Restored ${appState.snapshots.length} snapshot(s).`, 'success');
       } catch (err) {
