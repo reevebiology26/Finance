@@ -219,7 +219,7 @@
               <div>
                 <div class="text-lg font-bold mb-1">Upload Spreadsheet(s) (.xlsx / .xls)</div>
                 <p class="text-xs text-indigo-100 leading-relaxed">
-                  Select one or multiple Excel files. Automatically reads all tabs through Nov 12, cross-references overlapping dates, and inherits categories backwards from your latest November sheet.
+                  Select one or multiple Excel files. Automatically reads all tabs through nov12th / Nov 12, cross-references overlapping dates, and inherits categories backwards from your latest November sheet.
                 </p>
               </div>
             </label>
@@ -272,7 +272,7 @@
     </section>
 
     <!-- ===================================================================== -->
-    <!-- TAB 1: OVERVIEW (4 KPI CARDS + ANIMATED RUNNING TIMELINE CHART)       -->
+    <!-- TAB 1: OVERVIEW (4 KPI CARDS + PROPORTIONAL TIME TIMELINE CHART)      -->
     <!-- ===================================================================== -->
     <section id="view-overview" class="space-y-6 hidden">
       <!-- 4 Headline KPI Cards -->
@@ -327,12 +327,12 @@
         </div>
       </div>
 
-      <!-- Interactive Running Totals Over Time Chart with Play Growth Animation -->
+      <!-- Interactive Running Totals Over Time Chart with Proportional Time Axis -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>
             <h2 class="text-base sm:text-lg font-bold text-slate-900">Running Totals Over Time</h2>
-            <p class="text-xs text-slate-500">Exact chronological dates from your spreadsheets and recorded months</p>
+            <p class="text-xs text-slate-500">Proportional calendar timeline — gaps between annual and monthly sheets reflect true elapsed months</p>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
@@ -390,7 +390,7 @@
           </div>
         </div>
 
-        <!-- Chart Canvas + SVG Offline Fallback -->
+        <!-- Chart Canvas + Proportional SVG Fallback -->
         <div id="overviewChartWrapper" class="relative mt-4 h-[340px] sm:h-[390px] w-full">
           <canvas id="portfolioChartCanvas"></canvas>
           <div id="chartSvgFallback" class="hidden w-full h-full"></div>
@@ -724,7 +724,7 @@
   </div>
 
   <!-- ======================================================================= -->
-  <!-- JAVASCRIPT ENGINE (DUAL-ENGINE .XLSX PARSER & ZERO PRE-LOADED DATA)     -->
+  <!-- JAVASCRIPT ENGINE (DUAL .XLSX PARSER + PROPORTIONAL CALENDAR TIMELINE)  -->
   <!-- ======================================================================= -->
   <script>
     /**
@@ -732,7 +732,7 @@
      * 1. STATE, CONSTANTS & TOP-RIGHT £25/DAY LIVE COUNTER
      * =========================================================================
      */
-    const STORAGE_KEY = 'wealth_isa_tracker_v10_clean';
+    const STORAGE_KEY = 'wealth_isa_tracker_v11_clean';
 
     const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const MONTH_MAP = {
@@ -863,13 +863,11 @@
     });
 
     function bindStaticEvents() {
-      // File Input Change Listener
       const fileInput = document.getElementById('excelFileInput');
       if (fileInput) {
         fileInput.addEventListener('change', handleExcelFilesSelected);
       }
 
-      // Explicit click/keyboard fallback on all upload labels for iPadOS Chrome & Safari
       document.querySelectorAll('.trigger-file-upload').forEach(el => {
         el.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -879,7 +877,6 @@
         });
       });
 
-      // Welcome Screen Actions
       document.getElementById('btnStartBlank')?.addEventListener('click', () => {
         enterActiveWorkspace('entry');
         showToast('Started blank workspace. Add your accounts below.', 'info');
@@ -1076,15 +1073,6 @@
       return isAccountLiability(acc) ? -Math.abs(val) : val;
     }
 
-    /**
-     * Normalizes shorthand account variants across years so unannotated earlier
-     * entries match their annotated November equivalents:
-     * - 'T212', 'T212 isa', 'T212 isa shares' -> 't212_isa'
-     * - 'T212 sipp', 'T212 sipp shares' -> 't212_sipp'
-     * - 'H isa', 'Hisa', 'HS', 'HL isa', 'HL isa shares' -> 'hl_isa'
-     * - 'Hl sipp', 'HL sipp shares' -> 'hl_sipp'
-     * - 'Minvest', 'Minvest shares' -> 'm_invest'
-     */
     function getCanonicalAccountKey(rawName) {
       const clean = String(rawName || '').trim().toLowerCase().replace(/\s+/g, ' ');
       if (/^t212\s*sipp/.test(clean)) return 't212_sipp';
@@ -1108,7 +1096,7 @@
       const lower = raw.toLowerCase().replace(/\s+/g, ' ');
       const canonicalKey = getCanonicalAccountKey(raw);
 
-      // 1. Check Latest-November Retroactive Dictionary first
+      // 1. Latest-November Retroactive Dictionary
       if (novemberDictionary && novemberDictionary.has(canonicalKey)) {
         const ref = novemberDictionary.get(canonicalKey);
         return {
@@ -1123,10 +1111,7 @@
         };
       }
 
-      // 2. Exact user rules:
-      // - SIPP -> Pension
-      // - HL isa / Hisa / HS / T212 isa / T212 / Minvest -> Shares
-      // - All other accounts -> Cash
+      // 2. Category Rules: SIPP -> Pension; HL isa / Hisa / HS / T212 / Minvest -> Shares; All others -> Cash
       let category = 'Cash';
       if (lower.includes('sipp')) {
         category = 'Pension';
@@ -1139,7 +1124,7 @@
         category = 'Shares';
       }
 
-      // 3. Provider & Friendly Display Name Mapping
+      // 3. Provider & Display Name Mapping
       let provider = 'Other';
       let displayName = raw;
       let isLiability = false;
@@ -1225,7 +1210,6 @@
         provider = 'Virgin Money';
         displayName = lower.includes('isa') ? `Virgin Money Cash ISA (${raw})` : `Virgin Money (${raw})`;
       } else {
-        // Newly detected unlisted bank/account
         const firstWord = raw.split(/\s+/)[0].replace(/[^a-zA-Z0-9&]/g, '');
         provider = firstWord ? firstWord.charAt(0).toUpperCase() + firstWord.slice(1) : 'Other Bank';
         displayName = raw;
@@ -1247,7 +1231,7 @@
 
     /**
      * =========================================================================
-     * 5. EXACT SHEET DATE PARSER (ALL MONTHS JAN-DEC, SERIAL DATES & INNER CELLS)
+     * 5. EXACT SHEET DATE PARSER (INCLUDES 'nov12th', 'Nov 12', ALL JAN-DEC TABS)
      * =========================================================================
      */
     const NON_SNAPSHOT_TAB_REGEX = /^(summary|salary\s*proj.*|sipp\s*(calc|proj)?|notes?|template|calc|calculator|overview|dashboard|totals?|income|earnings)$/i;
@@ -1278,8 +1262,14 @@
         if (serialParts) return serialParts;
       }
 
-      // Remove ordinal suffixes: 1st -> 1, 2nd -> 2, 3rd -> 3, 10th -> 10, 12th -> 12, 30th -> 30
-      const s = raw.replace(/\b(\d{1,2})(st|nd|rd|th)\b/gi, '$1').trim();
+      // Normalize joined letter-digit boundaries BEFORE ordinal stripping:
+      // e.g. "nov12th" -> "nov 12th", "oct3rd" -> "oct 3rd", "12thnov" -> "12th nov"
+      let s = raw
+        .replace(/([a-zA-Z])(\d)/g, '$1 $2')
+        .replace(/(\d)(st|nd|rd|th)\b/gi, '$1')
+        .replace(/(\d)([a-zA-Z])/g, '$1 $2')
+        .replace(/\s+/g, ' ')
+        .trim();
 
       // 1. ISO date: '2026-11-12' or '2026-11'
       let m = s.match(/^(\d{4})[-_/.\s](\d{1,2})(?:[-_/.\s](\d{1,2}))?$/);
@@ -1317,7 +1307,7 @@
         return { year: null, month: MONTH_MAP[tokens[0]], day: 1, explicitYear: false };
       }
 
-      // 4. [MonthName] [Num1] [Optional Num2]: e.g. 'Nov 12', 'Nov 12 26', 'Jan 26', 'Feb 1 23'
+      // 4. [MonthName] [Num1] [Optional Num2]: e.g. 'nov 12', 'nov 12 26', 'jan 26', 'feb 1 23'
       if (tokens.length >= 2 && MONTH_MAP[tokens[0]]) {
         const mo = MONTH_MAP[tokens[0]];
         const num1 = parseInt(tokens[1], 10);
@@ -1346,7 +1336,7 @@
         }
       }
 
-      // 5. [Day] [MonthName] [Optional Year]: e.g. '12 Nov', '12 Nov 26', '1 Feb 23'
+      // 5. [Day] [MonthName] [Optional Year]: e.g. '12 nov', '12 nov 26', '1 feb 23'
       if (tokens.length >= 2 && MONTH_MAP[tokens[1]]) {
         const d = parseInt(tokens[0], 10);
         const mo = MONTH_MAP[tokens[1]];
@@ -1363,23 +1353,6 @@
               return { year: y, month: mo, day: d, explicitYear: true };
             }
           }
-        }
-      }
-
-      // 6. Compact 'Nov12', 'Nov26', or 'Nov2026'
-      const compact = cleaned.match(/^([a-z]{3,9})(\d{1,4})$/);
-      if (compact && MONTH_MAP[compact[1]]) {
-        const mo = MONTH_MAP[compact[1]];
-        const rawNum = compact[2];
-        const num = parseInt(rawNum, 10);
-        if (rawNum.length === 4 && num >= 1990 && num <= 2099) {
-          return { year: num, month: mo, day: 1, explicitYear: true };
-        }
-        if (rawNum.length === 2 && num >= 23 && num <= 29) {
-          return { year: 2000 + num, month: mo, day: 1, explicitYear: true };
-        }
-        if (num >= 1 && num <= 31) {
-          return { year: null, month: mo, day: num, explicitYear: false };
         }
       }
 
@@ -1404,12 +1377,24 @@
       return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 
+    function dateKeyToUtcMs(dateKey) {
+      const [y, m, d] = String(dateKey).split('-').map(Number);
+      return Date.UTC(y || 2026, (m || 1) - 1, d || 1);
+    }
+
     function formatDateKeyToLabel(dateKey) {
       const parts = dateKey.split('-');
       const yStr = parts[0];
       const mIdx = parseInt(parts[1], 10) - 1;
       const dNum = parts[2] ? parseInt(parts[2], 10) : 1;
       return `${dNum} ${MONTH_NAMES[mIdx] || parts[1]} ${yStr}`;
+    }
+
+    function formatMonthYearFromMs(utcMs) {
+      const dt = new Date(utcMs);
+      const mon = MONTH_NAMES[dt.getUTCMonth()];
+      const yr2 = String(dt.getUTCFullYear()).slice(-2);
+      return `${mon} ${yr2}`;
     }
 
     /**
@@ -1451,7 +1436,6 @@
     function parseSheetRows(rows) {
       if (!Array.isArray(rows) || rows.length === 0) return [];
 
-      // Scan top 15 rows across columns A..E to locate 'Item' or 'Account' header
       let headerRowIdx = -1;
       let itemCol = 0;
 
@@ -1469,7 +1453,6 @@
         if (headerRowIdx >= 0) break;
       }
 
-      // Fallback if header row isn't explicitly labelled: detect first text + currency pair in cols A..D
       let startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
       if (headerRowIdx < 0) {
         for (let r = 0; r < Math.min(15, rows.length); r++) {
@@ -1492,13 +1475,11 @@
 
       for (let r = startRow; r < rows.length; r++) {
         const row = rows[r];
-        // Skip completely blank separator rows instead of aborting early
         if (!Array.isArray(row)) continue;
 
         const rawLabel = row[itemCol] !== null && row[itemCol] !== undefined ? String(row[itemCol]).trim() : '';
         if (!rawLabel) continue;
 
-        // Stop cleanly at Total / Current Yearly Earnings summary sections
         if (/^(total|grand total|subtotal|net worth|current yearly earnings|total yearly interest|total income|month\s*\d+|salary|notes?|comments?)$/i.test(rawLabel) ||
             /^(total|subtotal|sum)\b/i.test(rawLabel)) {
           break;
@@ -1604,16 +1585,10 @@
       return typeof window.XLSX !== 'undefined';
     }
 
-    /**
-     * Built-in Zero-Dependency Pure-JS .xlsx ZIP/XML Parser
-     * Uses native browser DecompressionStream('deflate-raw') + DOMParser so .xlsx
-     * files work 100% offline or if SheetJS CDN is blocked on iPad/GitHub Pages.
-     */
     async function parseXlsxNativeFallback(arrayBuffer) {
       const bytes = new Uint8Array(arrayBuffer);
       const view = new DataView(arrayBuffer);
 
-      // Locate End of Central Directory (EOCD) signature 0x06054b50
       let eocdOffset = -1;
       for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) {
         if (view.getUint32(i, true) === 0x06054b50) {
@@ -1644,7 +1619,6 @@
         const fileName = decoder.decode(bytes.subarray(ptr + 46, ptr + 46 + nameLen));
         ptr += 46 + nameLen + extraLen + commentLen;
 
-        // Read Local File Header
         if (localHeaderOffset + 30 <= bytes.length && view.getUint32(localHeaderOffset, true) === 0x04034b50) {
           const lNameLen = view.getUint16(localHeaderOffset + 26, true);
           const lExtraLen = view.getUint16(localHeaderOffset + 28, true);
@@ -1677,7 +1651,6 @@
 
       const domParser = new DOMParser();
 
-      // 1. Parse Shared Strings (xl/sharedStrings.xml)
       const sharedStrings = [];
       const ssXml = await readZipText('xl/sharedStrings.xml');
       if (ssXml) {
@@ -1693,7 +1666,6 @@
         }
       }
 
-      // 2. Map Relationship IDs -> Worksheet Paths (xl/_rels/workbook.xml.rels)
       const relMap = new Map();
       const relsXml = await readZipText('xl/_rels/workbook.xml.rels');
       if (relsXml) {
@@ -1708,7 +1680,6 @@
         }
       }
 
-      // 3. Parse Workbook Sheet Names & Order (xl/workbook.xml)
       const wbXml = await readZipText('xl/workbook.xml');
       if (!wbXml) throw new Error('Missing xl/workbook.xml inside .xlsx file.');
       const wbDoc = domParser.parseFromString(wbXml, 'application/xml');
@@ -1800,7 +1771,6 @@
           return { sheetName: sn, rows };
         });
       }
-      // Seamless fallback to built-in pure-JS .xlsx ZIP/XML engine
       return await parseXlsxNativeFallback(buffer);
     }
 
@@ -1843,7 +1813,6 @@
             let parts = parseSheetNameToDateParts(sheetName);
             let dateSource = 'tab';
 
-            // If tab name isn't a recognized date (e.g. Sheet14), inspect inner top cells if it holds account rows
             if (!parts && !NON_SNAPSHOT_TAB_REGEX.test(String(sheetName || '').trim()) && parsedItems.length > 0) {
               const innerParts = extractDatePartsFromTopCells(rows);
               if (innerParts) {
@@ -1905,7 +1874,7 @@
           setLiveStatus('No valid snapshot tabs found.', 4000);
           showDiagnosticAlert(
             'No Date Snapshot Tabs Found',
-            `Read ${files.length} file(s), but no tabs contained a recognized date and Item/Value account rows. Ensure your file is an .xlsx or .xls workbook with date tabs (e.g. "Feb 1 25", "Nov 12").`
+            `Read ${files.length} file(s), but no tabs contained a recognized date and Item/Value account rows. Ensure your file is an .xlsx or .xls workbook with date tabs (e.g. "Feb 1 25", "nov12th").`
           );
           return;
         }
@@ -2276,7 +2245,7 @@
 
     /**
      * =========================================================================
-     * 9. MASTER RENDER & TAB 1: OVERVIEW (KPI CARDS + ANIMATED CHART)
+     * 9. MASTER RENDER & TAB 1: OVERVIEW (KPI CARDS + PROPORTIONAL TIMELINE)
      * =========================================================================
      */
     function renderAll() {
@@ -2372,7 +2341,7 @@
       const prevSnap = visibleSlice.length > 1 ? visibleSlice[visibleSlice.length - 2] : null;
 
       updateOverviewKpiCards(latestSnap, prevSnap);
-      renderTimelineChart(visibleSlice, fullSlice.length);
+      renderTimelineChart(visibleSlice, fullSlice);
     }
 
     function updateOverviewKpiCards(latestSnap, prevSnap) {
@@ -2424,7 +2393,7 @@
 
     /**
      * =========================================================================
-     * 10. ANIMATED GROWTH TIMELINE PLAYBACK & CHART RENDERER (+ SVG FALLBACK)
+     * 10. ANIMATED GROWTH TIMELINE & PROPORTIONAL CALENDAR-TIME CHART RENDERER
      * =========================================================================
      */
     function toggleTimelineAnimation() {
@@ -2509,17 +2478,67 @@
       }
     }
 
-    function renderTimelineChart(visibleSlice, totalCount) {
-      const labels = visibleSlice.map(s => s.label);
-      const totalsSeries = visibleSlice.map(s => computeSnapshotTotals(s));
-      const cashData = totalsSeries.map(t => t.Cash);
-      const sharesData = totalsSeries.map(t => t.Shares);
-      const pensionData = totalsSeries.map(t => t.Pension);
-      const totalData = totalsSeries.map(t => t.total);
+    /**
+     * Generates clean monthly/quarterly calendar tick timestamps between minMs and maxMs
+     * so 12-month intervals (e.g. Feb 23 -> Feb 24) display proportional calendar ticks.
+     */
+    function buildProportionalMonthTicks(minMs, maxMs) {
+      const startDt = new Date(minMs);
+      const endDt = new Date(maxMs);
+      const totalMonths = (endDt.getUTCFullYear() - startDt.getUTCFullYear()) * 12 +
+                          (endDt.getUTCMonth() - startDt.getUTCMonth());
+
+      // Choose clean monthly step so axis stays crisp on iPad & desktop
+      let stepMonths = 1;
+      if (totalMonths > 48) stepMonths = 6;
+      else if (totalMonths > 24) stepMonths = 3;
+      else if (totalMonths > 14) stepMonths = 2;
+
+      const ticks = [];
+      let curYear = startDt.getUTCFullYear();
+      let curMonth = startDt.getUTCMonth();
+
+      while (true) {
+        const tickMs = Date.UTC(curYear, curMonth, 1);
+        if (tickMs > maxMs + 15 * 86400000) break;
+        if (tickMs >= minMs - 15 * 86400000) {
+          ticks.push(tickMs);
+        }
+        curMonth += stepMonths;
+        while (curMonth >= 12) {
+          curMonth -= 12;
+          curYear += 1;
+        }
+      }
+      return ticks;
+    }
+
+    function renderTimelineChart(visibleSlice, fullSlice) {
+      const totalCount = fullSlice.length;
+      const pointsMeta = visibleSlice.map(s => {
+        const totals = computeSnapshotTotals(s);
+        return {
+          dateKey: s.dateKey,
+          label: s.label,
+          ts: dateKeyToUtcMs(s.dateKey),
+          totals
+        };
+      });
+
+      // Anchor X-axis range across the full selected timeframe so animation plots smoothly along the true calendar axis
+      const fullMinTs = dateKeyToUtcMs(fullSlice[0].dateKey);
+      let fullMaxTs = dateKeyToUtcMs(fullSlice[fullSlice.length - 1].dateKey);
+      if (fullMaxTs <= fullMinTs) {
+        // Single snapshot: show a 12-month span from that month forward
+        const d0 = new Date(fullMinTs);
+        fullMaxTs = Date.UTC(d0.getUTCFullYear() + 1, d0.getUTCMonth(), d0.getUTCDate());
+      }
+
+      const monthTicks = buildProportionalMonthTicks(fullMinTs, fullMaxTs);
 
       if (animationState.currentIndex !== null) {
         const pct = Math.round(((animationState.currentIndex + 1) / totalCount) * 100);
-        document.getElementById('animCurrentMonthBadge').textContent = labels[labels.length - 1] || '';
+        document.getElementById('animCurrentMonthBadge').textContent = pointsMeta[pointsMeta.length - 1]?.label || '';
         document.getElementById('animProgressBar').style.width = `${pct}%`;
         document.getElementById('animStepCounter').textContent = `${animationState.currentIndex + 1} / ${totalCount}`;
       }
@@ -2530,70 +2549,92 @@
 
       const mode = appState.preferences.chartMode;
 
-      // Crisp built-in SVG chart renderer if Chart.js is offline or blocked
+      // Crisp built-in Proportional SVG chart renderer if Chart.js is offline or blocked
       if (typeof window.Chart === 'undefined') {
         canvas.classList.add('hidden');
         svgFallback.classList.remove('hidden');
-        renderSvgFallbackChart(svgFallback, labels, { cashData, sharesData, pensionData, totalData }, mode);
+        renderSvgFallbackChart(svgFallback, pointsMeta, fullMinTs, fullMaxTs, monthTicks, mode);
         return;
       }
 
       canvas.classList.remove('hidden');
       svgFallback.classList.add('hidden');
 
+      const cashPoints = pointsMeta.map(p => ({ x: p.ts, y: p.totals.Cash, label: p.label, total: p.totals.total }));
+      const sharesPoints = pointsMeta.map(p => ({ x: p.ts, y: p.totals.Shares, label: p.label, total: p.totals.total }));
+      const pensionPoints = pointsMeta.map(p => ({ x: p.ts, y: p.totals.Pension, label: p.label, total: p.totals.total }));
+      const totalPoints = pointsMeta.map(p => ({ x: p.ts, y: p.totals.total, label: p.label, total: p.totals.total }));
+
       let datasets = [];
 
       if (mode === 'total') {
         datasets = [{
           label: 'Total Net Worth',
-          data: totalData,
+          data: totalPoints,
           borderColor: '#6d28d9',
           backgroundColor: 'rgba(124, 58, 237, 0.16)',
           borderWidth: 3,
           fill: true,
-          tension: 0.25,
-          pointRadius: visibleSlice.length <= 24 ? 4 : 2,
-          pointHoverRadius: 6
+          tension: 0.2,
+          pointRadius: visibleSlice.length <= 30 ? 4.5 : 2.5,
+          pointHoverRadius: 6.5
         }];
       } else {
         const isStacked = mode === 'stacked';
         datasets = [
           {
             label: 'Cash & Cash ISAs',
-            data: cashData,
+            data: cashPoints,
             borderColor: CATEGORY_STYLES.Cash.hex,
             backgroundColor: isStacked ? CATEGORY_STYLES.Cash.fill : 'transparent',
             borderWidth: 2.5,
             fill: isStacked,
-            tension: 0.25,
-            pointRadius: visibleSlice.length <= 24 ? 3.5 : 2
+            tension: 0.2,
+            pointRadius: visibleSlice.length <= 30 ? 4 : 2.5
           },
           {
             label: 'Shares ISA & Invest',
-            data: sharesData,
+            data: sharesPoints,
             borderColor: CATEGORY_STYLES.Shares.hex,
             backgroundColor: isStacked ? CATEGORY_STYLES.Shares.fill : 'transparent',
             borderWidth: 2.5,
             fill: isStacked,
-            tension: 0.25,
-            pointRadius: visibleSlice.length <= 24 ? 3.5 : 2
+            tension: 0.2,
+            pointRadius: visibleSlice.length <= 30 ? 4 : 2.5
           },
           {
             label: 'Pensions (SIPPs)',
-            data: pensionData,
+            data: pensionPoints,
             borderColor: CATEGORY_STYLES.Pension.hex,
             backgroundColor: isStacked ? CATEGORY_STYLES.Pension.fill : 'transparent',
             borderWidth: 2.5,
             fill: isStacked,
-            tension: 0.25,
-            pointRadius: visibleSlice.length <= 24 ? 3.5 : 2
+            tension: 0.2,
+            pointRadius: visibleSlice.length <= 30 ? 4 : 2.5
           }
         ];
       }
 
+      const xScaleConfig = {
+        type: 'linear',
+        min: fullMinTs,
+        max: fullMaxTs,
+        grid: { color: '#f1f5f9' },
+        afterBuildTicks: (axis) => {
+          axis.ticks = monthTicks.map(v => ({ value: v }));
+        },
+        ticks: {
+          autoSkip: true,
+          maxRotation: 0,
+          font: { size: 11, weight: '500' },
+          color: '#64748b',
+          callback: (val) => formatMonthYearFromMs(Number(val))
+        }
+      };
+
       if (chartInstance) {
-        chartInstance.data.labels = labels;
         chartInstance.data.datasets = datasets;
+        chartInstance.options.scales.x = xScaleConfig;
         chartInstance.options.scales.y.stacked = (mode === 'stacked');
         chartInstance.update(animationState.isPlaying ? 'none' : 'default');
         return;
@@ -2601,11 +2642,11 @@
 
       chartInstance = new window.Chart(canvas.getContext('2d'), {
         type: 'line',
-        data: { labels, datasets },
+        data: { datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
+          interaction: { mode: 'nearest', axis: 'x', intersect: false },
           plugins: {
             legend: {
               position: 'top',
@@ -2616,20 +2657,22 @@
               backgroundColor: '#1e1b4b',
               padding: 12,
               callbacks: {
+                title: (items) => {
+                  if (!items.length) return '';
+                  const rawPt = items[0].raw;
+                  return rawPt && rawPt.label ? rawPt.label : formatMonthYearFromMs(items[0].parsed.x);
+                },
                 label: (ctx) => `${ctx.dataset.label}: ${formatGBP(ctx.parsed.y)}`,
                 footer: (items) => {
                   if (mode === 'total' || !items.length) return '';
-                  const idx = items[0].dataIndex;
-                  return `Total Net Worth: ${formatGBP(totalData[idx])}`;
+                  const rawPt = items[0].raw;
+                  return rawPt && rawPt.total !== undefined ? `Total Net Worth: ${formatGBP(rawPt.total)}` : '';
                 }
               }
             }
           },
           scales: {
-            x: {
-              grid: { display: false },
-              ticks: { maxTicksLimit: 12, font: { size: 11 }, color: '#64748b' }
-            },
+            x: xScaleConfig,
             y: {
               stacked: (mode === 'stacked'),
               border: { display: false },
@@ -2645,15 +2688,19 @@
       });
     }
 
-    function renderSvgFallbackChart(container, labels, seriesObj, mode) {
-      const { cashData, sharesData, pensionData, totalData } = seriesObj;
-      if (!totalData.length) return;
+    function renderSvgFallbackChart(container, pointsMeta, minTs, maxTs, monthTicks, mode) {
+      if (!pointsMeta.length) return;
       const w = 860;
-      const h = 330;
+      const h = 340;
       const padL = 62;
-      const padR = 24;
+      const padR = 26;
       const padT = 34;
-      const padB = 34;
+      const padB = 38;
+
+      const cashData = pointsMeta.map(p => p.totals.Cash);
+      const sharesData = pointsMeta.map(p => p.totals.Shares);
+      const pensionData = pointsMeta.map(p => p.totals.Pension);
+      const totalData = pointsMeta.map(p => p.totals.total);
 
       const allVals = mode === 'total'
         ? totalData
@@ -2661,34 +2708,48 @@
 
       const minV = Math.min(...allVals, 0);
       const maxV = Math.max(...allVals, 100);
-      const span = Math.max(1, maxV - minV);
+      const valSpan = Math.max(1, maxV - minV);
+      const timeSpan = Math.max(1, maxTs - minTs);
 
-      const toX = (i) => padL + (i / Math.max(1, totalData.length - 1)) * (w - padL - padR);
-      const toY = (v) => h - padB - ((v - minV) / span) * (h - padT - padB);
-      const makePoints = (arr) => arr.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+      const toX = (ts) => padL + ((ts - minTs) / timeSpan) * (w - padL - padR);
+      const toY = (v) => h - padB - ((v - minV) / valSpan) * (h - padT - padB);
+      const makePoints = (getter) => pointsMeta.map(p => `${toX(p.ts).toFixed(1)},${toY(getter(p)).toFixed(1)}`).join(' ');
+
+      const tickSvg = monthTicks.map(tMs => {
+        const x = toX(tMs).toFixed(1);
+        return `
+          <line x1="${x}" y1="${padT}" x2="${x}" y2="${h - padB}" stroke="#f1f5f9" stroke-width="1" />
+          <text x="${x}" y="${h - 12}" text-anchor="middle" font-size="10.5" fill="#64748b">${escapeHtml(formatMonthYearFromMs(tMs))}</text>
+        `;
+      }).join('');
 
       let polylines = '';
       if (mode === 'total') {
-        polylines = `<polyline fill="none" stroke="#6d28d9" stroke-width="3.5" points="${makePoints(totalData)}" />`;
+        polylines = `<polyline fill="none" stroke="#6d28d9" stroke-width="3.5" points="${makePoints(p => p.totals.total)}" />`;
       } else {
         polylines = `
-          <polyline fill="none" stroke="#10b981" stroke-width="2.8" points="${makePoints(cashData)}" />
-          <polyline fill="none" stroke="#7c3aed" stroke-width="2.8" points="${makePoints(sharesData)}" />
-          <polyline fill="none" stroke="#f59e0b" stroke-width="2.8" points="${makePoints(pensionData)}" />
-          <polyline fill="none" stroke="#1e1b4b" stroke-width="2" stroke-dasharray="5,4" points="${makePoints(totalData)}" />
+          <polyline fill="none" stroke="#10b981" stroke-width="2.8" points="${makePoints(p => p.totals.Cash)}" />
+          <polyline fill="none" stroke="#7c3aed" stroke-width="2.8" points="${makePoints(p => p.totals.Shares)}" />
+          <polyline fill="none" stroke="#f59e0b" stroke-width="2.8" points="${makePoints(p => p.totals.Pension)}" />
+          <polyline fill="none" stroke="#1e1b4b" stroke-width="2" stroke-dasharray="5,4" points="${makePoints(p => p.totals.total)}" />
         `;
       }
 
+      const dotsSvg = pointsMeta.map(p => `
+        <circle cx="${toX(p.ts).toFixed(1)}" cy="${toY(p.totals.total).toFixed(1)}" r="3.5" fill="#6d28d9" />
+      `).join('');
+
+      const latestPt = pointsMeta[pointsMeta.length - 1];
       container.innerHTML = `
         <svg viewBox="0 0 ${w} ${h}" class="w-full h-full">
+          ${tickSvg}
           <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${h - padB}" stroke="#cbd5e1" stroke-width="1" />
           <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#cbd5e1" stroke-width="1" />
           <text x="${padL - 8}" y="${padT + 4}" text-anchor="end" font-size="11" fill="#64748b">${formatGBP(maxV)}</text>
           <text x="${padL - 8}" y="${h - padB}" text-anchor="end" font-size="11" fill="#64748b">${formatGBP(minV)}</text>
-          <text x="${padL}" y="${h - 10}" font-size="11" fill="#475569">${escapeHtml(labels[0] || '')}</text>
-          <text x="${w - padR}" y="${h - 10}" text-anchor="end" font-size="11" fill="#475569">${escapeHtml(labels[labels.length - 1] || '')}</text>
           ${polylines}
-          <text x="${padL}" y="18" font-size="12" fill="#1e1b4b" font-weight="700">Total Net Worth (${escapeHtml(labels[labels.length - 1] || '')}): ${formatGBP(totalData[totalData.length - 1])}</text>
+          ${dotsSvg}
+          <text x="${padL}" y="18" font-size="12" fill="#1e1b4b" font-weight="700">Total Net Worth (${escapeHtml(latestPt.label)}): ${formatGBP(latestPt.totals.total)}</text>
         </svg>
       `;
     }
