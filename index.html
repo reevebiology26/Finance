@@ -630,8 +630,11 @@
               <button type="button" id="btnDeselectAllSheets" class="text-slate-500 hover:underline cursor-pointer">Deselect All</button>
             </div>
           </div>
-          <div id="reviewSheetsList" class="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <!-- Checkboxes injected here -->
+          <div id="reviewSheetsList" class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <!-- Checkboxes & editable dates injected here -->
+          </div>
+          <div id="reviewSkippedTabsBox" class="hidden mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+            <!-- Skipped tabs & reasons injected here -->
           </div>
         </div>
 
@@ -709,554 +712,41 @@
   <script>
     /**
      * =========================================================================
-     * 1. APPLICATION STATE & CONSTANTS (ZERO PRE-LOADED PERSONAL DATA)
+     * 5. EXACT SHEET DATE PARSER (ALL MONTHS JAN-DEC, SERIAL DATES & INNER CELLS)
      * =========================================================================
      */
-    const STORAGE_KEY = 'uk_wealth_isa_tracker_clean_v7';
-    const DAILY_INTEREST_GBP = 25; // £25/day since Jan 1 inclusive (Jan 1 = £25, Jan 3 = £75)
+    const NON_SNAPSHOT_TAB_REGEX = /^(summary|salary\s*proj.*|sipp\s*(calc|proj)?|notes?|template|calc|calculator|overview|dashboard|totals?|income|earnings)$/i;
 
-    let appState = {
-      accounts: [],
-      snapshots: [],
-      preferences: {
-        chartMode: 'stacked',   // 'stacked' | 'lines' | 'total'
-        timeframe: 'ALL',       // '6M' | '1Y' | '3Y' | 'ALL'
-        hideZeroHistoric: true
-      }
-    };
-
-    let pendingImportBatch = null;
-    let chartInstance = null;
-
-    let animationState = {
-      isPlaying: false,
-      currentIndex: null,
-      speed: 1,
-      timerId: null
-    };
-
-    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const MONTH_MAP = {
-      jan: 1, january: 1,
-      feb: 2, february: 2,
-      mar: 3, march: 3,
-      apr: 4, april: 4,
-      may: 5,
-      jun: 6, june: 6,
-      jul: 7, july: 7,
-      aug: 8, august: 8,
-      sep: 9, sept: 9, september: 9,
-      oct: 10, october: 10,
-      nov: 11, november: 11,
-      dec: 12, december: 12
-    };
-
-    const CATEGORY_STYLES = {
-      Cash: {
-        hex: '#10b981',
-        fill: 'rgba(16, 185, 129, 0.24)',
-        badgeBg: 'bg-emerald-100',
-        badgeText: 'text-emerald-800',
-        dot: 'bg-emerald-500'
-      },
-      Shares: {
-        hex: '#7c3aed',
-        fill: 'rgba(124, 58, 237, 0.22)',
-        badgeBg: 'bg-violet-100',
-        badgeText: 'text-violet-800',
-        dot: 'bg-violet-600'
-      },
-      Pension: {
-        hex: '#f59e0b',
-        fill: 'rgba(245, 158, 11, 0.26)',
-        badgeBg: 'bg-amber-100',
-        badgeText: 'text-amber-900',
-        dot: 'bg-amber-500'
-      }
-    };
-
-    /**
-     * Exact Account Classification Rules (3 buckets: Cash, Shares, Pension):
-     * - Pension: Any account containing 'sipp' (Hl sipp, HL sipp shares, T212 sipp, T212 sipp shares).
-     * - Shares: ONLY Stocks & Shares ISAs / share investments:
-     *     HL isa / HL isa shares / Hisa / H isa / HS
-     *     T212 / T212 isa / T212 isa shares
-     *     Minvest / Minvest shares
-     *   (Note: bare 'H' alone in 2023/2024 stays Cash unless explicitly annotated in the latest November sheet).
-     * - Cash: ALL other accounts (Virisa, Nwe isa, Nweisa, Misa, M, MC, Ms, M chall, M funpot, M penny, MPB,
-     *   Nw, Nwt, Nwe, Nw sav, Nwe sav, S, B, Barclays, PB, NSAI, NSAndi, V, Vir, and negative Barclaycard).
-     */
-    const KNOWN_ACCOUNT_CODES = {
-      // Shares ISAs & Equity Investments
-      'hl isa':           { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
-      'hl isa shares':    { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
-      'h isa':            { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
-      'hisa':             { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
-      'hs':               { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
-      't212':             { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
-      't212 isa':         { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
-      't212 isa shares':  { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
-      'trading 212 isa':  { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
-      'minvest':          { displayName: 'Monzo Invest Shares',       provider: 'Monzo',               category: 'Shares',  isLiability: false },
-      'minvest shares':   { displayName: 'Monzo Invest Shares',       provider: 'Monzo',               category: 'Shares',  isLiability: false },
-
-      // Pensions (SIPPs)
-      'hl sipp':          { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown', category: 'Pension', isLiability: false },
-      'hl sipp shares':   { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown', category: 'Pension', isLiability: false },
-      'h sipp':           { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown', category: 'Pension', isLiability: false },
-      't212 sipp':        { displayName: 'Trading 212 SIPP Pension',  provider: 'Trading 212',         category: 'Pension', isLiability: false },
-      't212 sipp shares': { displayName: 'Trading 212 SIPP Pension',  provider: 'Trading 212',         category: 'Pension', isLiability: false },
-      'trading 212 sipp': { displayName: 'Trading 212 SIPP Pension',  provider: 'Trading 212',         category: 'Pension', isLiability: false },
-
-      // Cash & Liabilities
-      'barclaycard':      { displayName: 'Barclaycard (Credit Card)', provider: 'Barclaycard',         category: 'Cash',    isLiability: true },
-      'b':                { displayName: 'Barclays',                  provider: 'Barclays',            category: 'Cash',    isLiability: false },
-      'barclays':         { displayName: 'Barclays',                  provider: 'Barclays',            category: 'Cash',    isLiability: false },
-      'm':                { displayName: 'Monzo Current (M)',         provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'mc':               { displayName: 'Monzo Current (MC)',        provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'm chall':          { displayName: 'Monzo Challenge Pot',       provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'm funpot':         { displayName: 'Monzo Fun Pot',             provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'ms':               { displayName: 'Monzo Savings (Ms)',        provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'misa':             { displayName: 'Monzo Cash ISA (Misa)',     provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'mpb':              { displayName: 'Monzo Pot (MPB)',           provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'm penny':          { displayName: 'Monzo Penny Saver',         provider: 'Monzo',               category: 'Cash',    isLiability: false },
-      'nw':               { displayName: 'Nationwide Current (Nw)',   provider: 'Nationwide',          category: 'Cash',    isLiability: false },
-      'nwt':              { displayName: 'Nationwide Savings (Nwt)',  provider: 'Nationwide',          category: 'Cash',    isLiability: false },
-      'nwe':              { displayName: 'Nationwide e-Savings (Nwe)',provider: 'Nationwide',          category: 'Cash',    isLiability: false },
-      'nwe sav':          { displayName: 'Nationwide Saver (Nwe sav)',provider: 'Nationwide',          category: 'Cash',    isLiability: false },
-      'nw sav':           { displayName: 'Nationwide Saver (Nw sav)', provider: 'Nationwide',          category: 'Cash',    isLiability: false },
-      'nwe isa':          { displayName: 'Nationwide Cash ISA',       provider: 'Nationwide',          category: 'Cash',    isLiability: false },
-      'nweisa':           { displayName: 'Nationwide Cash ISA',       provider: 'Nationwide',          category: 'Cash',    isLiability: false },
-      's':                { displayName: 'Starling Bank (S)',         provider: 'Starling',            category: 'Cash',    isLiability: false },
-      'pb':               { displayName: 'Premium Bonds (PB)',        provider: 'NS&I',                category: 'Cash',    isLiability: false },
-      'nsai':             { displayName: 'NS&I Savings (NSAI)',       provider: 'NS&I',                category: 'Cash',    isLiability: false },
-      'nsandi':           { displayName: 'NS&I Savings',              provider: 'NS&I',                category: 'Cash',    isLiability: false },
-      'v':                { displayName: 'Virgin Money (V)',          provider: 'Virgin Money',        category: 'Cash',    isLiability: false },
-      'vir':              { displayName: 'Virgin Money (Vir)',        provider: 'Virgin Money',        category: 'Cash',    isLiability: false },
-      'virisa':           { displayName: 'Virgin Money Cash ISA',     provider: 'Virgin Money',        category: 'Cash',    isLiability: false },
-      'h':                { displayName: 'H Savings Account (H)',     provider: 'Hargreaves Lansdown', category: 'Cash',    isLiability: false }
-    };
-
-    const KNOWN_BANK_KEYWORDS = [
-      { pattern: /^t212\b|^trading\s*212\b/i, provider: 'Trading 212' },
-      { pattern: /^hl\b|^hargreaves|^hs$|^hisa$|^h\s+(isa|sipp)\b|^h$/i, provider: 'Hargreaves Lansdown' },
-      { pattern: /^nw\w*\b|^nationwide\b/i, provider: 'Nationwide' },
-      { pattern: /^pb$|^nsai\b|^nsandi\b|^ns&i\b|^premium\s*bonds/i, provider: 'NS&I' },
-      { pattern: /^v$|^vir\w*\b|^virgin\b/i, provider: 'Virgin Money' },
-      { pattern: /^barclaycard\b/i, provider: 'Barclaycard' },
-      { pattern: /^b$|^barclays\b/i, provider: 'Barclays' },
-      { pattern: /^m$|^m\s+|^mc$|^ms$|^misa$|^mpb$|^minvest|^monzo\b/i, provider: 'Monzo' },
-      { pattern: /^s$|^starling\b/i, provider: 'Starling' },
-      { pattern: /^chase\b/i, provider: 'Chase UK' },
-      { pattern: /^marcus\b/i, provider: 'Marcus' },
-      { pattern: /^chip\b/i, provider: 'Chip' },
-      { pattern: /^zopa\b/i, provider: 'Zopa' },
-      { pattern: /^vanguard\b/i, provider: 'Vanguard' },
-      { pattern: /^aj\s*bell\b/i, provider: 'AJ Bell' },
-      { pattern: /^fidelity\b/i, provider: 'Fidelity' },
-      { pattern: /^freetrade\b/i, provider: 'Freetrade' },
-      { pattern: /^investengine\b/i, provider: 'InvestEngine' },
-      { pattern: /^hsbc\b/i, provider: 'HSBC' },
-      { pattern: /^lloyds\b/i, provider: 'Lloyds' },
-      { pattern: /^natwest\b/i, provider: 'NatWest' },
-      { pattern: /^santander\b/i, provider: 'Santander' },
-      { pattern: /^halifax\b/i, provider: 'Halifax' },
-      { pattern: /^coventry\b/i, provider: 'Coventry BS' },
-      { pattern: /^yorkshire\b/i, provider: 'Yorkshire BS' },
-      { pattern: /^skipton\b/i, provider: 'Skipton BS' },
-      { pattern: /^first\s*direct\b/i, provider: 'First Direct' },
-      { pattern: /^revolut\b/i, provider: 'Revolut' },
-      { pattern: /^plum\b/i, provider: 'Plum' },
-      { pattern: /^moneybox\b/i, provider: 'Moneybox' },
-      { pattern: /^nutmeg\b/i, provider: 'Nutmeg' },
-      { pattern: /^pensionbee\b/i, provider: 'PensionBee' },
-      { pattern: /^aviva\b/i, provider: 'Aviva' },
-      { pattern: /^scottish\s*widows\b/i, provider: 'Scottish Widows' },
-      { pattern: /^legal\s*&?\s*general\b|^l&g\b/i, provider: 'Legal & General' },
-      { pattern: /^royal\s*london\b/i, provider: 'Royal London' },
-      { pattern: /^standard\s*life\b/i, provider: 'Standard Life' },
-      { pattern: /^aegon\b/i, provider: 'Aegon' },
-      { pattern: /^nest\b/i, provider: 'NEST Pension' }
-    ];
-
-    /**
-     * =========================================================================
-     * 2. TOP-RIGHT LIVE COUNTER: INTEREST EARNED THIS YEAR (£25/DAY SINCE JAN 1)
-     * =========================================================================
-     */
-    function updateYtdInterestCounter() {
-      const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const msPerDay = 24 * 60 * 60 * 1000;
-
-      // Jan 1 = Day 1 (£25), Jan 3 = Day 3 (£75)
-      const dayOfYear = Math.floor((todayMidnight - startOfYear) / msPerDay) + 1;
-      const ytdAmount = dayOfYear * DAILY_INTEREST_GBP;
-
-      const amountEl = document.getElementById('ytdInterestAmount');
-      const subEl = document.getElementById('ytdInterestSubtext');
-      if (amountEl) amountEl.textContent = formatGBP(ytdAmount);
-      if (subEl) subEl.textContent = `+£${DAILY_INTEREST_GBP}/day (Day ${dayOfYear})`;
-    }
-
-    /**
-     * =========================================================================
-     * 3. INITIALIZATION & UI EVENT LISTENERS
-     * =========================================================================
-     */
-    document.addEventListener('DOMContentLoaded', () => {
-      bindAllUiEvents();
-      updateYtdInterestCounter();
-      loadFromLocalStorage();
-
-      if (appState.accounts.length > 0 && appState.snapshots.length > 0) {
-        enterActiveWorkspace('overview');
-      } else {
-        showWelcomeScreen();
-      }
-    });
-
-    function bindAllUiEvents() {
-      const fileInput = document.getElementById('excelFileInput');
-      if (fileInput) {
-        fileInput.addEventListener('change', handleExcelFilesSelected);
-      }
-
-      document.getElementById('btnOpenSecurity')?.addEventListener('click', openSecurityModal);
-      document.getElementById('btnExportExcel')?.addEventListener('click', exportToExcel);
-      document.getElementById('btnHeaderStart')?.addEventListener('click', showWelcomeScreen);
-
-      document.getElementById('btnStartBlank')?.addEventListener('click', startBlankWorkspace);
-      document.getElementById('btnEmptyGoAdd')?.addEventListener('click', () => switchTab('entry'));
-      document.getElementById('btnResumeSaved')?.addEventListener('click', () => enterActiveWorkspace('overview'));
-      document.getElementById('btnWipeSavedBanner')?.addEventListener('click', clearSavedPortfolio);
-
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const targetTab = btn.getAttribute('data-tab');
-          if (targetTab) switchTab(targetTab);
-        });
-      });
-
-      document.getElementById('btnPlayAnimation')?.addEventListener('click', toggleTimelineAnimation);
-      document.getElementById('btnResetAnim')?.addEventListener('click', resetTimelineAnimation);
-      document.getElementById('btnAnimSpeed')?.addEventListener('click', cycleAnimationSpeed);
-
-      document.querySelectorAll('.chart-mode-btn').forEach(btn => {
-        btn.addEventListener('click', () => setChartMode(btn.getAttribute('data-mode')));
-      });
-      document.querySelectorAll('.tf-btn').forEach(btn => {
-        btn.addEventListener('click', () => setTimeframe(btn.getAttribute('data-tf')));
-      });
-
-      document.getElementById('entryDatePicker')?.addEventListener('change', renderMonthlyEntryForm);
-      document.getElementById('cbHideZeroHistoric')?.addEventListener('change', (e) => {
-        appState.preferences.hideZeroHistoric = e.target.checked;
-        saveToLocalStorage();
-        renderMonthlyEntryForm();
-      });
-      document.getElementById('btnResetEntryToPrev')?.addEventListener('click', prefillEntryFromLatest);
-      document.getElementById('btnToggleAddAccount')?.addEventListener('click', toggleAddAccountPanel);
-      document.getElementById('btnAddNewFund')?.addEventListener('click', handleAddNewFund);
-      document.getElementById('monthlyEntryForm')?.addEventListener('submit', saveMonthlyEntry);
-
-      document.getElementById('btnCloseImportModal')?.addEventListener('click', closeImportReviewModal);
-      document.getElementById('btnCancelImport')?.addEventListener('click', closeImportReviewModal);
-      document.getElementById('btnSelectAllSheets')?.addEventListener('click', () => toggleReviewSheets(true));
-      document.getElementById('btnDeselectAllSheets')?.addEventListener('click', () => toggleReviewSheets(false));
-      document.getElementById('btnConfirmImport')?.addEventListener('click', commitReviewedImport);
-
-      document.getElementById('btnCloseSecurityX')?.addEventListener('click', closeSecurityModal);
-      document.getElementById('btnCloseSecurityOk')?.addEventListener('click', closeSecurityModal);
-      document.getElementById('btnWipeModalData')?.addEventListener('click', wipeAllBrowserDataAndReset);
-    }
-
-    function setLiveStatus(msg, autoClearMs = 0) {
-      const bar = document.getElementById('liveStatusBar');
-      const txt = document.getElementById('liveStatusText');
-      if (!bar || !txt) return;
-      if (!msg) {
-        bar.classList.add('hidden');
-        return;
-      }
-      txt.textContent = msg;
-      bar.classList.remove('hidden');
-      if (autoClearMs > 0) {
-        setTimeout(() => bar.classList.add('hidden'), autoClearMs);
-      }
-    }
-
-    function loadFromLocalStorage() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.accounts) && Array.isArray(parsed.snapshots)) {
-          appState = {
-            accounts: parsed.accounts,
-            snapshots: parsed.snapshots,
-            preferences: Object.assign(
-              { chartMode: 'stacked', timeframe: 'ALL', hideZeroHistoric: true },
-              parsed.preferences || {}
-            )
-          };
-        }
-      } catch (err) {
-        console.warn('Could not load saved data from localStorage:', err);
-      }
-    }
-
-    function saveToLocalStorage() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-      } catch (err) {
-        console.warn('Could not save data to localStorage:', err);
-      }
-    }
-
-    function startBlankWorkspace() {
-      enterActiveWorkspace('entry');
-      showToast('Started blank workspace. Add your first account and monthly entry below.', 'info');
-    }
-
-    function enterActiveWorkspace(defaultTab = 'overview') {
-      document.getElementById('welcomeScreen')?.classList.add('hidden');
-      document.getElementById('mainNavTabs')?.classList.remove('hidden');
-      setDefaultEntryDate();
-      renderAll();
-      switchTab(defaultTab);
-    }
-
-    function showWelcomeScreen() {
-      stopTimelineAnimation();
-      document.getElementById('welcomeScreen')?.classList.remove('hidden');
-      document.getElementById('mainNavTabs')?.classList.add('hidden');
-      document.getElementById('view-overview')?.classList.add('hidden');
-      document.getElementById('view-insights')?.classList.add('hidden');
-      document.getElementById('view-entry')?.classList.add('hidden');
-      document.getElementById('view-history')?.classList.add('hidden');
-      updateResumeBanner();
-    }
-
-    function updateResumeBanner() {
-      const banner = document.getElementById('resumeSavedBanner');
-      const details = document.getElementById('resumeSavedDetails');
-      if (!banner || !details) return;
-      if (appState.accounts.length > 0 && appState.snapshots.length > 0) {
-        const sorted = sortSnapshots(appState.snapshots);
-        banner.classList.remove('hidden');
-        details.textContent = `${appState.accounts.length} accounts across ${sorted.length} dates (${sorted[0].label} to ${sorted[sorted.length - 1].label}).`;
-      } else {
-        banner.classList.add('hidden');
-      }
-    }
-
-    function clearSavedPortfolio() {
-      try {
-        localStorage.removeItem(STORAGE_KEY);
-      } catch (_) {}
-      appState.accounts = [];
-      appState.snapshots = [];
-      updateResumeBanner();
-      showToast('Saved portfolio cleared.', 'info');
-    }
-
-    function openSecurityModal() {
-      document.getElementById('securityInfoModal')?.classList.remove('hidden');
-    }
-
-    function closeSecurityModal() {
-      document.getElementById('securityInfoModal')?.classList.add('hidden');
-    }
-
-    function wipeAllBrowserDataAndReset() {
-      clearSavedPortfolio();
-      closeSecurityModal();
-      showWelcomeScreen();
-      showToast('All local browser portfolio data has been wiped.', 'success');
-    }
-
-    function switchTab(tabName) {
-      if (tabName !== 'overview') {
-        stopTimelineAnimation();
-      }
-      ['overview', 'insights', 'entry', 'history'].forEach(t => {
-        const viewEl = document.getElementById(`view-${t}`);
-        const btnEl = document.getElementById(`tab-${t}`);
-        if (!viewEl || !btnEl) return;
-        if (t === tabName) {
-          viewEl.classList.remove('hidden');
-          btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-950 shadow-xs flex items-center gap-2 transition cursor-pointer';
-        } else {
-          viewEl.classList.add('hidden');
-          btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer';
-        }
-      });
-
-      if (tabName === 'overview') {
-        renderOverviewTab();
-      } else if (tabName === 'insights') {
-        renderInsightsAndProvidersTab();
-      } else if (tabName === 'entry') {
-        renderMonthlyEntryForm();
-      } else if (tabName === 'history') {
-        renderHistoryTable();
-      }
-    }
-
-    /**
-     * =========================================================================
-     * 4. CANONICAL ACCOUNT KEYS & RETROACTIVE NOVEMBER CLASSIFICATION ENGINE
-     * =========================================================================
-     */
-    function normalizeAccountKey(rawName) {
-      return String(rawName || '')
-        .trim()
-        .toLowerCase()
-        .replace(/[_-]+/g, ' ')
-        .replace(/\s+/g, ' ');
-    }
-
-    /**
-     * Maps shorthand / unannotated earlier codes onto a unified canonical key
-     * so earlier unannotated months merge seamlessly with latest November entries.
-     */
-    function getCanonicalAccountKey(rawName) {
-      const k = normalizeAccountKey(rawName);
-      if (['hl isa', 'hl isa shares', 'h isa', 'hisa', 'hs'].includes(k)) return 'hl isa shares';
-      if (['hl sipp', 'hl sipp shares', 'h sipp'].includes(k)) return 'hl sipp shares';
-      if (['t212', 't212 isa', 't212 isa shares', 'trading 212 isa'].includes(k)) return 't212 isa shares';
-      if (['t212 sipp', 't212 sipp shares', 'trading 212 sipp'].includes(k)) return 't212 sipp shares';
-      if (['minvest', 'minvest shares'].includes(k)) return 'minvest shares';
-      if (['nwe isa', 'nweisa'].includes(k)) return 'nwe isa';
-      if (['nw sav', 'nwe sav'].includes(k)) return 'nwe sav';
-      if (['b', 'barclays'].includes(k)) return 'barclays';
-      if (['v', 'vir'].includes(k)) return 'virgin';
-      return k;
-    }
-
-    function slugifyId(canonicalKey) {
-      return canonicalKey.replace(/[^a-z0-9]+/g, '_') || 'acc_' + Math.random().toString(36).slice(2, 7);
-    }
-
-    function titleCaseWords(str) {
-      return str.replace(/\b\w+/g, w => {
-        if (['isa', 'sipp', 'ns&i', 'nsai', 'hl', 't212', 'uk', 'bs', 'mpb', 'mc', 'ms', 'pb'].includes(w.toLowerCase())) {
-          return w.toUpperCase();
-        }
-        return w.charAt(0).toUpperCase() + w.slice(1);
-      });
-    }
-
-    function classifyAccount(rawName, novemberDictionary = null) {
-      const cleaned = String(rawName || '').trim();
-      const normKey = normalizeAccountKey(cleaned);
-      const canonicalKey = getCanonicalAccountKey(cleaned);
-
-      // 1. Check retroactive dictionary learned from the latest November sheet first
-      if (novemberDictionary && novemberDictionary.has(canonicalKey)) {
-        const novEntry = novemberDictionary.get(canonicalKey);
-        return {
-          canonicalKey,
-          rawName: novEntry.rawName || cleaned,
-          displayName: novEntry.displayName,
-          provider: novEntry.provider,
-          category: novEntry.category,
-          isLiability: novEntry.isLiability,
-          isNewBank: novEntry.isNewBank,
-          inheritedFromNov: true
-        };
-      }
-
-      // 2. Check known account mappings
-      if (KNOWN_ACCOUNT_CODES[normKey] || KNOWN_ACCOUNT_CODES[canonicalKey]) {
-        const base = KNOWN_ACCOUNT_CODES[canonicalKey] || KNOWN_ACCOUNT_CODES[normKey];
-        return {
-          canonicalKey,
-          rawName: cleaned,
-          isNewBank: false,
-          inheritedFromNov: false,
-          ...base
-        };
-      }
-
-      // 3. Pattern-based fallback classification (3 buckets: Cash, Shares, Pension)
-      let category = 'Cash';
-      if (/\bsipp\b|\bpension\b/i.test(normKey)) {
-        category = 'Pension';
-      } else if (
-        /^(hl|h|t212|trading\s*212)\s*isa\b/i.test(normKey) ||
-        /\bminvest\b/i.test(normKey) ||
-        (/\bisa\b/i.test(normKey) && /\bshares?\b/i.test(normKey))
-      ) {
-        category = 'Shares';
-      }
-
-      let provider = '';
-      for (const item of KNOWN_BANK_KEYWORDS) {
-        if (item.pattern.test(normKey)) {
-          provider = item.provider;
-          break;
-        }
-      }
-
-      let isNewBank = false;
-      if (!provider) {
-        const strippedRole = cleaned.replace(/\b(isa|sipp|shares?|savings?|sav|current|cash|account|pot|bond|bonds)\b/gi, '').trim();
-        const inferredToken = strippedRole || cleaned.split(/\s+/)[0] || 'Other Bank';
-        provider = titleCaseWords(inferredToken);
-        isNewBank = true;
-      }
-
-      const isLiability = /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(normKey);
-      const displayName = titleCaseWords(cleaned);
-
+    function excelSerialToDateParts(serial) {
+      if (typeof serial !== 'number' || !isFinite(serial) || serial < 36526 || serial > 73050) return null;
+      const utcDays = Math.floor(serial - 25569);
+      const dt = new Date(utcDays * 86400 * 1000);
+      if (isNaN(dt.getTime())) return null;
       return {
-        canonicalKey,
-        rawName: cleaned,
-        displayName,
-        provider,
-        category,
-        isLiability,
-        isNewBank,
-        inheritedFromNov: false
+        year: dt.getUTCFullYear(),
+        month: dt.getUTCMonth() + 1,
+        day: dt.getUTCDate(),
+        explicitYear: true
       };
     }
 
-    function isAccountLiability(acc) {
-      return Boolean(
-        acc &&
-        (acc.isLiability || /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(`${acc.rawName || ''} ${acc.displayName || ''}`))
-      );
-    }
-
-    function enforceAccountSign(amount, accOrMeta) {
-      const num = Number(amount) || 0;
-      if (num === 0) return 0;
-      return isAccountLiability(accOrMeta) ? -Math.abs(num) : num;
-    }
-
-    /**
-     * =========================================================================
-     * 5. EXACT SHEET DATE PARSER
-     *    - Skips Summary / Salary proj / Sipp / Overview / Totals / Notes
-     *    - Handles 'Feb 1 23', 'Feb 1 24', 'Feb 1 25', 'Feb 1 26', 'Feb 15 25', 'March 15 25'
-     *    - Handles 'Jan 26', 'Feb 26' -> 2026-01-01, 2026-02-01 (never 2031)
-     *    - Yearless tabs ('March 18', 'April 10', 'May', 'May 31', 'Nov 30th', 'Dec 15'):
-     *      Default to current year (2026), rolling back 1 year (2025) if Nov/Dec precedes Jan/Feb 26.
-     * =========================================================================
-     */
-    const NON_SNAPSHOT_TAB_REGEX = /^(summary|salary\s*proj|sipp|notes?|template|calc|calculator|overview|dashboard|sheet\d*|totals?|income|earnings)$/i;
-
     function parseSheetNameToDateParts(sheetName) {
-      const raw = String(sheetName || '').trim();
+      if (sheetName === null || sheetName === undefined) return null;
+      if (typeof sheetName === 'number') return excelSerialToDateParts(sheetName);
+
+      const raw = String(sheetName).trim();
       if (!raw || NON_SNAPSHOT_TAB_REGEX.test(raw)) return null;
 
-      // Remove ordinal suffixes: 1st -> 1, 2nd -> 2, 3rd -> 3, 10th -> 10, 30th -> 30
+      // Numeric Excel serial stored as string (e.g. "46338")
+      if (/^\d{5}$/.test(raw)) {
+        const serialParts = excelSerialToDateParts(parseInt(raw, 10));
+        if (serialParts) return serialParts;
+      }
+
+      // Remove ordinal suffixes: 1st -> 1, 2nd -> 2, 3rd -> 3, 10th -> 10, 12th -> 12, 30th -> 30
       const s = raw.replace(/\b(\d{1,2})(st|nd|rd|th)\b/gi, '$1').trim();
 
-      // 1. ISO date: '2026-02-01' or '2026-02'
+      // 1. ISO date: '2026-11-12' or '2026-11'
       let m = s.match(/^(\d{4})[-_/.\s](\d{1,2})(?:[-_/.\s](\d{1,2}))?$/);
       if (m) {
         const y = parseInt(m[1], 10);
@@ -1267,42 +757,44 @@
         }
       }
 
-      // 2. UK slash date: '01/02/2026' or '01/02/26'
-      m = s.match(/^(\d{1,2})[-_/.](\d{1,2})[-_/.](\d{2}|\d{4})$/);
+      // 2. UK slash/dash date: '12/11/2026', '12/11/26', or '12/11'
+      m = s.match(/^(\d{1,2})[-_/.](\d{1,2})(?:[-_/.](\d{2}|\d{4}))?$/);
       if (m) {
         const d = parseInt(m[1], 10);
         const mo = parseInt(m[2], 10);
-        let y = parseInt(m[3], 10);
-        if (y < 100) y += 2000;
-        if (y >= 1990 && y <= 2099 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
-          return { year: y, month: mo, day: d, explicitYear: true };
+        if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+          if (!m[3]) {
+            return { year: null, month: mo, day: d, explicitYear: false };
+          }
+          let y = parseInt(m[3], 10);
+          if (y < 100) y += 2000;
+          if (y >= 1990 && y <= 2099) {
+            return { year: y, month: mo, day: d, explicitYear: true };
+          }
         }
       }
 
-      const cleaned = s.toLowerCase().replace(/[,._-]+/g, ' ').trim();
-      const tokens = cleaned.split(/\s+/);
+      const cleaned = s.toLowerCase().replace(/[,._-]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const tokens = cleaned.split(' ');
 
-      // 3. Single Month Name only: e.g. 'May', 'June' -> Day 1 of current year
+      // 3. Single Month Name only: e.g. 'May', 'June', 'November' -> Day 1 of current year
       if (tokens.length === 1 && MONTH_MAP[tokens[0]]) {
         return { year: null, month: MONTH_MAP[tokens[0]], day: 1, explicitYear: false };
       }
 
-      // 4. [MonthName] [Num1] [Optional Num2]
+      // 4. [MonthName] [Num1] [Optional Num2]: e.g. 'Nov 12', 'Nov 12 26', 'Nov 26', 'Feb 1 23', 'Sept 15'
       if (tokens.length >= 2 && MONTH_MAP[tokens[0]]) {
         const mo = MONTH_MAP[tokens[0]];
         const num1 = parseInt(tokens[1], 10);
 
         if (tokens.length === 2 && !isNaN(num1)) {
           if (num1 >= 1990 && num1 <= 2099) {
-            // e.g. 'Feb 2026'
             return { year: num1, month: mo, day: 1, explicitYear: true };
           }
           if (tokens[1].length === 2 && num1 >= 20 && num1 <= 29) {
-            // e.g. 'Jan 26', 'Feb 26' -> 2026-01-01, 2026-02-01
             return { year: 2000 + num1, month: mo, day: 1, explicitYear: true };
           }
           if (num1 >= 1 && num1 <= 31) {
-            // e.g. 'March 18', 'April 10', 'May 31', 'Nov 30', 'Dec 15' (yearless -> current year)
             return { year: null, month: mo, day: num1, explicitYear: false };
           }
         } else if (tokens.length >= 3 && !isNaN(num1) && num1 >= 1 && num1 <= 31) {
@@ -1312,14 +804,13 @@
             if (num2 >= 1990 && num2 <= 2099) y = num2;
             else if (tokens[2].length === 2 && num2 >= 0 && num2 <= 99) y = 2000 + num2;
             if (y !== null) {
-              // e.g. 'Feb 1 23', 'Feb 15 25', 'March 15 25'
               return { year: y, month: mo, day: num1, explicitYear: true };
             }
           }
         }
       }
 
-      // 5. [Day] [MonthName] [Optional Year]: e.g. '1 Feb 26', '10 April'
+      // 5. [Day] [MonthName] [Optional Year]: e.g. '12 Nov', '12 Nov 26', '1 Feb 23'
       if (tokens.length >= 2 && MONTH_MAP[tokens[1]]) {
         const d = parseInt(tokens[0], 10);
         const mo = MONTH_MAP[tokens[1]];
@@ -1339,16 +830,37 @@
         }
       }
 
-      // 6. Compact 'Feb26' or 'Feb2026'
-      const compact = cleaned.match(/^([a-z]{3,9})(\d{2}|\d{4})$/);
+      // 6. Compact 'Nov12', 'Nov26', or 'Nov2026'
+      const compact = cleaned.match(/^([a-z]{3,9})(\d{1,4})$/);
       if (compact && MONTH_MAP[compact[1]]) {
-        let y = parseInt(compact[2], 10);
-        if (y < 100) y += 2000;
-        if (y >= 1990 && y <= 2099) {
-          return { year: y, month: MONTH_MAP[compact[1]], day: 1, explicitYear: true };
+        const mo = MONTH_MAP[compact[1]];
+        const rawNum = compact[2];
+        const num = parseInt(rawNum, 10);
+        if (rawNum.length === 4 && num >= 1990 && num <= 2099) {
+          return { year: num, month: mo, day: 1, explicitYear: true };
+        }
+        if (rawNum.length === 2 && num >= 20 && num <= 29) {
+          return { year: 2000 + num, month: mo, day: 1, explicitYear: true };
+        }
+        if (num >= 1 && num <= 31) {
+          return { year: null, month: mo, day: num, explicitYear: false };
         }
       }
 
+      return null;
+    }
+
+    function extractDatePartsFromTopCells(rows) {
+      for (let r = 0; r < Math.min(5, rows.length); r++) {
+        const row = rows[r];
+        if (!Array.isArray(row)) continue;
+        for (let c = 0; c < Math.min(6, row.length); c++) {
+          const cell = row[c];
+          if (cell === null || cell === undefined || cell === '') continue;
+          const parts = parseSheetNameToDateParts(cell);
+          if (parts) return parts;
+        }
+      }
       return null;
     }
 
@@ -1366,7 +878,7 @@
 
     /**
      * =========================================================================
-     * 6. DYNAMIC TABLE & INTEREST RATE PARSING
+     * 6. DYNAMIC TABLE & INTEREST RATE PARSING (FULL SHEET SCAN)
      * =========================================================================
      */
     function parseCurrencyValue(val) {
@@ -1389,11 +901,8 @@
       if (val === null || val === undefined || val === '') return null;
       if (typeof val === 'number') {
         if (!isFinite(val) || val <= 0) return null;
-        // Decimal Excel percentage (e.g. 0.041 -> 4.1%)
         if (val > 0 && val < 0.25) return Math.round(val * 10000) / 100;
-        // Direct percentage number (e.g. 4.5 -> 4.5%)
         if (val >= 0.25 && val <= 30) return Math.round(val * 100) / 100;
-        // Ignore large pound interest amounts (> 30)
         return null;
       }
       const str = String(val).trim();
@@ -1406,16 +915,16 @@
     function parseSheetRows(rows) {
       if (!Array.isArray(rows) || rows.length === 0) return [];
 
-      // Scan rows 1..10 across columns A..D to locate 'Item' or 'Account' header
+      // Scan top 15 rows across columns A..E to locate 'Item' or 'Account' header
       let headerRowIdx = -1;
       let itemCol = 0;
 
-      for (let r = 0; r < Math.min(10, rows.length); r++) {
+      for (let r = 0; r < Math.min(15, rows.length); r++) {
         const row = rows[r];
         if (!Array.isArray(row)) continue;
-        for (let c = 0; c <= Math.min(3, row.length - 1); c++) {
+        for (let c = 0; c <= Math.min(4, row.length - 1); c++) {
           const cellText = row[c] !== null && row[c] !== undefined ? String(row[c]).trim() : '';
-          if (/^(item|account|fund|provider|bank|pot)$/i.test(cellText)) {
+          if (/^(item|items|account|accounts|fund|funds|provider|bank|pot)$/i.test(cellText)) {
             headerRowIdx = r;
             itemCol = c;
             break;
@@ -1424,22 +933,21 @@
         if (headerRowIdx >= 0) break;
       }
 
-      // Fallback if header row isn't explicitly labelled
+      // Fallback if header row isn't explicitly labelled: detect first text + currency pair in cols A..D
       let startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
       if (headerRowIdx < 0) {
-        for (let r = 0; r < Math.min(8, rows.length); r++) {
+        for (let r = 0; r < Math.min(15, rows.length); r++) {
           const row = rows[r];
           if (!Array.isArray(row)) continue;
-          if (row[0] && parseCurrencyValue(row[1]) !== null) {
-            itemCol = 0;
-            startRow = r;
-            break;
+          for (let c = 0; c <= Math.min(3, row.length - 2); c++) {
+            const labelCandidate = row[c] !== null && row[c] !== undefined ? String(row[c]).trim() : '';
+            if (labelCandidate && isNaN(Number(labelCandidate)) && parseCurrencyValue(row[c + 1]) !== null) {
+              itemCol = c;
+              startRow = r;
+              break;
+            }
           }
-          if (!row[0] && row[1] && parseCurrencyValue(row[2]) !== null) {
-            itemCol = 1;
-            startRow = r;
-            break;
-          }
+          if (startRow === r && row[itemCol]) break;
         }
       }
 
@@ -1448,20 +956,14 @@
 
       for (let r = startRow; r < rows.length; r++) {
         const row = rows[r];
-        if (!Array.isArray(row)) {
-          if (parsedItems.length > 0) break;
-          continue;
-        }
+        // Skip completely blank separator rows instead of aborting early
+        if (!Array.isArray(row)) continue;
 
         const rawLabel = row[itemCol] !== null && row[itemCol] !== undefined ? String(row[itemCol]).trim() : '';
+        if (!rawLabel) continue;
 
-        // Stop cleanly at blank rows, Total, or Current Yearly Earnings summaries
-        if (!rawLabel) {
-          if (parsedItems.length > 0) break;
-          continue;
-        }
-
-        if (/^(total|grand total|subtotal|net worth|current yearly earnings|total yearly interest|total income|month\s*\d+|pension|salary|notes?|comments?)$/i.test(rawLabel) ||
+        // Stop cleanly at Total / Current Yearly Earnings summary sections
+        if (/^(total|grand total|subtotal|net worth|current yearly earnings|total yearly interest|total income|month\s*\d+|salary|notes?|comments?)$/i.test(rawLabel) ||
             /^(total|subtotal|sum)\b/i.test(rawLabel)) {
           break;
         }
@@ -1469,9 +971,8 @@
         const amount = parseCurrencyValue(row[valCol]);
         if (amount === null) continue;
 
-        // Check itemCol + 2 .. itemCol + 4 for interest rate (ignoring large £ interest figures > 30)
         let rate = null;
-        for (let c = itemCol + 2; c <= Math.min(itemCol + 4, row.length - 1); c++) {
+        for (let c = itemCol + 2; c <= Math.min(itemCol + 5, row.length - 1); c++) {
           const candidateRate = parseInterestRateCell(row[c]);
           if (candidateRate !== null) {
             rate = candidateRate;
@@ -1583,44 +1084,50 @@
       const files = Array.from(inputEl.files || []);
       inputEl.value = '';
       if (files.length === 0) return;
-
-      setLiveStatus(`Reading ${files.length} spreadsheet(s)...`);
-      showToast(`Reading ${files.length} spreadsheet(s)...`, 'info');
-
-      const xlsxReady = await ensureXlsxLoaded();
-      if (!xlsxReady) {
-        setLiveStatus('Could not load Excel parser (check internet connection).', 5000);
-        showToast('Excel parser failed to load. Check internet connection and try again.', 'error');
-        return;
-      }
-
-      try {
-        const currentYear = new Date().getFullYear();
-        const extractedRawSheets = [];
-        const skippedTabs = [];
-
-        // PASS 1A: Extract all tabs and resolve exact dates
+        // PASS 1A: Extract ALL tabs in workbook.SheetNames without stopping early
         for (const file of files) {
           const buffer = await readFileAsArrayBuffer(file);
           const workbook = window.XLSX.read(new Uint8Array(buffer), { type: 'array' });
 
-          // Pre-scan tab metadata in this workbook to check if yearless Nov/Dec precedes Jan/Feb of currentYear
-          const tabMetaList = workbook.SheetNames.map(sn => ({
-            sheetName: sn,
-            parts: parseSheetNameToDateParts(sn)
-          }));
+          const tabMetaList = workbook.SheetNames.map(sn => {
+            const ws = workbook.Sheets[sn];
+            const rows = ws ? window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, blankrows: true }) : [];
+            const parsedItems = parseSheetRows(rows);
+            let parts = parseSheetNameToDateParts(sn);
+            let dateSource = 'tab';
+
+            // If tab name isn't a recognized date (e.g. Sheet14), inspect inner top cells if it holds account rows
+            if (!parts && !NON_SNAPSHOT_TAB_REGEX.test(String(sn || '').trim()) && parsedItems.length > 0) {
+              const innerParts = extractDatePartsFromTopCells(rows);
+              if (innerParts) {
+                parts = innerParts;
+                dateSource = 'cell';
+              } else {
+                parts = { year: currentYear, month: 1, day: 1, explicitYear: false, needsManualDate: true };
+                dateSource = 'fallback';
+              }
+            }
+
+            return { sheetName: sn, parts, parsedItems, dateSource };
+          });
 
           for (let i = 0; i < tabMetaList.length; i++) {
-            const { sheetName, parts } = tabMetaList[i];
+            const { sheetName, parts, parsedItems, dateSource } = tabMetaList[i];
+
             if (!parts) {
-              skippedTabs.push(sheetName);
+              skippedTabs.push({ sheetName, reason: 'Non-date summary/calculator tab' });
+              continue;
+            }
+
+            if (parsedItems.length === 0) {
+              skippedTabs.push({ sheetName, reason: 'No Item + Value rows found' });
               continue;
             }
 
             let resolvedYear = parts.year;
             if (!parts.explicitYear || resolvedYear === null) {
               resolvedYear = currentYear;
-              // If a yearless Nov or Dec tab appears before an explicit Jan/Feb tab of currentYear (e.g., Nov 30th -> Dec 15 -> Jan 26), assign currentYear - 1
+              // Only roll Nov/Dec back to previous year if an explicit Jan/Feb of currentYear comes AFTER this tab
               if (parts.month >= 11) {
                 for (let j = i + 1; j < tabMetaList.length; j++) {
                   const nextParts = tabMetaList[j].parts;
@@ -1633,14 +1140,6 @@
             }
 
             const dateKey = buildDateKey(resolvedYear, parts.month, parts.day);
-            const ws = workbook.Sheets[sheetName];
-            const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-            const parsedItems = parseSheetRows(rows);
-
-            if (parsedItems.length === 0) {
-              skippedTabs.push(sheetName);
-              continue;
-            }
 
             extractedRawSheets.push({
               fileName: file.name,
@@ -1648,6 +1147,8 @@
               month: parts.month,
               year: resolvedYear,
               dateKey,
+              dateSource,
+              needsManualDate: Boolean(parts.needsManualDate),
               label: formatDateKeyToLabel(dateKey),
               items: parsedItems
             });
@@ -1699,20 +1200,23 @@
         let retroactiveCount = 0;
 
         for (const sh of extractedRawSheets) {
-          if (mergedSheetsMap.has(sh.dateKey)) {
+          // Keep distinct dateKeys separate; if exact same dateKey appears across two files, merge & deduplicate
+          const mergeKey = sh.needsManualDate ? `${sh.dateKey}__${sh.sheetName}` : sh.dateKey;
+          if (mergedSheetsMap.has(mergeKey)) {
             duplicateTabsMerged += 1;
           } else {
-            mergedSheetsMap.set(sh.dateKey, {
+            mergedSheetsMap.set(mergeKey, {
               dateKey: sh.dateKey,
               label: sh.label,
               rawTabName: sh.sheetName,
+              needsManualDate: sh.needsManualDate,
               sourceSheets: [],
               selected: true,
               entriesByCanonicalKey: new Map()
             });
           }
 
-          const bucket = mergedSheetsMap.get(sh.dateKey);
+          const bucket = mergedSheetsMap.get(mergeKey);
           bucket.sourceSheets.push(`${sh.fileName} [${sh.sheetName}]`);
 
           for (const item of sh.items) {
@@ -1787,7 +1291,7 @@
         ? `<div>&bull; <strong>Latest November Reference (${escapeHtml(b.latestNovLabel)}):</strong> Used to classify unannotated earlier accounts across previous months.</div>`
         : '';
       const skippedLine = b.skippedTabs.length > 0
-        ? `<div>&bull; <strong>Skipped non-snapshot tabs:</strong> ${b.skippedTabs.map(t => `<code class="bg-white px-1 rounded">${escapeHtml(t)}</code>`).join(', ')}</div>`
+        ? `<div>&bull; <strong>Skipped tabs (${b.skippedTabs.length}):</strong> ${b.skippedTabs.map(t => `<code class="bg-white px-1 rounded" title="${escapeHtml(t.reason)}">${escapeHtml(t.sheetName)}</code>`).join(', ')}</div>`
         : '';
       const newBankLine = b.uniqueNewBanks.length > 0
         ? `<div>&bull; <strong>New Banks Auto-Detected:</strong> ${b.uniqueNewBanks.map(nb => `<span class="inline-block px-2 py-0.5 rounded bg-violet-100 text-violet-900 font-semibold mr-1">${escapeHtml(nb)}</span>`).join('')}</div>`
@@ -1795,7 +1299,7 @@
 
       document.getElementById('dedupSummaryBox').innerHTML = `
         <div class="font-bold text-emerald-950">Smart Import &amp; Cross-Reference Summary</div>
-        <div>&bull; <strong>${b.sheets.length} exact date(s)</strong> parsed (${b.sheets[0].label} &rarr; ${b.sheets[b.sheets.length - 1].label}).</div>
+        <div>&bull; <strong>${b.sheets.length} snapshot tab(s)</strong> read (${b.sheets[0].label} &rarr; ${b.sheets[b.sheets.length - 1].label}).</div>
         ${novLine}
         ${skippedLine}
         <div>&bull; <strong>${b.duplicateTabsMerged} overlapping tab(s)</strong> &amp; <strong>${b.duplicateRecordsMerged} duplicate entry cell(s)</strong> deduplicated.</div>
@@ -1818,12 +1322,13 @@
       document.getElementById('reviewSheetCount').textContent = `${b.sheets.filter(s => s.selected).length}/${b.sheets.length}`;
       const sheetsEl = document.getElementById('reviewSheetsList');
       sheetsEl.innerHTML = b.sheets.map((sh, idx) => `
-        <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition ${sh.selected ? 'bg-violet-50 border-violet-300 text-violet-950' : 'bg-white border-slate-200 text-slate-400'}">
-          <input type="checkbox" data-sheet-idx="${idx}" ${sh.selected ? 'checked' : ''} class="review-sheet-cb rounded text-violet-600" />
-          <span>${escapeHtml(sh.label)}</span>
-          ${sh.rawTabName && sh.rawTabName !== sh.label ? `<span class="text-[10px] text-slate-500">(${escapeHtml(sh.rawTabName)})</span>` : ''}
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition ${sh.selected ? 'bg-violet-50 border-violet-300 text-violet-950' : 'bg-white border-slate-200 text-slate-400'}">
+          <input type="checkbox" data-sheet-idx="${idx}" ${sh.selected ? 'checked' : ''} class="review-sheet-cb rounded text-violet-600 cursor-pointer" />
+          <span class="font-bold text-slate-800">${escapeHtml(sh.rawTabName)}</span>
+          <span class="text-slate-400">&rarr;</span>
+          <input type="date" data-sheet-date-idx="${idx}" value="${sh.dateKey}" class="review-sheet-date-inp px-1.5 py-0.5 text-[11px] font-semibold bg-white border ${sh.needsManualDate ? 'border-amber-400 text-amber-900' : 'border-violet-200 text-violet-900'} rounded" title="Adjust snapshot date if needed" />
           ${sh.sourceSheets.length > 1 ? `<span class="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Merged x${sh.sourceSheets.length}</span>` : ''}
-        </label>
+        </div>
       `).join('');
 
       sheetsEl.querySelectorAll('.review-sheet-cb').forEach(cb => {
@@ -1833,6 +1338,29 @@
           renderReviewModalLists();
         });
       });
+
+      sheetsEl.querySelectorAll('.review-sheet-date-inp').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const idx = parseInt(inp.getAttribute('data-sheet-date-idx'), 10);
+          if (inp.value) {
+            pendingImportBatch.sheets[idx].dateKey = inp.value;
+            pendingImportBatch.sheets[idx].label = formatDateKeyToLabel(inp.value);
+            pendingImportBatch.sheets[idx].needsManualDate = false;
+            renderReviewModalLists();
+          }
+        });
+      });
+
+      const skippedBox = document.getElementById('reviewSkippedTabsBox');
+      if (skippedBox) {
+        if (b.skippedTabs.length > 0) {
+          skippedBox.classList.remove('hidden');
+          skippedBox.innerHTML = `<strong>Skipped Tabs (${b.skippedTabs.length}):</strong> ` +
+            b.skippedTabs.map(s => `<span class="inline-block mr-2"><code class="bg-white px-1 rounded">${escapeHtml(s.sheetName)}</code> (${escapeHtml(s.reason)})</span>`).join('');
+        } else {
+          skippedBox.classList.add('hidden');
+        }
+      }
 
       document.getElementById('reviewAccountCount').textContent = b.accounts.length;
       const accsEl = document.getElementById('reviewAccountsList');
