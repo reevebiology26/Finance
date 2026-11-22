@@ -6,15 +6,52 @@
   <title>Wealth &amp; ISA Portfolio Tracker</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SheetJS for reading & writing multi-sheet Excel (.xlsx) files locally -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Chart.js for interactive & animated portfolio visualizations -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Multi-CDN Fallback Loader for SheetJS (XLSX) and Chart.js (Non-blocking for iPad Safari) -->
+  <script>
+    (function loadExternalLibrariesWithFallback() {
+      function loadScriptChain(urls, idx, globalName) {
+        if (idx >= urls.length) return;
+        if (window[globalName]) return;
+        var s = document.createElement('script');
+        s.src = urls[idx];
+        s.async = true;
+        s.onerror = function () {
+          loadScriptChain(urls, idx + 1, globalName);
+        };
+        document.head.appendChild(s);
+      }
+
+      loadScriptChain([
+        'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+        'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+      ], 0, 'XLSX');
+
+      loadScriptChain([
+        'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+        'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'
+      ], 0, 'Chart');
+    })();
+  </script>
+
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
       background: linear-gradient(180deg, #f5f3ff 0%, #f8fafc 260px);
       color: #0f172a;
+    }
+    /* iPadOS Safari compatible visually-hidden file input (never use display:none) */
+    .ipad-file-input {
+      position: fixed;
+      top: -100px;
+      left: -100px;
+      width: 1px;
+      height: 1px;
+      opacity: 0.01;
+      overflow: hidden;
+      z-index: -1;
     }
     ::-webkit-scrollbar {
       width: 6px;
@@ -34,8 +71,8 @@
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-violet-200 selection:text-violet-950">
 
-  <!-- Hidden Multi-File Input -->
-  <input id="excelMultiInput" type="file" accept=".xlsx,.xls,.csv" multiple class="hidden" onchange="handleExcelFilesSelected(event)" />
+  <!-- Native iPadOS-Safe Multi-File Input (No restrictive accept attribute so Files app never greys out .xlsx) -->
+  <input id="excelFileInput" type="file" multiple class="ipad-file-input" />
 
   <!-- ===================================================================== -->
   <!-- TOP HEADER WITH VIBRANT GRADIENT & TOP-RIGHT £25/DAY INTEREST COUNTER -->
@@ -45,15 +82,15 @@
       <div class="flex flex-wrap items-center justify-between py-3.5 gap-3">
         <!-- Brand & Local Privacy Status -->
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-xs border border-white/20 text-white flex items-center justify-center shadow-sm shrink-0">
+          <div class="w-10 h-10 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center shadow-sm shrink-0">
             <svg class="w-5 h-5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
             </svg>
           </div>
           <div>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
               <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">Wealth &amp; ISA Tracker</h1>
-              <button type="button" onclick="openSecurityModal()" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 hover:bg-emerald-400/30 text-emerald-200 border border-emerald-300/35 transition cursor-pointer" title="Click to inspect local-only privacy & security details">
+              <button type="button" id="btnOpenSecurity" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 hover:bg-emerald-400/30 text-emerald-200 border border-emerald-300/35 transition cursor-pointer" title="Click to inspect local-only privacy & security details">
                 <svg class="w-3.5 h-3.5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
@@ -64,10 +101,10 @@
           </div>
         </div>
 
-        <!-- Right Side: Top-Right Live £25/day Counter + Action Buttons -->
+        <!-- Right Side: Top-Right Live £25/day Counter + Native Label Upload + Actions -->
         <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 ml-auto">
           <!-- TOP-RIGHT CORNER LIVE COUNTER: INTEREST EARNED THIS YEAR (£25/DAY) -->
-          <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border border-emerald-300/40 backdrop-blur-xs shadow-sm" title="Tracks £25/day since January 1st of the current year (Jan 1 = £25, Jan 3 = £75)">
+          <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border border-emerald-300/40 shadow-sm" title="Tracks £25/day since January 1st of the current year (Jan 1 = £25, Jan 3 = £75)">
             <div class="w-8 h-8 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center font-extrabold text-sm shadow-xs shrink-0">
               £
             </div>
@@ -83,50 +120,55 @@
             </div>
           </div>
 
-          <!-- Global Action Buttons -->
+          <!-- Global Action Buttons (Native <label for="excelFileInput"> for 100% iPad Safari reliability) -->
           <div class="flex items-center gap-1.5 sm:gap-2">
-            <button onclick="triggerExcelUpload()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-indigo-950 bg-amber-300 hover:bg-amber-200 rounded-xl shadow-sm transition cursor-pointer">
+            <label for="excelFileInput" role="button" tabindex="0" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-indigo-950 bg-amber-300 hover:bg-amber-200 active:bg-amber-400 rounded-xl shadow-sm transition cursor-pointer select-none">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
               </svg>
               <span>+ Import Excel</span>
-            </button>
+            </label>
 
-            <button onclick="exportToExcel()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-white bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl transition cursor-pointer">
+            <button type="button" id="btnExportExcel" class="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-medium text-white bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl transition cursor-pointer">
               <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
               </svg>
               <span class="hidden sm:inline">Export</span>
             </button>
 
-            <button onclick="showWelcomeScreen()" class="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-medium text-indigo-200 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl transition cursor-pointer" title="Return to Welcome Screen or Reset Data">
+            <button type="button" id="btnHeaderReset" class="inline-flex items-center gap-1 px-3 py-2.5 text-xs font-medium text-indigo-200 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl transition cursor-pointer" title="Return to Welcome Screen or Reset Data">
               <span>Reset</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 4-Tab Navigation Bar (De-cluttered 2-Tab Dashboard + Annual + Monthly Entry) -->
+      <!-- 4-Tab Navigation Bar -->
       <nav id="mainNavTabs" class="hidden flex space-x-1 sm:space-x-2 overflow-x-auto pt-1" aria-label="Tabs">
-        <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-900 shadow-xs flex items-center gap-2 transition cursor-pointer">
+        <button type="button" data-tab="overview" id="tab-overview" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-900 shadow-xs flex items-center gap-2 transition cursor-pointer">
           <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>
           Overview
         </button>
-        <button onclick="switchTab('insights')" id="tab-insights" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+        <button type="button" data-tab="insights" id="tab-insights" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
           <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
           Providers &amp; Insights (<span id="navProviderCount">0</span>)
         </button>
-        <button onclick="switchTab('annual')" id="tab-annual" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+        <button type="button" data-tab="annual" id="tab-annual" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
           <svg class="w-4 h-4 text-teal-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
           Annual (Feb)
         </button>
-        <button onclick="switchTab('entry')" id="tab-entry" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+        <button type="button" data-tab="entry" id="tab-entry" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
           <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
           Add / Edit Month
         </button>
       </nav>
     </div>
   </header>
+
+  <!-- Live Status Banner (Gives clear iPad Safari feedback during file pick/parse) -->
+  <div id="liveStatusBar" class="hidden bg-indigo-900 text-white text-xs sm:text-sm font-medium px-4 py-2.5 text-center border-b border-indigo-700">
+    <span id="liveStatusText">Ready</span>
+  </div>
 
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
@@ -150,20 +192,20 @@
             Track Your ISAs, Savings &amp; Pensions
           </h2>
           <p class="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto mb-8 leading-relaxed">
-            Built for multi-sheet Excel workbooks where each tab is a date. Upload one or multiple spreadsheets—unknown banks are automatically detected, extra notes/columns are safely ignored, and duplicate tabs are merged without double-counting.
+            Built for multi-sheet Excel workbooks where each tab is a date. Tap below to choose your Excel file(s) from iPad Files/iCloud or explore the 5-year trial dataset.
           </p>
 
           <!-- Two Primary Actions -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
-            <!-- Action 1: Upload Spreadsheet(s) -->
-            <button onclick="triggerExcelUpload()" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md transition flex flex-col justify-between cursor-pointer">
+            <!-- Action 1: Native <label for="excelFileInput"> so iPad Safari opens Files picker directly -->
+            <label for="excelFileInput" role="button" tabindex="0" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:from-violet-800 active:to-indigo-800 text-white shadow-md transition flex flex-col justify-between cursor-pointer select-none">
               <div class="flex items-center justify-between mb-4">
                 <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
                   <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                   </svg>
                 </div>
-                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20">Auto-Detects New Banks</span>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20">iPad Files Ready</span>
               </div>
               <div>
                 <div class="text-lg font-bold mb-1">Upload Spreadsheet(s) (.xlsx)</div>
@@ -171,10 +213,10 @@
                   Select one or more Excel files. Automatically adds new banks, ignores extra columns/notes, and deduplicates overlapping dates.
                 </p>
               </div>
-            </button>
+            </label>
 
             <!-- Action 2: Explore 5-Year Trial Data -->
-            <button onclick="loadTrialDataset()" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white shadow-md transition flex flex-col justify-between cursor-pointer">
+            <button type="button" id="btnLoadTrial" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:from-emerald-800 active:to-teal-900 text-white shadow-md transition flex flex-col justify-between cursor-pointer select-none">
               <div class="flex items-center justify-between mb-4">
                 <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
                   <svg class="w-6 h-6 text-amber-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -199,10 +241,10 @@
               <div id="resumeSavedDetails" class="text-xs text-amber-800">You have existing sheets saved locally.</div>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="resumeExistingPortfolio()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition cursor-pointer">
+              <button type="button" id="btnResumeSaved" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition cursor-pointer">
                 Return to Overview
               </button>
-              <button onclick="clearSavedPortfolio()" class="px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100 rounded-xl transition cursor-pointer">
+              <button type="button" id="btnWipeSavedBanner" class="px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100 rounded-xl transition cursor-pointer">
                 Wipe Data
               </button>
             </div>
@@ -211,7 +253,7 @@
           <!-- Format Helper Footer -->
           <div class="border-t border-slate-100 pt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
             <span>Auto-classifies: <strong class="text-amber-700">SIPP</strong> &rarr; Pension &bull; <strong class="text-violet-700">Shares</strong> &rarr; ISA &bull; <strong class="text-emerald-700">Other</strong> &rarr; Cash &bull; Extra columns ignored</span>
-            <button onclick="downloadSampleTemplateXlsx()" class="text-violet-600 hover:text-violet-800 font-semibold underline cursor-pointer">
+            <button type="button" id="btnDownloadSample" class="text-violet-600 hover:text-violet-800 font-semibold underline cursor-pointer">
               Download Sample Multi-Sheet .xlsx
             </button>
           </div>
@@ -287,36 +329,36 @@
           <div class="flex flex-wrap items-center gap-2">
             <!-- Animated Timeline Playback Controls -->
             <div class="inline-flex items-center gap-1 bg-violet-50 border border-violet-200 rounded-xl p-1">
-              <button onclick="toggleTimelineAnimation()" id="btnPlayAnimation" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 shadow-2xs transition cursor-pointer">
+              <button type="button" id="btnPlayAnimation" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 shadow-2xs transition cursor-pointer">
                 <svg id="playIconSvg" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 <span id="playBtnLabel">Play Growth Animation</span>
               </button>
-              <button onclick="resetTimelineAnimation()" title="Reset Animation to Full View" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-violet-700 hover:bg-violet-100 transition cursor-pointer">
+              <button type="button" id="btnResetAnim" title="Reset Animation to Full View" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-violet-700 hover:bg-violet-100 transition cursor-pointer">
                 Full
               </button>
-              <button onclick="cycleAnimationSpeed()" id="btnAnimSpeed" title="Change Playback Speed" class="px-2 py-1.5 rounded-lg text-xs font-bold text-violet-900 bg-white border border-violet-200 hover:bg-violet-100 transition cursor-pointer">
+              <button type="button" id="btnAnimSpeed" title="Change Playback Speed" class="px-2 py-1.5 rounded-lg text-xs font-bold text-violet-900 bg-white border border-violet-200 hover:bg-violet-100 transition cursor-pointer">
                 1x
               </button>
             </div>
 
             <!-- View Mode Toggle -->
             <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
-              <button onclick="setChartMode('stacked')" id="mode-stacked" class="px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">Stacked</button>
-              <button onclick="setChartMode('lines')" id="mode-lines" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Lines</button>
-              <button onclick="setChartMode('total')" id="mode-total" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Total</button>
+              <button type="button" data-mode="stacked" id="mode-stacked" class="chart-mode-btn px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">Stacked</button>
+              <button type="button" data-mode="lines" id="mode-lines" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Lines</button>
+              <button type="button" data-mode="total" id="mode-total" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Total</button>
             </div>
 
             <!-- Timeframe Filter -->
             <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
-              <button onclick="setTimeframe('6M')" id="tf-6M" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">6M</button>
-              <button onclick="setTimeframe('1Y')" id="tf-1Y" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">1Y</button>
-              <button onclick="setTimeframe('3Y')" id="tf-3Y" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">3Y</button>
-              <button onclick="setTimeframe('ALL')" id="tf-ALL" class="px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">All</button>
+              <button type="button" data-tf="6M" id="tf-6M" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">6M</button>
+              <button type="button" data-tf="1Y" id="tf-1Y" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">1Y</button>
+              <button type="button" data-tf="3Y" id="tf-3Y" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">3Y</button>
+              <button type="button" data-tf="ALL" id="tf-ALL" class="tf-btn px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">All</button>
             </div>
           </div>
         </div>
 
-        <!-- Animation Progress Scrubber Bar (Shown during playback) -->
+        <!-- Animation Progress Scrubber Bar -->
         <div id="animationProgressWrapper" class="hidden mt-3 flex items-center gap-3">
           <span id="animCurrentMonthBadge" class="text-xs font-bold text-violet-700 bg-violet-100 px-2.5 py-0.5 rounded-md shrink-0">—</span>
           <div class="flex-1 h-2 bg-violet-100 rounded-full overflow-hidden">
@@ -325,7 +367,7 @@
           <span id="animStepCounter" class="text-xs text-slate-500 shrink-0">0 / 0</span>
         </div>
 
-        <!-- Canvas Container -->
+        <!-- Canvas Container with SVG Fallback -->
         <div class="relative mt-4 h-[330px] sm:h-[380px] w-full">
           <canvas id="portfolioChartCanvas"></canvas>
           <div id="chartSvgFallback" class="hidden w-full h-full"></div>
@@ -403,10 +445,10 @@
           </div>
 
           <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold self-start sm:self-auto shrink-0">
-            <button onclick="setAnnualBarMode('stacked')" id="annual-mode-stacked" class="px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">
+            <button type="button" data-annual="stacked" id="annual-mode-stacked" class="annual-mode-btn px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">
               Stacked Bar
             </button>
-            <button onclick="setAnnualBarMode('grouped')" id="annual-mode-grouped" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+            <button type="button" data-annual="grouped" id="annual-mode-grouped" class="annual-mode-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
               Grouped Bar
             </button>
           </div>
@@ -469,9 +511,9 @@
           <div class="flex items-end gap-2">
             <div>
               <label for="entryMonthPicker" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Target Month</label>
-              <input type="month" id="entryMonthPicker" onchange="onEntryMonthChanged()" class="px-3.5 py-2 text-sm font-semibold text-slate-900 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              <input type="month" id="entryMonthPicker" class="px-3.5 py-2 text-sm font-semibold text-slate-900 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
             </div>
-            <button type="button" onclick="prefillEntryFromLatest()" class="px-3.5 py-2 text-xs font-bold text-violet-800 bg-violet-100 hover:bg-violet-200 border border-violet-200 rounded-xl transition cursor-pointer">
+            <button type="button" id="btnResetEntryToPrev" class="px-3.5 py-2 text-xs font-bold text-violet-800 bg-violet-100 hover:bg-violet-200 border border-violet-200 rounded-xl transition cursor-pointer">
               Reset to Last Month's Values
             </button>
           </div>
@@ -500,7 +542,7 @@
                 <p class="text-xs text-violet-700">Opened a new bank account, ISA, or SIPP? Add it here and it will appear every month automatically.</p>
               </div>
             </div>
-            <button type="button" onclick="toggleAddAccountPanel()" id="btnToggleAddAccount" class="px-3.5 py-1.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-xs transition cursor-pointer">
+            <button type="button" id="btnToggleAddAccount" class="px-3.5 py-1.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-xs transition cursor-pointer">
               + Add Another Account
             </button>
           </div>
@@ -531,7 +573,7 @@
                 <label class="block text-xs font-semibold text-slate-700 mb-1">AER %</label>
                 <input type="number" step="0.01" id="addFundRate" placeholder="4.5" class="w-full px-2 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
               </div>
-              <button type="button" onclick="handleAddNewFund()" class="px-4 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition cursor-pointer shrink-0">
+              <button type="button" id="btnAddNewFund" class="px-4 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition cursor-pointer shrink-0">
                 Add
               </button>
             </div>
@@ -539,7 +581,7 @@
         </div>
 
         <!-- Recurring Accounts Form -->
-        <form id="monthlyEntryForm" onsubmit="saveMonthlyEntry(event)" class="mt-6 space-y-6">
+        <form id="monthlyEntryForm" class="mt-6 space-y-6">
           <div id="entryGroupsContainer" class="space-y-6">
             <!-- Cash, Shares, and Pension groups injected here -->
           </div>
@@ -557,9 +599,80 @@
   </main>
 
   <!-- ======================================================================= -->
-  <!-- MODAL: 100% LOCAL & PRIVATE SECURITY OVERVIEW                           -->
+  <!-- MODAL 1: MULTI-SPREADSHEET IMPORT & DEDUPLICATION REVIEW                -->
   <!-- ======================================================================= -->
-  <div id="securityInfoModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="importReviewModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-violet-200 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="px-6 py-4 bg-gradient-to-r from-indigo-950 to-violet-900 text-white flex items-center justify-between gap-2">
+        <div>
+          <h3 class="text-base sm:text-lg font-bold">Review Imported Excel Sheets</h3>
+          <p id="importReviewSubtitle" class="text-xs text-indigo-200">Verify detected dates, new banks, and account categories before saving.</p>
+        </div>
+        <button type="button" id="btnCloseImportModal" class="p-1.5 text-indigo-200 hover:text-white rounded-lg cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-5 flex-1">
+        <!-- Deduplication & New Bank Summary -->
+        <div id="dedupSummaryBox" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-1">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Import Strategy -->
+        <div class="flex flex-wrap items-center gap-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+          <span class="font-bold text-slate-800">Import Mode:</span>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="importStrategy" value="merge" checked class="text-violet-600" />
+            <span><strong>Merge &amp; Cross-Reference</strong> (recommended for adding extra spreadsheets)</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="importStrategy" value="replace" class="text-violet-600" />
+            <span><strong>Replace All</strong> (overwrite current app data)</span>
+          </label>
+        </div>
+
+        <!-- Detected Date Sheets -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Detected Date Tabs (<span id="reviewSheetCount">0</span>)</span>
+            <div class="flex gap-2 text-xs">
+              <button type="button" id="btnSelectAllSheets" class="text-violet-700 font-semibold hover:underline cursor-pointer">Select All</button>
+              <span class="text-slate-300">|</span>
+              <button type="button" id="btnDeselectAllSheets" class="text-slate-500 hover:underline cursor-pointer">Deselect All</button>
+            </div>
+          </div>
+          <div id="reviewSheetsList" class="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <!-- Checkboxes injected here -->
+          </div>
+        </div>
+
+        <!-- Detected Accounts & Category Assignment -->
+        <div>
+          <div class="mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Detected Accounts &amp; Categories (<span id="reviewAccountCount">0</span>)</span>
+          </div>
+          <div id="reviewAccountsList" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+            <!-- Account category pills injected here -->
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-end gap-3">
+        <button type="button" id="btnCancelImport" class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 rounded-xl cursor-pointer">
+          Cancel
+        </button>
+        <button type="button" id="btnConfirmImport" class="px-5 py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-xl shadow-md transition cursor-pointer">
+          Confirm &amp; Import Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL 2: 100% LOCAL & PRIVATE SECURITY OVERVIEW                           -->
+  <!-- ======================================================================= -->
+  <div id="securityInfoModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-emerald-200 max-w-lg w-full overflow-hidden">
       <div class="px-6 py-4 bg-gradient-to-r from-indigo-950 to-violet-900 text-white flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -570,7 +683,7 @@
           </div>
           <h3 class="text-base font-bold">100% Local &amp; Private Storage</h3>
         </div>
-        <button type="button" onclick="closeSecurityModal()" class="p-1.5 text-indigo-200 hover:text-white rounded-lg cursor-pointer">
+        <button type="button" id="btnCloseSecurityX" class="p-1.5 text-indigo-200 hover:text-white rounded-lg cursor-pointer">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
@@ -578,7 +691,7 @@
       <div class="p-6 space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
         <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-1.5">
           <div class="font-bold">Zero Cloud Uploads &amp; Zero Tracking</div>
-          <p class="text-xs">Your spreadsheets and monthly figures are parsed strictly inside your browser's memory and stored only in this device's <code class="font-mono bg-white px-1 py-0.5 rounded">localStorage</code>. Nothing is ever sent to any external server.</p>
+          <p class="text-xs">Your spreadsheets and monthly figures are parsed strictly inside your iPad/device browser memory and stored only in this device's <code class="font-mono bg-white px-1 py-0.5 rounded">localStorage</code>. Nothing is ever sent to any external server.</p>
         </div>
 
         <div class="space-y-2 text-xs text-slate-600">
@@ -586,15 +699,15 @@
           <ul class="list-disc pl-4 space-y-1">
             <li><strong>No Account Numbers, Sort Codes, or Logins:</strong> Only shorthand labels (like <code class="font-mono">MC</code> or <code class="font-mono">HL isa shares</code>) and balances are saved.</li>
             <li><strong>Read-Only Numbers:</strong> No bank tokens or payment credentials exist anywhere in this file.</li>
-            <li><strong>Best Practice:</strong> Use a device login password/PIN and avoid using this app on shared public computers.</li>
+            <li><strong>Best Practice:</strong> Use a device passcode/Face ID and avoid using this app on shared public computers.</li>
           </ul>
         </div>
 
         <div class="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
-          <button type="button" onclick="wipeAllBrowserDataAndReset()" class="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer">
+          <button type="button" id="btnWipeModalData" class="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer">
             Wipe Browser Data
           </button>
-          <button type="button" onclick="closeSecurityModal()" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition cursor-pointer">
+          <button type="button" id="btnCloseSecurityOk" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition cursor-pointer">
             Got It
           </button>
         </div>
@@ -603,7 +716,7 @@
   </div>
 
   <!-- ======================================================================= -->
-  <!-- JAVASCRIPT ENGINE                                                       -->
+  <!-- JAVASCRIPT ENGINE (ZERO TOP-LEVEL EXTERNAL DEPENDENCIES)                -->
   <!-- ======================================================================= -->
   <script>
     /**
@@ -611,7 +724,7 @@
      * 1. STATE, VIBRANT PALETTE & CONSTANTS
      * =========================================================================
      */
-    const STORAGE_KEY = 'uk_wealth_isa_tracker_v4';
+    const STORAGE_KEY = 'uk_wealth_isa_tracker_v5';
     const DAILY_INTEREST_RATE_GBP = 25; // £25/day since Jan 1 (Jan 1 = £25, Jan 3 = £75)
 
     let appState = {
@@ -651,24 +764,23 @@
       dec: 12, december: 12
     };
 
-    // Exciting, high-contrast vibrant palette
     const CATEGORY_STYLES = {
       Cash: {
-        hex: '#10b981',       // Vibrant Emerald
+        hex: '#10b981',
         fill: 'rgba(16, 185, 129, 0.24)',
         badgeBg: 'bg-emerald-100',
         badgeText: 'text-emerald-800',
         dot: 'bg-emerald-500'
       },
       Shares: {
-        hex: '#7c3aed',       // Electric Violet
+        hex: '#7c3aed',
         fill: 'rgba(124, 58, 237, 0.22)',
         badgeBg: 'bg-violet-100',
         badgeText: 'text-violet-800',
         dot: 'bg-violet-600'
       },
       Pension: {
-        hex: '#f59e0b',       // Warm Amber / Gold
+        hex: '#f59e0b',
         fill: 'rgba(245, 158, 11, 0.26)',
         badgeBg: 'bg-amber-100',
         badgeText: 'text-amber-900',
@@ -676,7 +788,7 @@
       }
     };
 
-    // Exact mapping for your 17 known codes
+    // Exact mapping for all 17 user account codes
     const KNOWN_ACCOUNT_CODES = {
       'barclaycard':      { displayName: 'Barclaycard',               provider: 'Barclaycard',        category: 'Cash',    isLiability: true },
       'barclays':         { displayName: 'Barclays Current/Savings',  provider: 'Barclays',           category: 'Cash',    isLiability: false },
@@ -698,7 +810,7 @@
       'virisa':           { displayName: 'Virgin Money Cash ISA',     provider: 'Virgin Money',       category: 'Cash',    isLiability: false }
     };
 
-    // Extended UK bank & platform prefix/keyword dictionary so new banks auto-register cleanly
+    // Extended UK bank & platform dictionary so unknown banks auto-register cleanly
     const KNOWN_BANK_KEYWORDS = [
       { pattern: /^t212\b|^trading\s*212\b/i, provider: 'Trading 212' },
       { pattern: /^hl\b|^hargreaves/i, provider: 'Hargreaves Lansdown' },
@@ -748,11 +860,11 @@
      */
     function updateYtdInterestCounter() {
       const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1); // Jan 1 at 00:00 local time
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
       const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const msPerDay = 24 * 60 * 60 * 1000;
 
-      // Jan 1 = Day 1 (£25), Jan 2 = Day 2 (£50), Jan 3 = Day 3 (£75), etc.
+      // Jan 1 = Day 1 (£25), Jan 3 = Day 3 (£75)
       const dayOfYear = Math.floor((todayMidnight - startOfYear) / msPerDay) + 1;
       const ytdAmount = dayOfYear * DAILY_INTEREST_RATE_GBP;
 
@@ -764,18 +876,100 @@
 
     /**
      * =========================================================================
-     * 3. INITIALIZATION & STORAGE
+     * 3. INITIALIZATION & IMMEDIATE EVENT LISTENER BINDING (IPAD SAFARI SAFE)
      * =========================================================================
      */
-    window.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
+      bindAllUiEvents();
       updateYtdInterestCounter();
       loadFromLocalStorage();
+
       if (appState.accounts.length > 0 && appState.snapshots.length > 0) {
         enterActiveWorkspace('overview');
       } else {
         showWelcomeScreen();
       }
     });
+
+    function bindAllUiEvents() {
+      // File input change listener (triggered natively by <label for="excelFileInput"> on iPad)
+      const fileInput = document.getElementById('excelFileInput');
+      if (fileInput) {
+        fileInput.addEventListener('change', handleExcelFilesSelected);
+      }
+
+      // Header buttons
+      document.getElementById('btnOpenSecurity')?.addEventListener('click', openSecurityModal);
+      document.getElementById('btnExportExcel')?.addEventListener('click', exportToExcel);
+      document.getElementById('btnHeaderReset')?.addEventListener('click', showWelcomeScreen);
+
+      // Welcome screen buttons
+      document.getElementById('btnLoadTrial')?.addEventListener('click', loadTrialDataset);
+      document.getElementById('btnResumeSaved')?.addEventListener('click', () => enterActiveWorkspace('overview'));
+      document.getElementById('btnWipeSavedBanner')?.addEventListener('click', clearSavedPortfolio);
+      document.getElementById('btnDownloadSample')?.addEventListener('click', downloadSampleTemplateXlsx);
+
+      // Navigation tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetTab = btn.getAttribute('data-tab');
+          if (targetTab) switchTab(targetTab);
+        });
+      });
+
+      // Overview chart & animation controls
+      document.getElementById('btnPlayAnimation')?.addEventListener('click', toggleTimelineAnimation);
+      document.getElementById('btnResetAnim')?.addEventListener('click', resetTimelineAnimation);
+      document.getElementById('btnAnimSpeed')?.addEventListener('click', cycleAnimationSpeed);
+
+      document.querySelectorAll('.chart-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => setChartMode(btn.getAttribute('data-mode')));
+      });
+      document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.addEventListener('click', () => setTimeframe(btn.getAttribute('data-tf')));
+      });
+
+      // Annual (Feb) bar chart toggle
+      document.querySelectorAll('.annual-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => setAnnualBarMode(btn.getAttribute('data-annual')));
+      });
+
+      // Monthly entry form controls
+      document.getElementById('entryMonthPicker')?.addEventListener('change', onEntryMonthChanged);
+      document.getElementById('btnResetEntryToPrev')?.addEventListener('click', prefillEntryFromLatest);
+      document.getElementById('btnToggleAddAccount')?.addEventListener('click', toggleAddAccountPanel);
+      document.getElementById('btnAddNewFund')?.addEventListener('click', handleAddNewFund);
+      document.getElementById('monthlyEntryForm')?.addEventListener('submit', saveMonthlyEntry);
+
+      // Import Review Modal controls
+      document.getElementById('btnCloseImportModal')?.addEventListener('click', closeImportReviewModal);
+      document.getElementById('btnCancelImport')?.addEventListener('click', closeImportReviewModal);
+      document.getElementById('btnSelectAllSheets')?.addEventListener('click', () => toggleReviewSheets(true));
+      document.getElementById('btnDeselectAllSheets')?.addEventListener('click', () => toggleReviewSheets(false));
+      document.getElementById('btnConfirmImport')?.addEventListener('click', commitReviewedImport);
+
+      // Security Modal controls
+      document.getElementById('btnCloseSecurityX')?.addEventListener('click', closeSecurityModal);
+      document.getElementById('btnCloseSecurityOk')?.addEventListener('click', closeSecurityModal);
+      document.getElementById('btnWipeModalData')?.addEventListener('click', wipeAllBrowserDataAndReset);
+    }
+
+    function setLiveStatus(msg, autoClearMs = 0) {
+      const bar = document.getElementById('liveStatusBar');
+      const txt = document.getElementById('liveStatusText');
+      if (!bar || !txt) return;
+      if (!msg) {
+        bar.classList.add('hidden');
+        return;
+      }
+      txt.textContent = msg;
+      bar.classList.remove('hidden');
+      if (autoClearMs > 0) {
+        setTimeout(() => {
+          bar.classList.add('hidden');
+        }, autoClearMs);
+      }
+    }
 
     function loadFromLocalStorage() {
       try {
@@ -805,20 +999,29 @@
       }
     }
 
+    function enterActiveWorkspace(defaultTab = 'overview') {
+      document.getElementById('welcomeScreen')?.classList.add('hidden');
+      document.getElementById('mainNavTabs')?.classList.remove('hidden');
+      setDefaultEntryMonth();
+      renderAll();
+      switchTab(defaultTab);
+    }
+
     function showWelcomeScreen() {
       stopTimelineAnimation();
-      document.getElementById('welcomeScreen').classList.remove('hidden');
-      document.getElementById('mainNavTabs').classList.add('hidden');
-      document.getElementById('view-overview').classList.add('hidden');
-      document.getElementById('view-insights').classList.add('hidden');
-      document.getElementById('view-annual').classList.add('hidden');
-      document.getElementById('view-entry').classList.add('hidden');
+      document.getElementById('welcomeScreen')?.classList.remove('hidden');
+      document.getElementById('mainNavTabs')?.classList.add('hidden');
+      document.getElementById('view-overview')?.classList.add('hidden');
+      document.getElementById('view-insights')?.classList.add('hidden');
+      document.getElementById('view-annual')?.classList.add('hidden');
+      document.getElementById('view-entry')?.classList.add('hidden');
       updateResumeBanner();
     }
 
     function updateResumeBanner() {
       const banner = document.getElementById('resumeSavedBanner');
       const details = document.getElementById('resumeSavedDetails');
+      if (!banner || !details) return;
       if (appState.accounts.length > 0 && appState.snapshots.length > 0) {
         const sorted = sortSnapshots(appState.snapshots);
         banner.classList.remove('hidden');
@@ -828,12 +1031,10 @@
       }
     }
 
-    function resumeExistingPortfolio() {
-      enterActiveWorkspace('overview');
-    }
-
     function clearSavedPortfolio() {
-      localStorage.removeItem(STORAGE_KEY);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (_) {}
       appState.accounts = [];
       appState.snapshots = [];
       updateResumeBanner();
@@ -854,32 +1055,11 @@
       showWelcomeScreen();
       showToast('All local browser portfolio data has been permanently wiped.', 'success');
     }
-      const isLiability = /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(key);
-      const displayName = titleCaseWords(cleaned);
 
-      return {
-        rawName: cleaned,
-        displayName,
-        provider,
-        category,
-        isLiability,
-        isNewBank
-      };
-    }
-
-    /**
-     * Ensures liabilities (such as Barclaycard) are always stored as <= 0
-     * so net worth always subtracts credit card balances accurately.
-     */
-    function enforceAccountSign(amount, accOrMeta) {
-      const num = Number(amount) || 0;
-      if (num === 0) return 0;
-      const isCardOrDebt = Boolean(
-        accOrMeta &&
-        (accOrMeta.isLiability || /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(`${accOrMeta.rawName || ''} ${accOrMeta.displayName || ''}`))
-      );
-      return isCardOrDebt ? -Math.abs(num) : num;
-    }
+    function switchTab(tabName) {
+      if (tabName !== 'overview') {
+        stopTimelineAnimation();
+      }
       ['overview', 'insights', 'annual', 'entry'].forEach(t => {
         const viewEl = document.getElementById(`view-${t}`);
         const btnEl = document.getElementById(`tab-${t}`);
@@ -934,7 +1114,6 @@
       const cleaned = String(rawName || '').trim();
       const key = normalizeAccountKey(cleaned);
 
-      // 1. Check exact preset account map first
       if (KNOWN_ACCOUNT_CODES[key]) {
         return {
           rawName: cleaned,
@@ -943,7 +1122,6 @@
         };
       }
 
-      // 2. Category rule: SIPP -> Pension; Shares/Invest/Equity -> Shares; else -> Cash
       let category = 'Cash';
       if (/\bsipp\b|\bpension\b/i.test(key)) {
         category = 'Pension';
@@ -951,7 +1129,6 @@
         category = 'Shares';
       }
 
-      // 3. Provider detection: match known bank patterns or extract first word/token as new bank
       let provider = '';
       for (const item of KNOWN_BANK_KEYWORDS) {
         if (item.pattern.test(key)) {
@@ -962,14 +1139,13 @@
 
       let isNewBank = false;
       if (!provider) {
-        // Infer bank/provider name from the leading word(s) of the unknown account entry
         const strippedRole = cleaned.replace(/\b(isa|sipp|shares?|savings?|sav|current|cash|account|pot|bond|bonds)\b/gi, '').trim();
         const inferredToken = strippedRole || cleaned.split(/\s+/)[0] || 'Other Bank';
         provider = titleCaseWords(inferredToken);
         isNewBank = true;
       }
 
-      const isLiability = /\b(card|loan|mortgage|debt|overdraft)\b/i.test(key);
+      const isLiability = /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(key);
       const displayName = titleCaseWords(cleaned);
 
       return {
@@ -980,6 +1156,19 @@
         isLiability,
         isNewBank
       };
+    }
+
+    function isAccountLiability(acc) {
+      return Boolean(
+        acc &&
+        (acc.isLiability || /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(`${acc.rawName || ''} ${acc.displayName || ''}`))
+      );
+    }
+
+    function enforceAccountSign(amount, accOrMeta) {
+      const num = Number(amount) || 0;
+      if (num === 0) return 0;
+      return isAccountLiability(accOrMeta) ? -Math.abs(num) : num;
     }
 
     /**
@@ -1131,6 +1320,7 @@
      * =========================================================================
      */
     function loadTrialDataset() {
+      setLiveStatus('Generating 60 months of trial portfolio data...', 1800);
       const trialConfigs = [
         { code: 'Barclaycard',      start: -280,  monthlyAdd: 0,    growth: 0.000, rate: null, jitter: 160 },
         { code: 'Barclays',         start: 1450,  monthlyAdd: 15,   growth: 0.001, rate: 1.50, jitter: 220 },
@@ -1171,7 +1361,7 @@
 
       const snapshots = [];
       let year = 2021;
-      let month = 12; // 60 months ending Nov 2026
+      let month = 12;
 
       for (let i = 0; i < 60; i++) {
         const dateKey = `${year}-${String(month).padStart(2, '0')}`;
@@ -1216,25 +1406,60 @@
 
     /**
      * =========================================================================
-     * 7. SMART MULTI-SPREADSHEET EXCEL IMPORTER
-     *    - Reads ONLY Col 1 (Account), Col 2 (Amount), Col 3 (Optional Rate)
-     *    - Completely ignores Col 4+, extra notes, blank rows, and summary rows
-     *    - Auto-adds any unknown banks/accounts not in the preset list
-     *    - Cross-references & deduplicates overlapping dates/accounts
+     * 7. IPAD-COMPATIBLE MULTI-SPREADSHEET EXCEL IMPORTER
      * =========================================================================
      */
-    function triggerExcelUpload() {
-      const input = document.getElementById('excelMultiInput');
-      input.value = '';
-      input.click();
+    async function ensureXlsxLoaded() {
+      if (typeof window.XLSX !== 'undefined') return true;
+      setLiveStatus('Loading Excel parser engine...');
+      const cdns = [
+        'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+        'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+      ];
+      for (const url of cdns) {
+        if (typeof window.XLSX !== 'undefined') return true;
+        try {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = url;
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+          if (typeof window.XLSX !== 'undefined') return true;
+        } catch (_) {}
+      }
+      return typeof window.XLSX !== 'undefined';
+    }
+
+    function readFileAsArrayBuffer(file) {
+      if (file.arrayBuffer) {
+        return file.arrayBuffer();
+      }
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+        reader.readAsArrayBuffer(file);
+      });
     }
 
     async function handleExcelFilesSelected(event) {
-      const files = Array.from(event.target.files || []);
+      const inputEl = event.target;
+      const files = Array.from(inputEl.files || []);
+      // Reset input value after grabbing files so selecting the same file again still fires 'change' on iPad
+      inputEl.value = '';
+
       if (files.length === 0) return;
 
-      if (typeof XLSX === 'undefined') {
-        showToast('Excel library is still loading. Please try again in a moment.', 'error');
+      setLiveStatus(`Selected ${files.length} file(s): ${files.map(f => f.name).join(', ')} — parsing...`);
+      showToast(`Reading ${files.length} spreadsheet(s)...`, 'info');
+
+      const xlsxReady = await ensureXlsxLoaded();
+      if (!xlsxReady) {
+        setLiveStatus('Could not load Excel parser (check internet connection).', 5000);
+        showToast('Excel parser failed to load. Check internet connection and try again.', 'error');
         return;
       }
 
@@ -1246,19 +1471,17 @@
         let duplicateTabsMerged = 0;
 
         for (const file of files) {
-          const buffer = await file.arrayBuffer();
-          const workbook = XLSX.read(buffer, { type: 'array' });
+          const buffer = await readFileAsArrayBuffer(file);
+          const workbook = window.XLSX.read(new Uint8Array(buffer), { type: 'array' });
 
           for (const sheetName of workbook.SheetNames) {
             const dateKey = parseSheetNameToDateKey(sheetName);
-            if (!dateKey) continue; // Ignore non-date tabs like "Summary" or "Notes"
+            if (!dateKey) continue;
 
             const ws = workbook.Sheets[sheetName];
-            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+            const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
             if (!rows || rows.length === 0) continue;
 
-            // Only scan first 3 columns (Col 0 = Account, Col 1 = Amount, Col 2 = Rate).
-            // All extra columns (Col 3+) and extra notes are strictly ignored!
             const parsedRows = [];
             for (let r = 0; r < rows.length; r++) {
               const row = rows[r];
@@ -1267,7 +1490,6 @@
               const rawCol1 = row[0] !== null && row[0] !== undefined ? String(row[0]).trim() : '';
               if (!rawCol1) continue;
 
-              // Ignore header rows, summary/total rows, and standalone note lines
               if (/^(account|fund|name|provider|bank|pot|total|grand total|subtotal|net worth|cash total|shares total|pension total|notes?|comments?|summary|date)$/i.test(rawCol1)) {
                 continue;
               }
@@ -1275,11 +1497,9 @@
                 continue;
               }
 
-              // Must have a valid numeric amount in Column 2; otherwise treat row as extra text/note and ignore
               const amount = parseCurrencyValue(row[1]);
               if (amount === null) continue;
 
-              // Optional interest rate in Column 3 (ignored if non-numeric/text note)
               const rate = row.length >= 3 ? parseInterestRateValue(row[2]) : null;
               parsedRows.push({ rawName: rawCol1, amount, rate });
             }
@@ -1343,6 +1563,7 @@
         }
 
         if (mergedSheetsMap.size === 0) {
+          setLiveStatus('No date-named tabs found in selected file(s).', 5000);
           showToast('No date-named tabs (e.g. "Apr 2024" or "2024-04") with Account + Amount columns were found.', 'error');
           return;
         }
@@ -1370,10 +1591,12 @@
           accounts: accountsList
         };
 
+        setLiveStatus(`Parsed ${sheetsList.length} date sheet(s) & ${accountsList.length} account(s). Review below.`, 3000);
         openImportReviewModal();
       } catch (err) {
         console.error('Excel import error:', err);
-        showToast('Could not read Excel file. Ensure it is a valid .xlsx or .xls workbook.', 'error');
+        setLiveStatus('Error reading Excel file: ' + (err.message || 'Unknown error'), 6000);
+        showToast('Could not read Excel file: ' + (err.message || 'Invalid workbook'), 'error');
       }
     }
 
@@ -1411,16 +1634,25 @@
       const b = pendingImportBatch;
 
       document.getElementById('reviewSheetCount').textContent = `${b.sheets.filter(s => s.selected).length}/${b.sheets.length}`;
-      document.getElementById('reviewSheetsList').innerHTML = b.sheets.map((sh, idx) => `
+      const sheetsEl = document.getElementById('reviewSheetsList');
+      sheetsEl.innerHTML = b.sheets.map((sh, idx) => `
         <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition ${sh.selected ? 'bg-violet-50 border-violet-300 text-violet-950' : 'bg-white border-slate-200 text-slate-400'}">
-          <input type="checkbox" ${sh.selected ? 'checked' : ''} onchange="toggleSingleReviewSheet(${idx})" class="rounded text-violet-600" />
+          <input type="checkbox" data-sheet-idx="${idx}" ${sh.selected ? 'checked' : ''} class="review-sheet-cb rounded text-violet-600" />
           <span>${escapeHtml(sh.label)}</span>
           ${sh.sourceSheets.length > 1 ? `<span class="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Merged x${sh.sourceSheets.length}</span>` : ''}
         </label>
       `).join('');
 
+      sheetsEl.querySelectorAll('.review-sheet-cb').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const idx = parseInt(cb.getAttribute('data-sheet-idx'), 10);
+          toggleSingleReviewSheet(idx);
+        });
+      });
+
       document.getElementById('reviewAccountCount').textContent = b.accounts.length;
-      document.getElementById('reviewAccountsList').innerHTML = b.accounts.map((acc, idx) => `
+      const accsEl = document.getElementById('reviewAccountsList');
+      accsEl.innerHTML = b.accounts.map((acc, idx) => `
         <div class="p-3 bg-white flex flex-wrap items-center justify-between gap-2">
           <div>
             <div class="flex items-center gap-2">
@@ -1438,15 +1670,23 @@
               if (active && cat === 'Cash') activeCls = 'bg-emerald-600 text-white shadow-xs';
               if (active && cat === 'Shares') activeCls = 'bg-violet-600 text-white shadow-xs';
               if (active && cat === 'Pension') activeCls = 'bg-amber-500 text-white shadow-xs';
-              return `<button type="button" onclick="setReviewAccountCategory(${idx}, '${cat}')" class="px-3 py-1 rounded-lg transition cursor-pointer ${active ? activeCls : 'text-slate-600 hover:text-slate-900'}">${cat}</button>`;
+              return `<button type="button" data-acc-idx="${idx}" data-cat="${cat}" class="review-cat-btn px-3 py-1 rounded-lg transition cursor-pointer ${active ? activeCls : 'text-slate-600 hover:text-slate-900'}">${cat}</button>`;
             }).join('')}
           </div>
         </div>
       `).join('');
+
+      accsEl.querySelectorAll('.review-cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-acc-idx'), 10);
+          const cat = btn.getAttribute('data-cat');
+          setReviewAccountCategory(idx, cat);
+        });
+      });
     }
 
     function toggleSingleReviewSheet(idx) {
-      if (!pendingImportBatch) return;
+      if (!pendingImportBatch || !pendingImportBatch.sheets[idx]) return;
       pendingImportBatch.sheets[idx].selected = !pendingImportBatch.sheets[idx].selected;
       renderReviewModalLists();
     }
@@ -1458,7 +1698,7 @@
     }
 
     function setReviewAccountCategory(idx, category) {
-      if (!pendingImportBatch) return;
+      if (!pendingImportBatch || !pendingImportBatch.accounts[idx]) return;
       pendingImportBatch.accounts[idx].category = category;
       renderReviewModalLists();
     }
@@ -1483,7 +1723,6 @@
         normToId.set(normalizeAccountKey(a.rawName), a.id);
       });
 
-      // Automatically register all accounts (including any newly detected banks)
       for (const revAcc of b.accounts) {
         if (normToId.has(revAcc.normKey)) {
           const existing = appState.accounts.find(a => a.id === normToId.get(revAcc.normKey));
@@ -1545,9 +1784,10 @@
      * 8. EXCEL EXPORT & SAMPLE WORKBOOK DOWNLOAD
      * =========================================================================
      */
-    function exportToExcel() {
-      if (typeof XLSX === 'undefined') {
-        showToast('Excel exporter library unavailable.', 'error');
+    async function exportToExcel() {
+      const xlsxReady = await ensureXlsxLoaded();
+      if (!xlsxReady) {
+        showToast('Excel exporter library unavailable. Check internet connection.', 'error');
         return;
       }
       const sorted = sortSnapshots(appState.snapshots);
@@ -1556,7 +1796,7 @@
         return;
       }
 
-      const wb = XLSX.utils.book_new();
+      const wb = window.XLSX.utils.book_new();
       const usedSheetNames = new Set();
 
       for (const snap of sorted) {
@@ -1573,21 +1813,22 @@
           rows.push([acc.rawName, amt, rate]);
         }
 
-        const ws = XLSX.utils.aoa_to_sheet(rows);
-        XLSX.utils.book_append_sheet(wb, ws, tabName);
+        const ws = window.XLSX.utils.aoa_to_sheet(rows);
+        window.XLSX.utils.book_append_sheet(wb, ws, tabName);
       }
 
       const todayStr = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `Wealth_ISA_Portfolio_${todayStr}.xlsx`);
+      window.XLSX.writeFile(wb, `Wealth_ISA_Portfolio_${todayStr}.xlsx`);
       showToast(`Exported ${sorted.length} monthly sheet(s) to Excel.`, 'success');
     }
 
-    function downloadSampleTemplateXlsx() {
-      if (typeof XLSX === 'undefined') {
-        showToast('Excel library still loading.', 'error');
+    async function downloadSampleTemplateXlsx() {
+      const xlsxReady = await ensureXlsxLoaded();
+      if (!xlsxReady) {
+        showToast('Excel library unavailable. Check internet connection.', 'error');
         return;
       }
-      const wb = XLSX.utils.book_new();
+      const wb = window.XLSX.utils.book_new();
       const sampleSheets = [
         {
           name: 'Jan 2026',
@@ -1640,11 +1881,11 @@
       ];
 
       sampleSheets.forEach(s => {
-        const ws = XLSX.utils.aoa_to_sheet(s.rows);
-        XLSX.utils.book_append_sheet(wb, ws, s.name);
+        const ws = window.XLSX.utils.aoa_to_sheet(s.rows);
+        window.XLSX.utils.book_append_sheet(wb, ws, s.name);
       });
 
-      XLSX.writeFile(wb, 'Sample_Wealth_Tracker_Template.xlsx');
+      window.XLSX.writeFile(wb, 'Sample_Wealth_Tracker_Template.xlsx');
       showToast('Downloaded sample multi-sheet .xlsx file.', 'success');
     }
 
@@ -1700,8 +1941,8 @@
         const btn = document.getElementById(`mode-${m}`);
         if (btn) {
           btn.className = appState.preferences.chartMode === m
-            ? 'px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
-            : 'px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
+            ? 'chart-mode-btn px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
+            : 'chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
         }
       });
 
@@ -1709,8 +1950,8 @@
         const btn = document.getElementById(`tf-${t}`);
         if (btn) {
           btn.className = appState.preferences.timeframe === t
-            ? 'px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
-            : 'px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
+            ? 'tf-btn px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
+            : 'tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
         }
       });
 
@@ -1775,7 +2016,7 @@
 
     /**
      * =========================================================================
-     * 10. ANIMATED TIMELINE GROWTH PLAYBACK & CHART.JS
+     * 10. ANIMATED TIMELINE GROWTH PLAYBACK & CHART.JS WITH SVG FALLBACK
      * =========================================================================
      */
     function toggleTimelineAnimation() {
@@ -1846,6 +2087,7 @@
       const labelEl = document.getElementById('playBtnLabel');
       const iconEl = document.getElementById('playIconSvg');
       const fullSlice = getFilteredSnapshots();
+      if (!labelEl || !iconEl) return;
 
       if (animationState.isPlaying) {
         labelEl.textContent = 'Pause';
@@ -1876,8 +2118,9 @@
 
       const canvas = document.getElementById('portfolioChartCanvas');
       const svgFallback = document.getElementById('chartSvgFallback');
+      if (!canvas || !svgFallback) return;
 
-      if (typeof Chart === 'undefined') {
+      if (typeof window.Chart === 'undefined') {
         canvas.classList.add('hidden');
         svgFallback.classList.remove('hidden');
         renderSvgFallbackChart(svgFallback, labels, totalData);
@@ -1946,7 +2189,7 @@
         return;
       }
 
-      chartInstance = new Chart(canvas.getContext('2d'), {
+      chartInstance = new window.Chart(canvas.getContext('2d'), {
         type: 'line',
         data: { labels, datasets },
         options: {
@@ -2009,6 +2252,7 @@
       container.innerHTML = `
         <svg viewBox="0 0 ${w} ${h}" class="w-full h-full">
           <polyline fill="none" stroke="#7c3aed" stroke-width="3.5" points="${pts}" />
+          <text x="${pad}" y="22" font-size="12" fill="#475569" font-weight="600">${escapeHtml(labels[0] || '')} → ${escapeHtml(labels[labels.length - 1] || '')}: ${formatGBP(values[values.length - 1])}</text>
         </svg>
       `;
     }
@@ -2031,12 +2275,12 @@
     function renderDynamicInsights(slice) {
       const grid = document.getElementById('dynamicInsightsGrid');
       const labelEl = document.getElementById('insightsSnapshotLabel');
-      if (!slice.length) return;
+      if (!slice.length || !grid) return;
 
       const first = computeSnapshotTotals(slice[0]);
       const latestSnap = slice[slice.length - 1];
       const latest = computeSnapshotTotals(latestSnap);
-      labelEl.textContent = `${slice[0].label} → ${latestSnap.label}`;
+      if (labelEl) labelEl.textContent = `${slice[0].label} → ${latestSnap.label}`;
 
       const netGain = latest.total - first.total;
       const netGainPct = first.total !== 0 ? (netGain / Math.abs(first.total)) * 100 : 0;
@@ -2064,19 +2308,16 @@
         {
           title: 'Multi-Year Wealth Trajectory',
           accent: 'border-violet-200 bg-violet-50/60',
-          badge: 'bg-violet-100 text-violet-800',
           body: `Portfolio moved by <strong>${formatSignedGBP(netGain)}</strong> (${formatSignedPct(netGainPct)}) across ${slice.length} recorded month(s).`
         },
         {
           title: 'Primary Growth Engine',
           accent: topDriver.bg,
-          badge: 'bg-white text-slate-800',
           body: `<strong class="${topDriver.color}">${topDriver.name}</strong> led portfolio gains with <strong>${formatSignedGBP(topDriver.diff)}</strong> added over the period.`
         },
         {
           title: 'Cash Yield & Rate Efficiency',
           accent: 'border-emerald-200 bg-emerald-50/60',
-          badge: 'bg-emerald-100 text-emerald-800',
           body: latest.avgCashRate > 0
             ? `Weighted cash AER is <strong>${latest.avgCashRate.toFixed(2)}%</strong>, generating ~<strong>${formatGBP(latest.projectedAnnualCashInterest)}/yr</strong> (${formatGBP(latest.projectedAnnualCashInterest / 12)}/mo).`
             : `Add interest rates (%) on cash accounts to project annual cash yield automatically.`
@@ -2084,13 +2325,11 @@
         {
           title: 'Growth vs. Liquid Split',
           accent: 'border-amber-200 bg-amber-50/60',
-          badge: 'bg-amber-100 text-amber-900',
           body: `<strong>${equityPct}%</strong> is invested for long-term growth (Shares &amp; Pensions), while <strong>${100 - equityPct}%</strong> sits in liquid cash.`
         },
         {
           title: 'Momentum & Streak',
           accent: 'border-fuchsia-200 bg-fuchsia-50/60',
-          badge: 'bg-fuchsia-100 text-fuchsia-800',
           body: growthStreak > 0
             ? `On a <strong>${growthStreak}-month consecutive growth streak</strong> heading into ${latestSnap.label}.`
             : `Latest month saw a slight consolidation—regular contributions continue building units.`
@@ -2098,7 +2337,6 @@
         {
           title: 'ISA & Pension Balance',
           accent: 'border-sky-200 bg-sky-50/60',
-          badge: 'bg-sky-100 text-sky-800',
           body: `Accessible ISAs/Cash stand at <strong>${formatGBP(latest.Cash + latest.Shares)}</strong> alongside <strong>${formatGBP(latest.Pension)}</strong> locked for retirement.`
         }
       ];
@@ -2114,6 +2352,7 @@
     function renderProviderBreakdown(latestSnap) {
       const grid = document.getElementById('providerBreakdownGrid');
       const countBadge = document.getElementById('providerCountBadge');
+      if (!grid) return;
       const provMap = new Map();
 
       appState.accounts.forEach(acc => {
@@ -2171,16 +2410,28 @@
                 if (active && cat === 'Cash') activeCls = 'bg-emerald-600 text-white shadow-xs';
                 if (active && cat === 'Shares') activeCls = 'bg-violet-600 text-white shadow-xs';
                 if (active && cat === 'Pension') activeCls = 'bg-amber-500 text-white shadow-xs';
-                return `<button type="button" onclick="changeAccountBucket('${acc.id}', '${cat}')" class="px-2.5 py-1 rounded-lg transition cursor-pointer ${active ? activeCls : 'text-slate-600 hover:text-slate-900'}">${cat}</button>`;
+                return `<button type="button" data-acc-id="${acc.id}" data-cat="${cat}" class="rule-cat-btn px-2.5 py-1 rounded-lg transition cursor-pointer ${active ? activeCls : 'text-slate-600 hover:text-slate-900'}">${cat}</button>`;
               }).join('')}
             </div>
 
-            <button type="button" onclick="toggleAccountVisibility('${acc.id}')" class="px-2.5 py-1 text-xs font-medium rounded-xl border transition cursor-pointer ${acc.active ? 'border-slate-300 text-slate-600 hover:bg-slate-50' : 'border-violet-200 bg-violet-50 text-violet-700'}">
+            <button type="button" data-acc-id="${acc.id}" class="rule-vis-btn px-2.5 py-1 text-xs font-medium rounded-xl border transition cursor-pointer ${acc.active ? 'border-slate-300 text-slate-600 hover:bg-slate-50' : 'border-violet-200 bg-violet-50 text-violet-700'}">
               ${acc.active ? 'Hide' : 'Restore'}
             </button>
           </div>
         </div>
       `).join('');
+
+      container.querySelectorAll('.rule-cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          changeAccountBucket(btn.getAttribute('data-acc-id'), btn.getAttribute('data-cat'));
+        });
+      });
+
+      container.querySelectorAll('.rule-vis-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          toggleAccountVisibility(btn.getAttribute('data-acc-id'));
+        });
+      });
     }
 
     function changeAccountBucket(accId, newCat) {
@@ -2260,8 +2511,8 @@
         const btn = document.getElementById(`annual-mode-${m}`);
         if (btn) {
           btn.className = mode === m
-            ? 'px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
-            : 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
+            ? 'annual-mode-btn px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer'
+            : 'annual-mode-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
         }
       });
 
@@ -2311,9 +2562,9 @@
 
       const canvas = document.getElementById('annualBarChartCanvas');
       const svgFallback = document.getElementById('annualSvgFallback');
-      if (!canvas) return;
+      if (!canvas || !svgFallback) return;
 
-      if (typeof Chart === 'undefined') {
+      if (typeof window.Chart === 'undefined') {
         canvas.classList.add('hidden');
         svgFallback.classList.remove('hidden');
         renderSvgFallbackChart(svgFallback, labels, annualRows.map(r => r.totals.total));
@@ -2356,7 +2607,7 @@
         return;
       }
 
-      annualChartInstance = new Chart(canvas.getContext('2d'), {
+      annualChartInstance = new window.Chart(canvas.getContext('2d'), {
         type: 'bar',
         data: { labels, datasets },
         options: {
@@ -2533,13 +2784,6 @@
       recalcLiveEntryTotals();
     }
 
-    function isAccountLiability(acc) {
-      return Boolean(
-        acc &&
-        (acc.isLiability || /\b(barclaycard|card|loan|mortgage|debt|overdraft)\b/i.test(`${acc.rawName || ''} ${acc.displayName || ''}`))
-      );
-    }
-
     function renderMonthlyEntryForm() {
       const picker = document.getElementById('entryMonthPicker');
       if (!picker) return;
@@ -2607,11 +2851,10 @@
                           type="number"
                           step="0.01"
                           id="entry-amt-${acc.id}"
+                          data-acc-id="${acc.id}"
                           data-category="${acc.category}"
                           data-liability="${isCard ? '1' : '0'}"
                           value="${signedAmount}"
-                          oninput="handleEntryAmountInput('${acc.id}')"
-                          onblur="handleEntryAmountInput('${acc.id}')"
                           class="entry-amt-input w-full pl-7 pr-3 py-1.5 text-sm font-semibold ${isCard ? 'text-rose-700 bg-rose-50/70 border-rose-300' : 'text-slate-900 bg-slate-50 border-slate-300'} border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                         />
                       </div>
@@ -2638,6 +2881,12 @@
           </div>
         `;
       }).join('');
+
+      container.querySelectorAll('.entry-amt-input').forEach(inp => {
+        const accId = inp.getAttribute('data-acc-id');
+        inp.addEventListener('input', () => handleEntryAmountInput(accId));
+        inp.addEventListener('blur', () => handleEntryAmountInput(accId));
+      });
 
       recalcLiveEntryTotals();
     }
@@ -2681,7 +2930,7 @@
       const displayName = autoMeta.displayName;
       const provider = provInput.value.trim() || autoMeta.provider;
       const category = catSelect.value || autoMeta.category;
-      const initialAmt = parseFloat(amtInput.value) || 0;
+      const initialAmt = enforceAccountSign(parseFloat(amtInput.value) || 0, autoMeta);
       const initialRate = rateInput.value !== '' ? parseFloat(rateInput.value) : null;
 
       if (appState.accounts.some(a => normalizeAccountKey(a.rawName) === normalizeAccountKey(rawCode))) {
@@ -2777,6 +3026,7 @@
 
     function showToast(msg, type = 'info') {
       const container = document.getElementById('toastContainer');
+      if (!container) return;
       const el = document.createElement('div');
       const styles = {
         success: 'bg-indigo-950 text-white border-emerald-400',
