@@ -1,5 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wealth &amp; ISA Portfolio Tracker</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-      } else if (/\bshares?\b|\binvest\b|\bequity\b|\bstocks?\b/i.test(key)) {
+  <!-- Multi-CDN Fallback Loader for SheetJS (XLSX) and Chart.js (iPad Chrome & Safari safe) -->
+  <script>
+    (function loadExternalLibrariesWithFallback() {
+      function loadScriptChain(urls, idx, globalName) {
+        if (idx >= urls.length) return;
+        if (window[globalName]) return;
+        var s = document.createElement('script');
+        s.src = urls[idx];
+        s.async = true;
+        s.onerror = function () {
+          loadScriptChain(urls, idx + 1, globalName);
+        };
+        document.head.appendChild(s);
+      }
+
+      loadScriptChain([
+        'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+        'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+      ], 0, 'XLSX');
+
+      loadScriptChain([
+        'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+        'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'
+      ], 0, 'Chart');
+    })();
+  </script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg, #f5f3ff 0%, #f8fafc 260px);
+      color: #0f172a;
+    }
+    /* iPadOS Chrome & Safari compatible visually-hidden file input */
+    .ipad-file-input {
+      position: fixed;
+      top: -100px;
+      left: -100px;
+      width: 1px;
+      height: 1px;
+      opacity: 0.01;
+      overflow: hidden;
+      z-index: -1;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c7d2fe;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #818cf8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-violet-200 selection:text-violet-950">
+
+  <!-- Native iPadOS-Safe Multi-File Input -->
+  <input id="excelFileInput" type="file" multiple class="ipad-file-input" />
+
+  <!-- ===================================================================== -->
+  <!-- TOP HEADER WITH VIBRANT GRADIENT & TOP-RIGHT £25/DAY INTEREST COUNTER -->
+  <!-- ===================================================================== -->
+  <header id="appHeader" class="bg-gradient-to-r from-indigo-950 via-violet-900 to-fuchsia-900 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-wrap items-center justify-between py-3.5 gap-3">
+        <!-- Brand & Local Privacy Status -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center shadow-sm shrink-0">
+            <svg class="w-5 h-5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">Wealth &amp; ISA Tracker</h1>
+              <button type="button" id="btnOpenSecurity" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 hover:bg-emerald-400/30 text-emerald-200 border border-emerald-300/35 transition cursor-pointer" title="Click to inspect local-only privacy & security details">
+                <svg class="w-3.5 h-3.5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span>100% Local &amp; Private</span>
+              </button>
+            </div>
+            <p class="text-xs text-indigo-200">Multi-sheet Excel &bull; Cash, Shares ISAs &amp; SIPP Pensions</p>
+          </div>
+        </div>
+
+        <!-- Right Side: Top-Right Live £25/day Counter + Native Label Upload + Actions -->
+        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 ml-auto">
+          <!-- TOP-RIGHT CORNER LIVE COUNTER: INTEREST EARNED THIS YEAR (£25/DAY) -->
+          <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border border-emerald-300/40 shadow-sm" title="Tracks £25/day since January 1st of the current year (Jan 1 = £25, Jan 3 = £75)">
+            <div class="w-8 h-8 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center font-extrabold text-sm shadow-xs shrink-0">
+              £
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-200">Interest Earned This Year</span>
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span id="ytdInterestAmount" class="text-base sm:text-lg font-extrabold text-white tracking-tight">£0</span>
+                <span id="ytdInterestSubtext" class="text-[11px] font-medium text-emerald-200">+£25/day (Day 1)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Global Action Buttons -->
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <label for="excelFileInput" role="button" tabindex="0" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-indigo-950 bg-amber-300 hover:bg-amber-200 active:bg-amber-400 rounded-xl shadow-sm transition cursor-pointer select-none">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              <span>+ Import Excel</span>
+            </label>
+
+            <button type="button" id="btnExportExcel" class="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-medium text-white bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl transition cursor-pointer">
+              <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              <span class="hidden sm:inline">Export</span>
+            </button>
+
+            <button type="button" id="btnHeaderReset" class="inline-flex items-center gap-1 px-3 py-2.5 text-xs font-medium text-indigo-200 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl transition cursor-pointer" title="Return to Welcome Screen">
+              <span>Start</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4-Tab Navigation Bar -->
+      <nav id="mainNavTabs" class="hidden flex space-x-1 sm:space-x-2 overflow-x-auto pt-1" aria-label="Tabs">
+        <button type="button" data-tab="overview" id="tab-overview" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-900 shadow-xs flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>
+          Overview
+        </button>
+        <button type="button" data-tab="insights" id="tab-insights" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
+          Providers &amp; Insights (<span id="navProviderCount">0</span>)
+        </button>
+        <button type="button" data-tab="annual" id="tab-annual" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-teal-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+          Annual (Feb)
+        </button>
+        <button type="button" data-tab="entry" id="tab-entry" class="tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer">
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+          Add / Edit Snapshot
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Live Status Banner -->
+  <div id="liveStatusBar" class="hidden bg-indigo-900 text-white text-xs sm:text-sm font-medium px-4 py-2.5 text-center border-b border-indigo-700">
+    <span id="liveStatusText">Ready</span>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ===================================================================== -->
+    <!-- WELCOME / START SCREEN (ZERO PRE-LOADED PERSONAL FINANCIAL DATA)      -->
+    <!-- ===================================================================== -->
+    <section id="welcomeScreen" class="max-w-4xl mx-auto my-4 sm:my-8">
+      <div class="bg-white rounded-3xl border border-violet-100 shadow-lg overflow-hidden">
+        <div class="p-6 sm:p-10 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center mx-auto mb-5 shadow-md">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+            </svg>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-3">
+            Personal Wealth, ISA &amp; Pension Tracker
+          </h2>
+          <p class="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto mb-8 leading-relaxed">
+            Starts completely empty with zero stored financial numbers. Upload your multi-sheet Excel workbook(s) or start a blank workspace to record snapshots manually—everything stays 100% locally in your browser.
+          </p>
+
+          <!-- Two Clean Launch Actions (No hardcoded personal figures) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
+            <!-- Action 1: Upload Spreadsheet(s) -->
+            <label for="excelFileInput" role="button" tabindex="0" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:from-violet-800 active:to-indigo-800 text-white shadow-md transition flex flex-col justify-between cursor-pointer select-none">
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                </div>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20">Multi-Sheet .xlsx</span>
+              </div>
+              <div>
+                <div class="text-lg font-bold mb-1">Upload Spreadsheet(s)</div>
+                <p class="text-xs text-indigo-100 leading-relaxed">
+                  Reads exact dates (<code class="text-amber-200">Feb 1 23</code>, <code class="text-amber-200">April 10th</code>, <code class="text-amber-200">Nov 1</code>), detects shifted columns, skips <code class="text-amber-200">Summary</code>/<code class="text-amber-200">Sipp</code> calculator tabs, and deduplicates overlapping files.
+                </p>
+              </div>
+            </label>
+
+            <!-- Action 2: Start Blank Workspace -->
+            <button type="button" id="btnStartBlank" class="group text-left p-6 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:from-emerald-800 active:to-teal-900 text-white shadow-md transition flex flex-col justify-between cursor-pointer select-none">
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-amber-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                </div>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 text-emerald-100">Manual Entry</span>
+              </div>
+              <div>
+                <div class="text-lg font-bold mb-1">Start Empty Workspace</div>
+                <p class="text-xs text-emerald-50 leading-relaxed">
+                  Open an empty tracker right away to add your accounts and record your first snapshot manually without uploading a spreadsheet.
+                </p>
+              </div>
+            </button>
+          </div>
+
+          <!-- Resume Existing Session Banner -->
+          <div id="resumeSavedBanner" class="hidden max-w-2xl mx-auto mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-3 text-left">
+            <div>
+              <div class="text-sm font-bold text-amber-950">Saved Portfolio Found in Browser</div>
+              <div id="resumeSavedDetails" class="text-xs text-amber-800">You have existing snapshots saved locally.</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" id="btnResumeSaved" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition cursor-pointer">
+                Return to Overview
+              </button>
+              <button type="button" id="btnWipeSavedBanner" class="px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100 rounded-xl transition cursor-pointer">
+                Wipe Data
+              </button>
+            </div>
+          </div>
+
+          <!-- Classification Rules Legend -->
+          <div class="border-t border-slate-100 pt-5 text-xs text-slate-500 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <span><strong class="text-violet-700">Shares ISA:</strong> HL isa / HS &amp; T212 isa</span>
+            <span>&bull;</span>
+            <span><strong class="text-amber-700">Pension (SIPP):</strong> HL sipp &amp; T212 sipp</span>
+            <span>&bull;</span>
+            <span><strong class="text-emerald-700">Cash:</strong> All other accounts (Barclaycard negative)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 1: OVERVIEW (4 KPI CARDS + ANIMATED RUNNING TIMELINE CHART)       -->
+    <!-- ===================================================================== -->
+    <section id="view-overview" class="space-y-6 hidden">
+      <!-- 4 Vibrant Headline KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Net Worth -->
+        <div class="bg-gradient-to-br from-indigo-900 via-violet-900 to-purple-900 text-white rounded-2xl p-5 shadow-md relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-200">Total Net Worth</span>
+            <span id="kpiDateBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/15 text-amber-200">—</span>
+          </div>
+          <div id="kpiTotalWorth" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">£0</div>
+          <div id="kpiTotalChange" class="mt-2 text-xs font-medium text-indigo-200">—</div>
+        </div>
+
+        <!-- Cash & Cash ISAs -->
+        <div class="bg-white rounded-2xl border-2 border-emerald-100 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              Cash &amp; Cash ISAs
+            </span>
+            <span id="kpiCashShare" class="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">0%</span>
+          </div>
+          <div id="kpiCashTotal" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">£0</div>
+          <div id="kpiCashSub" class="mt-2 text-xs font-medium text-emerald-700">—</div>
+        </div>
+
+        <!-- Shares & S&S ISAs -->
+        <div class="bg-white rounded-2xl border-2 border-violet-100 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-violet-700 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span>
+              Shares ISA (HL &amp; T212)
+            </span>
+            <span id="kpiSharesShare" class="text-xs font-bold text-violet-800 bg-violet-100 px-2.5 py-0.5 rounded-full">0%</span>
+          </div>
+          <div id="kpiSharesTotal" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">£0</div>
+          <div id="kpiSharesSub" class="mt-2 text-xs font-medium text-violet-700">—</div>
+        </div>
+
+        <!-- Pensions / SIPPs -->
+        <div class="bg-white rounded-2xl border-2 border-amber-100 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              Pensions (SIPPs)
+            </span>
+            <span id="kpiPensionShare" class="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full">0%</span>
+          </div>
+          <div id="kpiPensionTotal" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">£0</div>
+          <div id="kpiPensionSub" class="mt-2 text-xs font-medium text-amber-700">—</div>
+        </div>
+      </div>
+
+      <!-- Main Running Totals Over Time Chart with Animated Playback -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Running Totals Over Time</h2>
+            <p class="text-xs text-slate-500">Exact dates from your spreadsheets and recorded snapshots—no projected future dates</p>
+          </div>
+
+          <!-- Animation & Chart Controls -->
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Animated Timeline Playback Controls -->
+            <div class="inline-flex items-center gap-1 bg-violet-50 border border-violet-200 rounded-xl p-1">
+              <button type="button" id="btnPlayAnimation" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 shadow-2xs transition cursor-pointer">
+                <svg id="playIconSvg" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span id="playBtnLabel">Play Growth Animation</span>
+              </button>
+              <button type="button" id="btnResetAnim" title="Reset Animation to Full View" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-violet-700 hover:bg-violet-100 transition cursor-pointer">
+                Full
+              </button>
+              <button type="button" id="btnAnimSpeed" title="Change Playback Speed" class="px-2 py-1.5 rounded-lg text-xs font-bold text-violet-900 bg-white border border-violet-200 hover:bg-violet-100 transition cursor-pointer">
+                1x
+              </button>
+            </div>
+
+            <!-- View Mode Toggle -->
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+              <button type="button" data-mode="stacked" id="mode-stacked" class="chart-mode-btn px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">Stacked</button>
+              <button type="button" data-mode="lines" id="mode-lines" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Lines</button>
+              <button type="button" data-mode="total" id="mode-total" class="chart-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">Total</button>
+            </div>
+
+            <!-- Timeframe Filter -->
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+              <button type="button" data-tf="6M" id="tf-6M" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">6M</button>
+              <button type="button" data-tf="1Y" id="tf-1Y" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">1Y</button>
+              <button type="button" data-tf="3Y" id="tf-3Y" class="tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">3Y</button>
+              <button type="button" data-tf="ALL" id="tf-ALL" class="tf-btn px-2.5 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">All</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animation Progress Scrubber Bar -->
+        <div id="animationProgressWrapper" class="hidden mt-3 flex items-center gap-3">
+          <span id="animCurrentMonthBadge" class="text-xs font-bold text-violet-700 bg-violet-100 px-2.5 py-0.5 rounded-md shrink-0">—</span>
+          <div class="flex-1 h-2 bg-violet-100 rounded-full overflow-hidden">
+            <div id="animProgressBar" class="h-full bg-gradient-to-r from-emerald-500 via-violet-500 to-amber-500 transition-all duration-150" style="width: 100%"></div>
+          </div>
+          <span id="animStepCounter" class="text-xs text-slate-500 shrink-0">0 / 0</span>
+        </div>
+
+        <!-- Empty State Callout when workspace is blank -->
+        <div id="overviewEmptyState" class="hidden py-14 text-center">
+          <p class="text-sm font-semibold text-slate-700 mb-2">No snapshots recorded yet</p>
+          <p class="text-xs text-slate-500 mb-4">Import your Excel file(s) using the yellow button at the top or add your first snapshot.</p>
+          <div class="flex justify-center gap-3">
+            <label for="excelFileInput" class="px-4 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl cursor-pointer">
+              + Import Excel (.xlsx)
+            </label>
+            <button type="button" id="btnEmptyGoAdd" class="px-4 py-2 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-xl cursor-pointer">
+              Add Snapshot Manually
+            </button>
+          </div>
+        </div>
+
+        <!-- Canvas Container with SVG Fallback -->
+        <div id="overviewChartWrapper" class="relative mt-4 h-[330px] sm:h-[380px] w-full">
+          <canvas id="portfolioChartCanvas"></canvas>
+          <div id="chartSvgFallback" class="hidden w-full h-full"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 2: PROVIDERS & INSIGHTS (SECOND DASHBOARD TAB)                    -->
+    <!-- ===================================================================== -->
+    <section id="view-insights" class="space-y-6 hidden">
+      <!-- Dynamic Portfolio Interpretation & Insights Panel -->
+      <div class="bg-white rounded-2xl border border-violet-100 shadow-sm p-5 sm:p-6">
+        <div class="flex items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white flex items-center justify-center shadow-xs">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+            </div>
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">Dynamic Portfolio Interpretation</h2>
+              <p class="text-xs text-slate-500">Live insights comparing Cash, Shares ISAs, and SIPP Pensions across your recorded dates</p>
+            </div>
+          </div>
+          <span id="insightsSnapshotLabel" class="text-xs font-bold px-3 py-1 rounded-full bg-violet-100 text-violet-800">—</span>
+        </div>
+
+        <div id="dynamicInsightsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Provider / Bank Breakdown Cards -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">Provider &amp; Bank Breakdown</h3>
+            <p class="text-xs text-slate-500">Latest balances grouped by institution—including any new banks auto-detected from your sheets</p>
+          </div>
+          <span id="providerCountBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">0 Providers</span>
+        </div>
+
+        <div id="providerBreakdownGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Account Category Quick Re-Classifier -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Account Category Mapping (<span id="accountsMappingCount">0</span>)</h3>
+            <p class="text-xs text-slate-500">Adjust any account between <strong>Cash</strong>, <strong>Shares</strong> (ISA), and <strong>Pension</strong> (SIPP) or hide historic zero-balance accounts from monthly entry</p>
+          </div>
+        </div>
+        <div id="accountsRulesList" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 3: ANNUAL SNAPSHOT (AS NEAR TO FEBRUARY EACH YEAR)               -->
+    <!-- ===================================================================== -->
+    <section id="view-annual" class="space-y-6 hidden">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">Annual Wealth Progress (February Snapshot)</h2>
+              <span id="annualYearSpanBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-800">—</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Automatically picks each calendar year's sheet closest to <strong>February</strong> (falling back to January or the nearest available snapshot when February isn't recorded).
+            </p>
+          </div>
+
+          <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold self-start sm:self-auto shrink-0">
+            <button type="button" data-annual="stacked" id="annual-mode-stacked" class="annual-mode-btn px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">
+              Stacked Bar
+            </button>
+            <button type="button" data-annual="grouped" id="annual-mode-grouped" class="annual-mode-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+              Grouped Bar
+            </button>
+          </div>
+        </div>
+
+        <div class="relative mt-5 h-[330px] sm:h-[370px] w-full">
+          <canvas id="annualBarChartCanvas"></canvas>
+          <div id="annualSvgFallback" class="hidden w-full h-full"></div>
+        </div>
+
+        <div id="annualFallbackNote" class="hidden mt-3 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2">
+          <strong>* Nearest-date match:</strong> Years marked with an asterisk did not have a February sheet, so the closest available snapshot (e.g., January) was automatically used.
+        </div>
+      </div>
+
+      <!-- Year-over-Year Summary Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-5 sm:p-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Year-over-Year Breakdown</h3>
+            <p class="text-xs text-slate-500">Annual category totals and year-on-year net worth growth</p>
+          </div>
+          <span id="annualCagrBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 hidden">
+            —
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <th class="py-3.5 px-5">Year</th>
+                <th class="py-3.5 px-4">Snapshot Used</th>
+                <th class="py-3.5 px-4 text-right">Cash (£)</th>
+                <th class="py-3.5 px-4 text-right">Shares ISA (£)</th>
+                <th class="py-3.5 px-4 text-right">Pensions (£)</th>
+                <th class="py-3.5 px-4 text-right">Total Wealth (£)</th>
+                <th class="py-3.5 px-5 text-right">Annual Change</th>
+              </tr>
+            </thead>
+            <tbody id="annualSummaryTableBody" class="divide-y divide-slate-100 text-sm">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 4: ADD / EDIT SNAPSHOT (PRE-FILLED + "+ ADD ANOTHER ACCOUNT")     -->
+    <!-- ===================================================================== -->
+    <section id="view-entry" class="max-w-4xl mx-auto space-y-6 hidden">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Add / Edit Snapshot</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Defaults to your previous snapshot's balances and interest rates—plus add new accounts anytime.</p>
+          </div>
+
+          <div class="flex flex-wrap items-end gap-2">
+            <div>
+              <label for="entryDatePicker" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Snapshot Date</label>
+              <input type="date" id="entryDatePicker" class="px-3.5 py-2 text-sm font-semibold text-slate-900 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+            </div>
+            <button type="button" id="btnResetEntryToPrev" class="px-3.5 py-2 text-xs font-bold text-violet-800 bg-violet-100 hover:bg-violet-200 border border-violet-200 rounded-xl transition cursor-pointer">
+              Reset to Previous Values
+            </button>
+          </div>
+        </div>
+
+        <!-- Status, Filter & Live Total Bar -->
+        <div class="mt-4 px-4 py-3 rounded-xl bg-gradient-to-r from-violet-50 via-indigo-50 to-emerald-50 border border-violet-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div id="entryModeBannerText" class="flex flex-wrap items-center gap-2 text-slate-700 font-medium">Creating new snapshot</div>
+          <div class="flex flex-wrap items-center gap-3">
+            <label class="inline-flex items-center gap-1.5 text-slate-700 font-semibold cursor-pointer select-none">
+              <input type="checkbox" id="cbHideZeroHistoric" checked class="rounded text-violet-600" />
+              <span>Hide £0 historic accounts</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
+          <span class="text-emerald-300" id="entrySubCash">Cash: £0</span>
+          <span class="text-violet-300" id="entrySubShares">Shares ISA: £0</span>
+          <span class="text-amber-300" id="entrySubPension">Pension: £0</span>
+          <span class="text-white text-sm" id="entryLiveNetWorth">Total Net Worth: £0</span>
+        </div>
+
+        <!-- PROMINENT "+ ADD ANOTHER ACCOUNT" CARD -->
+        <div class="mt-5 rounded-2xl bg-gradient-to-r from-violet-50 to-fuchsia-50 border-2 border-dashed border-violet-300 p-4 sm:p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold shadow-xs">
+                +
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-violet-950">Add Another Account</h3>
+                <p class="text-xs text-violet-700">Opened a new bank account, ISA, or SIPP? Add it here and it will carry forward every snapshot automatically.</p>
+              </div>
+            </div>
+            <button type="button" id="btnToggleAddAccount" class="px-3.5 py-1.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-xs transition cursor-pointer">
+              + Add Another Account
+            </button>
+          </div>
+
+          <div id="addAnotherAccountFields" class="mt-4 pt-4 border-t border-violet-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+            <div class="sm:col-span-3">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Account Code / Name *</label>
+              <input type="text" id="addFundCode" placeholder="e.g. HL sipp / Chase sav" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Bank / Provider</label>
+              <input type="text" id="addFundProvider" placeholder="e.g. Hargreaves Lansdown" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+              <select id="addFundCategory" class="w-full px-3 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500">
+                <option value="Cash" selected>Cash</option>
+                <option value="Shares">Shares (ISA)</option>
+                <option value="Pension">Pension (SIPP)</option>
+              </select>
+            </div>
+            <div class="sm:col-span-4 flex gap-2 items-end">
+              <div class="flex-1">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Balance (£)</label>
+                <input type="number" step="0.01" id="addFundAmount" placeholder="0.00" class="w-full px-2.5 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              </div>
+              <div class="w-20">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">AER %</label>
+                <input type="number" step="0.01" id="addFundRate" placeholder="4.5" class="w-full px-2 py-2 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              </div>
+              <button type="button" id="btnAddNewFund" class="px-4 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition cursor-pointer shrink-0">
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recurring Accounts Form -->
+        <form id="monthlyEntryForm" class="mt-6 space-y-6">
+          <div id="entryGroupsContainer" class="space-y-6">
+            <!-- Cash, Shares, and Pension groups injected here -->
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
+            <p class="text-xs text-slate-500">Barclaycard is automatically deducted as negative even if typed as a positive balance.</p>
+            <button type="submit" class="px-6 py-3 text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-xl shadow-md transition cursor-pointer">
+              Save Snapshot
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL 1: MULTI-SPREADSHEET IMPORT & DEDUPLICATION REVIEW                -->
+  <!-- ======================================================================= -->
+  <div id="importReviewModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-violet-200 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="px-6 py-4 bg-gradient-to-r from-indigo-950 to-violet-900 text-white flex items-center justify-between gap-2">
+        <div>
+          <h3 class="text-base sm:text-lg font-bold">Review Imported Excel Sheets</h3>
+          <p id="importReviewSubtitle" class="text-xs text-indigo-200">Verify detected snapshot dates, skipped calculator tabs, and account categories.</p>
+        </div>
+        <button type="button" id="btnCloseImportModal" class="p-1.5 text-indigo-200 hover:text-white rounded-lg cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-5 flex-1">
+        <!-- Deduplication & Skipped Tabs Summary -->
+        <div id="dedupSummaryBox" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-1">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Import Strategy -->
+        <div class="flex flex-wrap items-center gap-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+          <span class="font-bold text-slate-800">Import Mode:</span>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="importStrategy" value="merge" checked class="text-violet-600" />
+            <span><strong>Merge &amp; Cross-Reference</strong> (deduplicates overlapping dates)</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="importStrategy" value="replace" class="text-violet-600" />
+            <span><strong>Replace All</strong> (overwrite current app data)</span>
+          </label>
+        </div>
+
+        <!-- Detected Date Sheets -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Detected Date Sheets (<span id="reviewSheetCount">0</span>)</span>
+            <div class="flex gap-2 text-xs">
+              <button type="button" id="btnSelectAllSheets" class="text-violet-700 font-semibold hover:underline cursor-pointer">Select All</button>
+              <span class="text-slate-300">|</span>
+              <button type="button" id="btnDeselectAllSheets" class="text-slate-500 hover:underline cursor-pointer">Deselect All</button>
+            </div>
+          </div>
+          <div id="reviewSheetsList" class="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <!-- Checkboxes injected here -->
+          </div>
+        </div>
+
+        <!-- Detected Accounts & Category Assignment -->
+        <div>
+          <div class="mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Detected Accounts &amp; Categories (<span id="reviewAccountCount">0</span>)</span>
+          </div>
+          <div id="reviewAccountsList" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+            <!-- Account category pills injected here -->
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-end gap-3">
+        <button type="button" id="btnCancelImport" class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 rounded-xl cursor-pointer">
+          Cancel
+        </button>
+        <button type="button" id="btnConfirmImport" class="px-5 py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-xl shadow-md transition cursor-pointer">
+          Confirm &amp; Import Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL 2: 100% LOCAL & PRIVATE SECURITY OVERVIEW                           -->
+  <!-- ======================================================================= -->
+  <div id="securityInfoModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-emerald-200 max-w-lg w-full overflow-hidden">
+      <div class="px-6 py-4 bg-gradient-to-r from-indigo-950 to-violet-900 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-400/20 border border-emerald-300/40 flex items-center justify-center text-emerald-300">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+          </div>
+          <h3 class="text-base font-bold">100% Local &amp; Private Storage</h3>
+        </div>
+        <button type="button" id="btnCloseSecurityX" class="p-1.5 text-indigo-200 hover:text-white rounded-lg cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+        <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-1.5">
+          <div class="font-bold">Zero Cloud Uploads &amp; Zero Tracking</div>
+          <p class="text-xs">Your spreadsheets and monthly figures are parsed strictly inside your browser memory and stored only in this device's <code class="font-mono bg-white px-1 py-0.5 rounded">localStorage</code>. Nothing is ever sent to any external server.</p>
+        </div>
+
+        <div class="space-y-2 text-xs text-slate-600">
+          <div class="font-bold text-slate-900">Why your data has minimal exposure even if inspected locally:</div>
+          <ul class="list-disc pl-4 space-y-1">
+            <li><strong>No Account Numbers, Sort Codes, or Logins:</strong> Only shorthand labels (like <code class="font-mono">MC</code> or <code class="font-mono">HL isa</code>) and balances are saved.</li>
+            <li><strong>Read-Only Numbers:</strong> No bank tokens or payment credentials exist anywhere in this file.</li>
+            <li><strong>Best Practice:</strong> Use a device passcode/Face ID and avoid using this app on shared public computers.</li>
+          </ul>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <button type="button" id="btnWipeModalData" class="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer">
+            Wipe Browser Data
+          </button>
+          <button type="button" id="btnCloseSecurityOk" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition cursor-pointer">
+            Got It
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT ENGINE (ADAPTED FOR FUTURE24.XLSX + ZERO HARDCODED NUMBERS)  -->
+  <!-- ======================================================================= -->
+  <script>
+    /**
+     * =========================================================================
+     * 1. STATE, VIBRANT PALETTE & CONSTANTS
+     * =========================================================================
+     */
+    const STORAGE_KEY = 'uk_wealth_isa_tracker_v6_clean';
+    const DAILY_INTEREST_RATE_GBP = 25; // £25/day since Jan 1 (Jan 1 = £25, Jan 3 = £75)
+
+    let appState = {
+      accounts: [],
+      snapshots: [],
+      preferences: {
+        chartMode: 'stacked',       // 'stacked' | 'lines' | 'total'
+        timeframe: 'ALL',           // '6M' | '1Y' | '3Y' | 'ALL'
+        annualBarMode: 'stacked',   // 'stacked' | 'grouped'
+        hideZeroHistoric: true
+      }
+    };
+
+    let pendingImportBatch = null;
+    let chartInstance = null;
+    let annualChartInstance = null;
+
+    let animationState = {
+      isPlaying: false,
+      currentIndex: null,
+      speed: 1,
+      timerId: null
+    };
+
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const MONTH_MAP = {
+      jan: 1, january: 1,
+      feb: 2, february: 2,
+      mar: 3, march: 3,
+      apr: 4, april: 4,
+      may: 5,
+      jun: 6, june: 6,
+      jul: 7, july: 7,
+      aug: 8, august: 8,
+      sep: 9, sept: 9, september: 9,
+      oct: 10, october: 10,
+      nov: 11, november: 11,
+      dec: 12, december: 12
+    };
+
+    const CATEGORY_STYLES = {
+      Cash: {
+        hex: '#10b981',
+        fill: 'rgba(16, 185, 129, 0.24)',
+        badgeBg: 'bg-emerald-100',
+        badgeText: 'text-emerald-800',
+        dot: 'bg-emerald-500'
+      },
+      Shares: {
+        hex: '#7c3aed',
+        fill: 'rgba(124, 58, 237, 0.22)',
+        badgeBg: 'bg-violet-100',
+        badgeText: 'text-violet-800',
+        dot: 'bg-violet-600'
+      },
+      Pension: {
+        hex: '#f59e0b',
+        fill: 'rgba(245, 158, 11, 0.26)',
+        badgeBg: 'bg-amber-100',
+        badgeText: 'text-amber-900',
+        dot: 'bg-amber-500'
+      }
+    };
+
+    /**
+     * Exact classification rules matching Future24.xlsx:
+     * - ONLY HL ISA ('HL isa', 'HL isa shares', 'H isa', 'Hisa', 'HS') and T212 ISA ('T212 isa', 'T212 isa shares') are Shares ISA.
+     * - ONLY HL SIPP ('HL sipp', 'Hl sipp shares', 'H sipp') and T212 SIPP ('T212 sipp', 'T212 sipp shares') are Pensions.
+     * - ALL other accounts (including Monzo M/MC/Ms/Misa/MPB/M penny/Minvest, Nationwide Nw/Nwt/Nwe/Nwe sav/Nwe isa, Starling S, Barclays B, Premium Bonds PB/NSAI, Virgin V/Virisa, bare H, and negative Barclaycard) are Cash.
+     */
+    const KNOWN_ACCOUNT_CODES = {
+      // Shares ISAs (HL & Trading 212)
+      'hl isa':           { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
+      'hl isa shares':    { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
+      'h isa':            { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
+      'hisa':             { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
+      'hs':               { displayName: 'HL Stocks & Shares ISA',    provider: 'Hargreaves Lansdown', category: 'Shares',  isLiability: false },
+      't212 isa':         { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
+      't212 isa shares':  { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
+      'trading 212 isa':  { displayName: 'Trading 212 S&S ISA',       provider: 'Trading 212',         category: 'Shares',  isLiability: false },
+
+      // Pensions (HL SIPP & Trading 212 SIPP)
+      'hl sipp':          { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown', category: 'Pension', isLiability: false },
+      'hl sipp shares':   { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown', category: 'Pension', isLiability: false },
+      'h sipp':           { displayName: 'HL SIPP Pension',           provider: 'Hargreaves Lansdown', category: 'Pension', isLiability: false },
+      't212 sipp':        { displayName: 'Trading 212 SIPP Pension',  provider: 'Trading 212',         category: 'Pension', isLiability: false },
+      't212 sipp shares': { displayName: 'Trading 212 SIPP Pension',  provider: 'Trading 212',         category: 'Pension', isLiability: false },
+      'trading 212 sipp': { displayName: 'Trading 212 SIPP Pension',  provider: 'Trading 212',         category: 'Pension', isLiability: false },
+
+      // Cash & Liabilities
+      'barclaycard':      { displayName: 'Barclaycard (Credit Card)', provider: 'Barclaycard',         category: 'Cash',    isLiability: true },
+      'b':                { displayName: 'Barclays',                  provider: 'Barclays',            category: 'Cash',    isLiability: false },
+      'barclays':         { displayName: 'Barclays',                  provider: 'Barclays',            category: 'Cash',    isLiability: false },
+      'm':                { displayName: 'Monzo Current (M)',         provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'mc':               { displayName: 'Monzo Current (MC)',        provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'm chall':          { displayName: 'Monzo Challenge Pot',       provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'm funpot':         { displayName: 'Monzo Fun Pot',             provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'ms':               { displayName: 'Monzo Savings (Ms)',        provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'misa':             { displayName: 'Monzo Cash ISA (Misa)',     provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'mpb':              { displayName: 'Monzo Pot (MPB)',           provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'm penny':          { displayName: 'Monzo Penny Saver',         provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'minvest':          { displayName: 'Monzo Cash / Invest',       provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'minvest shares':   { displayName: 'Monzo Cash / Invest',       provider: 'Monzo',               category: 'Cash',    isLiability: false },
+      'nw':               { displayName: 'Nationwide Current (Nw)',   provider: 'Nationwide',          category: 'Cash',    isLiability: false },
+      'nwt':              { displayName: 'Nationwide Savings (Nwt)',  provider: 'Nationwide',          category: 'Cash',    isLiability: false },
+      'nwe':              { displayName: 'Nationwide e-Savings (Nwe)',provider: 'Nationwide',          category: 'Cash',    isLiability: false },
+      'nwe sav':          { displayName: 'Nationwide Saver (Nwe sav)',provider: 'Nationwide',          category: 'Cash',    isLiability: false },
+      'nw sav':           { displayName: 'Nationwide Saver (Nw sav)', provider: 'Nationwide',          category: 'Cash',    isLiability: false },
+      'nwe isa':          { displayName: 'Nationwide Cash ISA',       provider: 'Nationwide',          category: 'Cash',    isLiability: false },
+      'nweisa':           { displayName: 'Nationwide Cash ISA',       provider: 'Nationwide',          category: 'Cash',    isLiability: false },
+      's':                { displayName: 'Starling Bank (S)',         provider: 'Starling',            category: 'Cash',    isLiability: false },
+      'pb':               { displayName: 'Premium Bonds (PB)',        provider: 'NS&I',                category: 'Cash',    isLiability: false },
+      'nsai':             { displayName: 'NS&I Savings (NSAI)',       provider: 'NS&I',                category: 'Cash',    isLiability: false },
+      'nsandi':           { displayName: 'NS&I Savings',              provider: 'NS&I',                category: 'Cash',    isLiability: false },
+      'v':                { displayName: 'Virgin Money (V)',          provider: 'Virgin Money',        category: 'Cash',    isLiability: false },
+      'vir':              { displayName: 'Virgin Money (Vir)',        provider: 'Virgin Money',        category: 'Cash',    isLiability: false },
+      'virisa':           { displayName: 'Virgin Money Cash ISA',     provider: 'Virgin Money',        category: 'Cash',    isLiability: false },
+      'h':                { displayName: 'H Savings Account (H)',     provider: 'Hargreaves Lansdown', category: 'Cash',    isLiability: false }
+    };
+
+    const KNOWN_BANK_KEYWORDS = [
+      { pattern: /^t212\b|^trading\s*212\b/i, provider: 'Trading 212' },
+      { pattern: /^hl\b|^hargreaves|^hs$|^hisa$|^h\s+(isa|sipp)\b|^h$/i, provider: 'Hargreaves Lansdown' },
+      { pattern: /^nw\w*\b|^nationwide\b/i, provider: 'Nationwide' },
+      { pattern: /^pb$|^nsai\b|^nsandi\b|^ns&i\b|^premium\s*bonds/i, provider: 'NS&I' },
+      { pattern: /^v$|^vir\w*\b|^virgin\b/i, provider: 'Virgin Money' },
+      { pattern: /^barclaycard\b/i, provider: 'Barclaycard' },
+      { pattern: /^b$|^barclays\b/i, provider: 'Barclays' },
+      { pattern: /^m$|^m\s+|^mc$|^ms$|^misa$|^mpb$|^minvest|^monzo\b/i, provider: 'Monzo' },
+      { pattern: /^s$|^starling\b/i, provider: 'Starling' },
+      { pattern: /^chase\b/i, provider: 'Chase UK' },
+      { pattern: /^marcus\b/i, provider: 'Marcus' },
+      { pattern: /^chip\b/i, provider: 'Chip' },
+      { pattern: /^zopa\b/i, provider: 'Zopa' },
+      { pattern: /^vanguard\b/i, provider: 'Vanguard' },
+      { pattern: /^aj\s*bell\b/i, provider: 'AJ Bell' },
+      { pattern: /^fidelity\b/i, provider: 'Fidelity' },
+      { pattern: /^freetrade\b/i, provider: 'Freetrade' },
+      { pattern: /^investengine\b/i, provider: 'InvestEngine' },
+      { pattern: /^hsbc\b/i, provider: 'HSBC' },
+      { pattern: /^lloyds\b/i, provider: 'Lloyds' },
+      { pattern: /^natwest\b/i, provider: 'NatWest' },
+      { pattern: /^santander\b/i, provider: 'Santander' },
+      { pattern: /^halifax\b/i, provider: 'Halifax' },
+      { pattern: /^coventry\b/i, provider: 'Coventry BS' },
+      { pattern: /^yorkshire\b/i, provider: 'Yorkshire BS' },
+      { pattern: /^skipton\b/i, provider: 'Skipton BS' },
+      { pattern: /^first\s*direct\b/i, provider: 'First Direct' },
+      { pattern: /^revolut\b/i, provider: 'Revolut' },
+      { pattern: /^plum\b/i, provider: 'Plum' },
+      { pattern: /^moneybox\b/i, provider: 'Moneybox' },
+      { pattern: /^nutmeg\b/i, provider: 'Nutmeg' },
+      { pattern: /^pensionbee\b/i, provider: 'PensionBee' },
+      { pattern: /^aviva\b/i, provider: 'Aviva' },
+      { pattern: /^scottish\s*widows\b/i, provider: 'Scottish Widows' },
+      { pattern: /^legal\s*&?\s*general\b|^l&g\b/i, provider: 'Legal & General' },
+      { pattern: /^royal\s*london\b/i, provider: 'Royal London' },
+      { pattern: /^standard\s*life\b/i, provider: 'Standard Life' },
+      { pattern: /^aegon\b/i, provider: 'Aegon' },
+      { pattern: /^nest\b/i, provider: 'NEST Pension' }
+    ];
+
+    /**
+     * =========================================================================
+     * 2. TOP-RIGHT COUNTER: INTEREST EARNED THIS YEAR (£25/DAY SINCE JAN 1)
+     * =========================================================================
+     */
+    function updateYtdInterestCounter() {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const msPerDay = 24 * 60 * 60 * 1000;
+
+      // Jan 1 = Day 1 (£25), Jan 3 = Day 3 (£75)
+      const dayOfYear = Math.floor((todayMidnight - startOfYear) / msPerDay) + 1;
+      const ytdAmount = dayOfYear * DAILY_INTEREST_RATE_GBP;
+
+      const amountEl = document.getElementById('ytdInterestAmount');
+      const subEl = document.getElementById('ytdInterestSubtext');
+      if (amountEl) amountEl.textContent = formatGBP(ytdAmount);
+      if (subEl) subEl.textContent = `+£${DAILY_INTEREST_RATE_GBP}/day (Day ${dayOfYear} of ${now.getFullYear()})`;
+    }
+
+    /**
+     * =========================================================================
+     * 3. INITIALIZATION & UI EVENT BINDING
+     * =========================================================================
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+      bindAllUiEvents();
+      updateYtdInterestCounter();
+      loadFromLocalStorage();
+
+      if (appState.accounts.length > 0 && appState.snapshots.length > 0) {
+        enterActiveWorkspace('overview');
+      } else {
+        showWelcomeScreen();
+      }
+    });
+
+    function bindAllUiEvents() {
+      const fileInput = document.getElementById('excelFileInput');
+      if (fileInput) {
+        fileInput.addEventListener('change', handleExcelFilesSelected);
+      }
+
+      document.getElementById('btnOpenSecurity')?.addEventListener('click', openSecurityModal);
+      document.getElementById('btnExportExcel')?.addEventListener('click', exportToExcel);
+      document.getElementById('btnHeaderReset')?.addEventListener('click', showWelcomeScreen);
+
+      document.getElementById('btnStartBlank')?.addEventListener('click', startBlankWorkspace);
+      document.getElementById('btnEmptyGoAdd')?.addEventListener('click', () => switchTab('entry'));
+      document.getElementById('btnResumeSaved')?.addEventListener('click', () => enterActiveWorkspace('overview'));
+      document.getElementById('btnWipeSavedBanner')?.addEventListener('click', clearSavedPortfolio);
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetTab = btn.getAttribute('data-tab');
+          if (targetTab) switchTab(targetTab);
+        });
+      });
+
+      document.getElementById('btnPlayAnimation')?.addEventListener('click', toggleTimelineAnimation);
+      document.getElementById('btnResetAnim')?.addEventListener('click', resetTimelineAnimation);
+      document.getElementById('btnAnimSpeed')?.addEventListener('click', cycleAnimationSpeed);
+
+      document.querySelectorAll('.chart-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => setChartMode(btn.getAttribute('data-mode')));
+      });
+      document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.addEventListener('click', () => setTimeframe(btn.getAttribute('data-tf')));
+      });
+
+      document.querySelectorAll('.annual-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => setAnnualBarMode(btn.getAttribute('data-annual')));
+      });
+
+      document.getElementById('entryDatePicker')?.addEventListener('change', renderMonthlyEntryForm);
+      document.getElementById('cbHideZeroHistoric')?.addEventListener('change', (e) => {
+        appState.preferences.hideZeroHistoric = e.target.checked;
+        saveToLocalStorage();
+        renderMonthlyEntryForm();
+      });
+      document.getElementById('btnResetEntryToPrev')?.addEventListener('click', prefillEntryFromLatest);
+      document.getElementById('btnToggleAddAccount')?.addEventListener('click', toggleAddAccountPanel);
+      document.getElementById('btnAddNewFund')?.addEventListener('click', handleAddNewFund);
+      document.getElementById('monthlyEntryForm')?.addEventListener('submit', saveMonthlyEntry);
+
+      document.getElementById('btnCloseImportModal')?.addEventListener('click', closeImportReviewModal);
+      document.getElementById('btnCancelImport')?.addEventListener('click', closeImportReviewModal);
+      document.getElementById('btnSelectAllSheets')?.addEventListener('click', () => toggleReviewSheets(true));
+      document.getElementById('btnDeselectAllSheets')?.addEventListener('click', () => toggleReviewSheets(false));
+      document.getElementById('btnConfirmImport')?.addEventListener('click', commitReviewedImport);
+
+      document.getElementById('btnCloseSecurityX')?.addEventListener('click', closeSecurityModal);
+      document.getElementById('btnCloseSecurityOk')?.addEventListener('click', closeSecurityModal);
+      document.getElementById('btnWipeModalData')?.addEventListener('click', wipeAllBrowserDataAndReset);
+    }
+
+    function setLiveStatus(msg, autoClearMs = 0) {
+      const bar = document.getElementById('liveStatusBar');
+      const txt = document.getElementById('liveStatusText');
+      if (!bar || !txt) return;
+      if (!msg) {
+        bar.classList.add('hidden');
+        return;
+      }
+      txt.textContent = msg;
+      bar.classList.remove('hidden');
+      if (autoClearMs > 0) {
+        setTimeout(() => bar.classList.add('hidden'), autoClearMs);
+      }
+    }
+
+    function loadFromLocalStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.accounts) && Array.isArray(parsed.snapshots)) {
+          appState = {
+            accounts: parsed.accounts,
+            snapshots: parsed.snapshots,
+            preferences: Object.assign(
+              { chartMode: 'stacked', timeframe: 'ALL', annualBarMode: 'stacked', hideZeroHistoric: true },
+              parsed.preferences || {}
+            )
+          };
+        }
+      } catch (err) {
+        console.warn('Could not read saved data from localStorage:', err);
+      }
+    }
+
+    function saveToLocalStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (err) {
+        console.warn('Could not save data to localStorage:', err);
+      }
+    }
+
+    function startBlankWorkspace() {
+      enterActiveWorkspace('entry');
+      showToast('Started blank workspace. Add your first account and snapshot below.', 'info');
+    }
+
+    function enterActiveWorkspace(defaultTab = 'overview') {
+      document.getElementById('welcomeScreen')?.classList.add('hidden');
+      document.getElementById('mainNavTabs')?.classList.remove('hidden');
+      setDefaultEntryDate();
+      renderAll();
+      switchTab(defaultTab);
+    }
+
+    function showWelcomeScreen() {
+      stopTimelineAnimation();
+      document.getElementById('welcomeScreen')?.classList.remove('hidden');
+      document.getElementById('mainNavTabs')?.classList.add('hidden');
+      document.getElementById('view-overview')?.classList.add('hidden');
+      document.getElementById('view-insights')?.classList.add('hidden');
+      document.getElementById('view-annual')?.classList.add('hidden');
+      document.getElementById('view-entry')?.classList.add('hidden');
+      updateResumeBanner();
+    }
+
+    function updateResumeBanner() {
+      const banner = document.getElementById('resumeSavedBanner');
+      const details = document.getElementById('resumeSavedDetails');
+      if (!banner || !details) return;
+      if (appState.accounts.length > 0 && appState.snapshots.length > 0) {
+        const sorted = sortSnapshots(appState.snapshots);
+        banner.classList.remove('hidden');
+        details.textContent = `${appState.accounts.length} accounts across ${sorted.length} snapshots (${sorted[0].label} to ${sorted[sorted.length - 1].label}).`;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function clearSavedPortfolio() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (_) {}
+      appState.accounts = [];
+      appState.snapshots = [];
+      updateResumeBanner();
+      showToast('Saved portfolio cleared.', 'info');
+    }
+
+    function openSecurityModal() {
+      document.getElementById('securityInfoModal')?.classList.remove('hidden');
+    }
+
+    function closeSecurityModal() {
+      document.getElementById('securityInfoModal')?.classList.add('hidden');
+    }
+
+    function wipeAllBrowserDataAndReset() {
+      clearSavedPortfolio();
+      closeSecurityModal();
+      showWelcomeScreen();
+      showToast('All local browser portfolio data has been permanently wiped.', 'success');
+    }
+
+    function switchTab(tabName) {
+      if (tabName !== 'overview') {
+        stopTimelineAnimation();
+      }
+      ['overview', 'insights', 'annual', 'entry'].forEach(t => {
+        const viewEl = document.getElementById(`view-${t}`);
+        const btnEl = document.getElementById(`tab-${t}`);
+        if (!viewEl || !btnEl) return;
+        if (t === tabName) {
+          viewEl.classList.remove('hidden');
+          btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-semibold rounded-t-xl bg-white text-indigo-900 shadow-xs flex items-center gap-2 transition cursor-pointer';
+        } else {
+          viewEl.classList.add('hidden');
+          btnEl.className = 'tab-btn whitespace-nowrap py-2.5 px-4 text-sm font-medium rounded-t-xl text-indigo-100 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer';
+        }
+      });
+
+      if (tabName === 'overview') {
+        renderOverviewTab();
+      } else if (tabName === 'insights') {
+        renderInsightsAndProvidersTab();
+      } else if (tabName === 'annual') {
+        renderAnnualSnapshotTab();
+      } else if (tabName === 'entry') {
+        renderMonthlyEntryForm();
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 4. ACCOUNT CLASSIFICATION & UNKNOWN BANK AUTO-DETECTION ENGINE
+     * =========================================================================
+     */
+    function normalizeAccountKey(rawName) {
+      return String(rawName || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ');
+    }
+
+    function slugifyId(rawName) {
+      return normalizeAccountKey(rawName).replace(/[^a-z0-9]+/g, '_') || 'acc_' + Math.random().toString(36).slice(2, 7);
+    }
+
+    function titleCaseWords(str) {
+      return str.replace(/\b\w+/g, w => {
+        if (['isa', 'sipp', 'ns&i', 'nsai', 'hl', 't212', 'uk', 'bs', 'mpb', 'mc', 'ms', 'pb'].includes(w.toLowerCase())) {
+          return w.toUpperCase();
+        }
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      });
+    }
+
+    function classifyAccount(rawName) {
+      const cleaned = String(rawName || '').trim();
+      const key = normalizeAccountKey(cleaned);
+
+      if (KNOWN_ACCOUNT_CODES[key]) {
+        return {
+          rawName: cleaned,
+          isNewBank: false,
+          ...KNOWN_ACCOUNT_CODES[key]
+        };
+      }
+
+      // Category rules:
+      // 1. SIPP -> Pension
+      // 2. HL ISA / T212 ISA (or any explicit 'isa' + 'shares') -> Shares
+      // 3. Everything else -> Cash
+      let category = 'Cash';
+      if (/\bsipp\b|\bpension\b/i.test(key)) {
+        category = 'Pension';
+      } else if (
+        /^(hl|h|t212|trading\s*212)\s*isa\b/i.test(key) ||
+        (/\bisa\b/i.test(key) && /\bshares?\b/i.test(key))
+      ) {
         category = 'Shares';
       }
 
@@ -47,64 +1235,123 @@
 
     /**
      * =========================================================================
-     * 5. DATE PARSING, FORMATTING & NUMBER UTILITIES
+     * 5. EXACT DATE PARSER (HANDLES 'Feb 1 23', 'Feb 15 25', 'April 10th', 'Nov 1')
      * =========================================================================
      */
-    function parseSheetNameToDateKey(sheetName) {
-      const s = String(sheetName || '').trim();
-      if (!s) return null;
+    const NON_SNAPSHOT_TAB_REGEX = /^(summary|sipp|notes?|template|calc|calculator|overview|dashboard|sheet\d*|totals?|income|earnings)$/i;
 
-      let m = s.match(/^(\d{4})[-_/.\s](\d{1,2})(?:[-_/.\s]\d{1,2})?$/);
+    function parseSheetNameToDateParts(sheetName) {
+      const raw = String(sheetName || '').trim();
+      if (!raw || NON_SNAPSHOT_TAB_REGEX.test(raw)) return null;
+
+      // Strip ordinal suffixes (1st, 2nd, 3rd, 10th -> 1, 2, 3, 10)
+      const s = raw.replace(/\b(\d{1,2})(st|nd|rd|th)\b/gi, '$1').trim();
+
+      // 1. ISO date: '2025-02-01' or '2025-02'
+      let m = s.match(/^(\d{4})[-_/.\s](\d{1,2})(?:[-_/.\s](\d{1,2}))?$/);
       if (m) {
         const y = parseInt(m[1], 10);
         const mo = parseInt(m[2], 10);
-        if (y >= 1990 && y <= 2100 && mo >= 1 && mo <= 12) {
-          return `${y}-${String(mo).padStart(2, '0')}`;
+        const d = m[3] ? parseInt(m[3], 10) : 1;
+        if (y >= 1990 && y <= 2099 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+          return { year: y, month: mo, day: d, explicitYear: true };
         }
       }
 
-      m = s.match(/^(?:\d{1,2}[-_/.\s])?(\d{1,2})[-_/.\s](\d{2}|\d{4})$/);
+      // 2. UK slash date: '01/02/2025' or '01/02/25'
+      m = s.match(/^(\d{1,2})[-_/.](\d{1,2})[-_/.](\d{2}|\d{4})$/);
       if (m) {
-        const mo = parseInt(m[1], 10);
-        let y = parseInt(m[2], 10);
+        const d = parseInt(m[1], 10);
+        const mo = parseInt(m[2], 10);
+        let y = parseInt(m[3], 10);
         if (y < 100) y += 2000;
-        if (y >= 1990 && y <= 2100 && mo >= 1 && mo <= 12) {
-          return `${y}-${String(mo).padStart(2, '0')}`;
+        if (y >= 1990 && y <= 2099 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+          return { year: y, month: mo, day: d, explicitYear: true };
         }
       }
 
-      const lower = s.toLowerCase().replace(/[,._-]+/g, ' ').trim();
-      const tokens = lower.split(/\s+/);
-      let foundMonth = null;
-      let foundYear = null;
-      for (const tok of tokens) {
-        if (MONTH_MAP[tok]) foundMonth = MONTH_MAP[tok];
-        const num = parseInt(tok, 10);
-        if (!isNaN(num)) {
-          if (num >= 1990 && num <= 2100) foundYear = num;
-          else if (tok.length === 2 && num >= 0 && num <= 99 && foundYear === null) foundYear = 2000 + num;
+      // Tokenize month-name formats:
+      // e.g. 'Feb 1 23', 'Feb 15 25', 'March 15 25', 'April 10', 'May 31', 'Oct 3', 'Nov 1'
+      const cleaned = s.toLowerCase().replace(/[,._-]+/g, ' ').trim();
+      const tokens = cleaned.split(/\s+/);
+
+      // Format A: [MonthName] [Day] [Optional 2-or-4-digit Year]
+      if (tokens.length >= 2 && MONTH_MAP[tokens[0]]) {
+        const mo = MONTH_MAP[tokens[0]];
+        const num1 = parseInt(tokens[1], 10);
+
+        if (tokens.length === 2 && !isNaN(num1)) {
+          if (num1 >= 1990 && num1 <= 2099) {
+            // e.g. 'Feb 2025'
+            return { year: num1, month: mo, day: 1, explicitYear: true };
+          } else if (num1 >= 1 && num1 <= 31) {
+            // e.g. 'April 10', 'May 31', 'Nov 1' (yearless tab -> infer from preceding sheet!)
+            return { year: null, month: mo, day: num1, explicitYear: false };
+          }
+        } else if (tokens.length >= 3 && !isNaN(num1) && num1 >= 1 && num1 <= 31) {
+          const num2 = parseInt(tokens[2], 10);
+          if (!isNaN(num2)) {
+            let y = null;
+            if (num2 >= 1990 && num2 <= 2099) y = num2;
+            else if (tokens[2].length === 2 && num2 >= 0 && num2 <= 99) y = 2000 + num2;
+            if (y !== null) {
+              // e.g. 'Feb 1 23', 'Feb 15 25', 'March 15 25'
+              return { year: y, month: mo, day: num1, explicitYear: true };
+            }
+          }
         }
       }
-      if (foundMonth && foundYear) {
-        return `${foundYear}-${String(foundMonth).padStart(2, '0')}`;
+
+      // Format B: [Day] [MonthName] [Optional Year] e.g. '1 Feb 23', '10 April'
+      if (tokens.length >= 2 && MONTH_MAP[tokens[1]]) {
+        const d = parseInt(tokens[0], 10);
+        const mo = MONTH_MAP[tokens[1]];
+        if (!isNaN(d) && d >= 1 && d <= 31) {
+          if (tokens.length === 2) {
+            return { year: null, month: mo, day: d, explicitYear: false };
+          }
+          const num2 = parseInt(tokens[2], 10);
+          if (!isNaN(num2)) {
+            let y = null;
+            if (num2 >= 1990 && num2 <= 2099) y = num2;
+            else if (tokens[2].length === 2 && num2 >= 0 && num2 <= 99) y = 2000 + num2;
+            if (y !== null) {
+              return { year: y, month: mo, day: d, explicitYear: true };
+            }
+          }
+        }
       }
 
-      const compact = lower.match(/^([a-z]{3,9})(\d{2,4})$/);
+      // Format C: Compact 'Feb23' or 'Feb2023'
+      const compact = cleaned.match(/^([a-z]{3,9})(\d{2}|\d{4})$/);
       if (compact && MONTH_MAP[compact[1]]) {
         let y = parseInt(compact[2], 10);
         if (y < 100) y += 2000;
-        return `${y}-${String(MONTH_MAP[compact[1]]).padStart(2, '0')}`;
+        if (y >= 1990 && y <= 2099) {
+          return { year: y, month: MONTH_MAP[compact[1]], day: 1, explicitYear: true };
+        }
       }
 
       return null;
     }
 
-    function formatDateKeyToLabel(dateKey) {
-      const [yStr, mStr] = dateKey.split('-');
-      const mIdx = parseInt(mStr, 10) - 1;
-      return `${MONTH_NAMES[mIdx] || mStr} ${yStr}`;
+    function buildDateKey(year, month, day) {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 
+    function formatDateKeyToLabel(dateKey) {
+      const parts = dateKey.split('-');
+      const yStr = parts[0];
+      const mIdx = parseInt(parts[1], 10) - 1;
+      const dNum = parts[2] ? parseInt(parts[2], 10) : 1;
+      return `${dNum} ${MONTH_NAMES[mIdx] || parts[1]} ${yStr}`;
+    }
+
+    /**
+     * =========================================================================
+     * 6. DYNAMIC TABLE & INTEREST RATE PARSING (MATCHING FUTURE24.XLSX)
+     * =========================================================================
+     */
     function parseCurrencyValue(val) {
       if (val === null || val === undefined || val === '') return null;
       if (typeof val === 'number') return isFinite(val) ? val : null;
@@ -121,17 +1368,104 @@
       return isNeg ? -Math.abs(num) : num;
     }
 
-    function parseInterestRateValue(val) {
+    function parseInterestRateCell(val) {
       if (val === null || val === undefined || val === '') return null;
       if (typeof val === 'number') {
-        if (!isFinite(val)) return null;
+        if (!isFinite(val) || val <= 0) return null;
+        // Decimal Excel percentage (e.g. 0.041 -> 4.1%, 0.055 -> 5.5%)
         if (val > 0 && val < 0.25) return Math.round(val * 10000) / 100;
-        return Math.round(val * 100) / 100;
+        // Direct percentage number (e.g. 4.87 -> 4.87%, 4.1 -> 4.1%)
+        if (val >= 0.25 && val <= 30) return Math.round(val * 100) / 100;
+        // Ignore large annual interest pound amounts (> 30, like 3351 or 5600)
+        return null;
       }
-      const str = String(val).replace(/[%\s]/g, '').trim();
-      const num = parseFloat(str);
-      if (isNaN(num)) return null;
+      const str = String(val).trim();
+      if (!str.includes('%') && parseFloat(str) > 30) return null;
+      const num = parseFloat(str.replace(/[%\s]/g, ''));
+      if (isNaN(num) || num <= 0 || num > 30) return null;
       return Math.round(num * 100) / 100;
+    }
+
+    function parseSheetRows(rows) {
+      if (!Array.isArray(rows) || rows.length === 0) return [];
+
+      // Step 1: Scan top 10 rows across columns A..D to locate 'Item' or 'Account' header
+      let headerRowIdx = -1;
+      let itemCol = 0;
+
+      for (let r = 0; r < Math.min(10, rows.length); r++) {
+        const row = rows[r];
+        if (!Array.isArray(row)) continue;
+        for (let c = 0; c <= Math.min(3, row.length - 1); c++) {
+          const cellText = row[c] !== null && row[c] !== undefined ? String(row[c]).trim() : '';
+          if (/^(item|account|fund|provider|bank|pot)$/i.test(cellText)) {
+            headerRowIdx = r;
+            itemCol = c;
+            break;
+          }
+        }
+        if (headerRowIdx >= 0) break;
+      }
+
+      // Fallback if no explicit header row: detect whether data starts in Col A or Col B
+      let startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
+      if (headerRowIdx < 0) {
+        for (let r = 0; r < Math.min(8, rows.length); r++) {
+          const row = rows[r];
+          if (!Array.isArray(row)) continue;
+          if (row[0] && parseCurrencyValue(row[1]) !== null) {
+            itemCol = 0;
+            startRow = r;
+            break;
+          }
+          if (!row[0] && row[1] && parseCurrencyValue(row[2]) !== null) {
+            itemCol = 1;
+            startRow = r;
+            break;
+          }
+        }
+      }
+
+      const valCol = itemCol + 1;
+      const parsedItems = [];
+
+      for (let r = startRow; r < rows.length; r++) {
+        const row = rows[r];
+        if (!Array.isArray(row)) {
+          if (parsedItems.length > 0) break;
+          continue;
+        }
+
+        const rawLabel = row[itemCol] !== null && row[itemCol] !== undefined ? String(row[itemCol]).trim() : '';
+
+        // Stop when reaching bottom summary / yearly earnings section
+        if (!rawLabel) {
+          if (parsedItems.length > 0) break;
+          continue;
+        }
+
+        if (/^(total|grand total|subtotal|net worth|current yearly earnings|total yearly interest|total income|month\s*\d+|pension|salary|notes?|comments?)$/i.test(rawLabel) ||
+            /^(total|subtotal|sum)\b/i.test(rawLabel)) {
+          break;
+        }
+
+        const amount = parseCurrencyValue(row[valCol]);
+        if (amount === null) continue;
+
+        // Look in valCol+1 .. valCol+3 for interest rate (ignoring large £ interest figures > 30)
+        let rate = null;
+        for (let c = valCol + 1; c <= Math.min(valCol + 3, row.length - 1); c++) {
+          const candidateRate = parseInterestRateCell(row[c]);
+          if (candidateRate !== null) {
+            rate = candidateRate;
+            break;
+          }
+        }
+
+        parsedItems.push({ rawName: rawLabel, amount, rate });
+      }
+
+      return parsedItems;
     }
 
     function formatGBP(amount) {
@@ -190,96 +1524,6 @@
 
     /**
      * =========================================================================
-     * 6. 5-YEAR TRIAL DATASET GENERATOR (60 MONTHS: DEC 2021 – NOV 2026)
-     * =========================================================================
-     */
-    function loadTrialDataset() {
-      setLiveStatus('Generating 60 months of trial portfolio data...', 1800);
-      const trialConfigs = [
-        { code: 'Barclaycard',      start: -280,  monthlyAdd: 0,    growth: 0.000, rate: null, jitter: 160 },
-        { code: 'Barclays',         start: 1450,  monthlyAdd: 15,   growth: 0.001, rate: 1.50, jitter: 220 },
-        { code: 'HL isa shares',    start: 6200,  monthlyAdd: 220,  growth: 0.0068,rate: null, jitter: 240 },
-        { code: 'Hl sipp shares',   start: 9800,  monthlyAdd: 280,  growth: 0.0072,rate: null, jitter: 310 },
-        { code: 'M chall',          start: 120,   monthlyAdd: 35,   growth: 0.002, rate: 4.10, jitter: 40 },
-        { code: 'M funpot',         start: 340,   monthlyAdd: 25,   growth: 0.001, rate: 3.85, jitter: 90 },
-        { code: 'MC',               start: 820,   monthlyAdd: 10,   growth: 0.000, rate: 1.25, jitter: 180 },
-        { code: 'Minvest shares',   start: 450,   monthlyAdd: 85,   growth: 0.0062,rate: null, jitter: 65 },
-        { code: 'Ms',               start: 1600,  monthlyAdd: 60,   growth: 0.0032,rate: 4.35, jitter: 75 },
-        { code: 'NSAI',             start: 3500,  monthlyAdd: 75,   growth: 0.0030,rate: 4.15, jitter: 50 },
-        { code: 'Nw',               start: 950,   monthlyAdd: 10,   growth: 0.000, rate: 1.00, jitter: 150 },
-        { code: 'Nw sav',           start: 2800,  monthlyAdd: 90,   growth: 0.0035,rate: 4.50, jitter: 60 },
-        { code: 'Nwe isa',          start: 4100,  monthlyAdd: 140,  growth: 0.0036,rate: 4.65, jitter: 40 },
-        { code: 'S',                start: 1120,  monthlyAdd: 20,   growth: 0.0022,rate: 3.25, jitter: 130 },
-        { code: 'T212 isa shares',  start: 4800,  monthlyAdd: 320,  growth: 0.0075,rate: null, jitter: 280 },
-        { code: 'T212 sipp shares', start: 5400,  monthlyAdd: 240,  growth: 0.0074,rate: null, jitter: 220 },
-        { code: 'Virisa',           start: 3200,  monthlyAdd: 110,  growth: 0.0034,rate: 4.45, jitter: 35 }
-      ];
-
-      const accounts = trialConfigs.map(cfg => {
-        const meta = classifyAccount(cfg.code);
-        return {
-          id: slugifyId(cfg.code),
-          rawName: cfg.code,
-          displayName: meta.displayName,
-          provider: meta.provider,
-          category: meta.category,
-          isLiability: meta.isLiability,
-          active: true
-        };
-      });
-
-      const running = {};
-      trialConfigs.forEach(cfg => {
-        running[slugifyId(cfg.code)] = cfg.start;
-      });
-
-      const snapshots = [];
-      let year = 2021;
-      let month = 12;
-
-      for (let i = 0; i < 60; i++) {
-        const dateKey = `${year}-${String(month).padStart(2, '0')}`;
-        const label = formatDateKeyToLabel(dateKey);
-        const entries = {};
-
-        trialConfigs.forEach((cfg, idx) => {
-          const id = slugifyId(cfg.code);
-          const wave = Math.sin((i + idx) * 0.48) * cfg.jitter;
-          if (cfg.isLiability) {
-            running[id] = -Math.round(Math.max(80, Math.abs(cfg.start) + wave));
-          } else {
-            running[id] = Math.max(0, running[id] * (1 + cfg.growth) + cfg.monthlyAdd + wave * 0.25);
-          }
-
-          let rate = cfg.rate;
-          if (rate !== null && i < 18) {
-            rate = Math.max(0.5, Math.round((rate - 1.4) * 100) / 100);
-          }
-
-          entries[id] = {
-            amount: Math.round(running[id]),
-            rate
-          };
-        });
-
-        snapshots.push({ dateKey, label, entries });
-
-        month += 1;
-        if (month > 12) {
-          month = 1;
-          year += 1;
-        }
-      }
-
-      appState.accounts = accounts;
-      appState.snapshots = snapshots;
-      saveToLocalStorage();
-      enterActiveWorkspace('overview');
-      showToast('Loaded 5-year trial dataset (Dec 2021 – Nov 2026) with all 17 accounts.', 'success');
-    }
-
-    /**
-     * =========================================================================
      * 7. IPAD-COMPATIBLE MULTI-SPREADSHEET EXCEL IMPORTER
      * =========================================================================
      */
@@ -322,7 +1566,6 @@
     async function handleExcelFilesSelected(event) {
       const inputEl = event.target;
       const files = Array.from(inputEl.files || []);
-      // Reset input value after grabbing files so selecting the same file again still fires 'change' on iPad
       inputEl.value = '';
 
       if (files.length === 0) return;
@@ -340,6 +1583,7 @@
       try {
         const discoveredAccountsMap = new Map();
         const mergedSheetsMap = new Map();
+        const skippedTabs = [];
         let rawSheetCount = 0;
         let duplicateRecordsMerged = 0;
         let duplicateTabsMerged = 0;
@@ -348,37 +1592,51 @@
           const buffer = await readFileAsArrayBuffer(file);
           const workbook = window.XLSX.read(new Uint8Array(buffer), { type: 'array' });
 
+          // Track sequential year across sheets in workbook so yearless tabs ('April 10th' -> 'Nov 1') inherit accurately
+          let runningYear = null;
+          let lastMonth = null;
+
+          // Seed runningYear from the first explicit-year tab in the workbook if present
+          for (const sn of workbook.SheetNames) {
+            const probe = parseSheetNameToDateParts(sn);
+            if (probe && probe.explicitYear && probe.year !== null) {
+              runningYear = probe.year;
+              break;
+            }
+          }
+          if (runningYear === null) {
+            runningYear = new Date().getFullYear();
+          }
+
           for (const sheetName of workbook.SheetNames) {
-            const dateKey = parseSheetNameToDateKey(sheetName);
-            if (!dateKey) continue;
-
-            const ws = workbook.Sheets[sheetName];
-            const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-            if (!rows || rows.length === 0) continue;
-
-            const parsedRows = [];
-            for (let r = 0; r < rows.length; r++) {
-              const row = rows[r];
-              if (!Array.isArray(row) || row.length < 2) continue;
-
-              const rawCol1 = row[0] !== null && row[0] !== undefined ? String(row[0]).trim() : '';
-              if (!rawCol1) continue;
-
-              if (/^(account|fund|name|provider|bank|pot|total|grand total|subtotal|net worth|cash total|shares total|pension total|notes?|comments?|summary|date)$/i.test(rawCol1)) {
-                continue;
-              }
-              if (/^(total|subtotal|sum)\b/i.test(rawCol1)) {
-                continue;
-              }
-
-              const amount = parseCurrencyValue(row[1]);
-              if (amount === null) continue;
-
-              const rate = row.length >= 3 ? parseInterestRateValue(row[2]) : null;
-              parsedRows.push({ rawName: rawCol1, amount, rate });
+            const dateParts = parseSheetNameToDateParts(sheetName);
+            if (!dateParts) {
+              skippedTabs.push(sheetName);
+              continue;
             }
 
-            if (parsedRows.length === 0) continue;
+            let resolvedYear = dateParts.year;
+            if (dateParts.explicitYear && resolvedYear !== null) {
+              runningYear = resolvedYear;
+              lastMonth = dateParts.month;
+            } else {
+              // If month wraps backwards significantly (e.g. Dec -> Jan/Feb), advance year by 1
+              if (lastMonth !== null && dateParts.month < lastMonth && (lastMonth - dateParts.month) >= 6) {
+                runningYear += 1;
+              }
+              resolvedYear = runningYear;
+              lastMonth = dateParts.month;
+            }
+
+            const dateKey = buildDateKey(resolvedYear, dateParts.month, dateParts.day);
+            const ws = workbook.Sheets[sheetName];
+            const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+            const parsedRows = parseSheetRows(rows);
+
+            if (parsedRows.length === 0) {
+              skippedTabs.push(sheetName);
+              continue;
+            }
             rawSheetCount += 1;
 
             if (mergedSheetsMap.has(dateKey)) {
@@ -387,6 +1645,7 @@
               mergedSheetsMap.set(dateKey, {
                 dateKey,
                 label: formatDateKeyToLabel(dateKey),
+                rawTabName: sheetName,
                 sourceSheets: [],
                 selected: true,
                 entriesByNormKey: new Map()
@@ -437,15 +1696,14 @@
         }
 
         if (mergedSheetsMap.size === 0) {
-          setLiveStatus('No date-named tabs found in selected file(s).', 5000);
-          showToast('No date-named tabs (e.g. "Apr 2024" or "2024-04") with Account + Amount columns were found.', 'error');
+          setLiveStatus('No date snapshot tabs found in selected file(s).', 5000);
+          showToast('No date snapshot tabs (e.g. "Feb 1 25", "April 10th") with Item + Value columns were found.', 'error');
           return;
         }
 
         const sheetsList = Array.from(mergedSheetsMap.values()).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
         const accountsList = Array.from(discoveredAccountsMap.values());
-        const newBanksDetected = accountsList.filter(a => a.isNewBank).map(a => a.provider);
-        const uniqueNewBanks = Array.from(new Set(newBanksDetected));
+        const uniqueNewBanks = Array.from(new Set(accountsList.filter(a => a.isNewBank).map(a => a.provider)));
 
         let overlapWithAppCount = 0;
         for (const sh of sheetsList) {
@@ -457,6 +1715,7 @@
         pendingImportBatch = {
           fileCount: files.length,
           rawSheetCount,
+          skippedTabs,
           duplicateTabsMerged,
           duplicateRecordsMerged,
           overlapWithAppCount,
@@ -479,19 +1738,22 @@
       const b = pendingImportBatch;
 
       document.getElementById('importReviewSubtitle').textContent =
-        `Scanned ${b.fileCount} file(s), ${b.rawSheetCount} date tab(s), and ${b.accounts.length} account(s). Extra columns/notes safely ignored.`;
+        `Found ${b.sheets.length} snapshot tab(s) from ${b.sheets[0].label} to ${b.sheets[b.sheets.length - 1].label} (${b.accounts.length} accounts).`;
 
       const summaryBox = document.getElementById('dedupSummaryBox');
+      const skippedHtml = b.skippedTabs.length > 0
+        ? `<div>&bull; <strong>Skipped non-date tabs:</strong> ${b.skippedTabs.map(t => `<code class="bg-white px-1 rounded">${escapeHtml(t)}</code>`).join(', ')}</div>`
+        : '';
       const newBankHtml = b.uniqueNewBanks.length > 0
-        ? `<div><strong>New Banks Auto-Detected &amp; Added:</strong> ${b.uniqueNewBanks.map(nb => `<span class="inline-block px-2 py-0.5 rounded bg-violet-100 text-violet-900 font-semibold mr-1">${escapeHtml(nb)}</span>`).join('')}</div>`
+        ? `<div>&bull; <strong>New Banks Auto-Detected:</strong> ${b.uniqueNewBanks.map(nb => `<span class="inline-block px-2 py-0.5 rounded bg-violet-100 text-violet-900 font-semibold mr-1">${escapeHtml(nb)}</span>`).join('')}</div>`
         : '';
 
       summaryBox.innerHTML = `
         <div class="font-bold text-emerald-950">Smart Import &amp; Cross-Reference Summary</div>
-        <div>&bull; <strong>${b.sheets.length} unique monthly sheet(s)</strong> ready (${b.sheets[0].label} to ${b.sheets[b.sheets.length - 1].label}).</div>
-        <div>&bull; <strong>${b.duplicateTabsMerged} overlapping tab(s)</strong> &amp; <strong>${b.duplicateRecordsMerged} duplicate account cell(s)</strong> merged across files so nothing is counted twice.</div>
+        <div>&bull; <strong>${b.sheets.length} exact snapshot date(s)</strong> parsed (${b.sheets[0].label} &rarr; ${b.sheets[b.sheets.length - 1].label}).</div>
+        ${skippedHtml}
+        <div>&bull; <strong>${b.duplicateTabsMerged} overlapping tab(s)</strong> &amp; <strong>${b.duplicateRecordsMerged} duplicate account cell(s)</strong> deduplicated across files.</div>
         ${newBankHtml}
-        ${b.overlapWithAppCount > 0 ? `<div>&bull; <strong>${b.overlapWithAppCount} month(s)</strong> already exist in your app and will update cleanly on merge.</div>` : ''}
       `;
 
       renderReviewModalLists();
@@ -513,6 +1775,7 @@
         <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition ${sh.selected ? 'bg-violet-50 border-violet-300 text-violet-950' : 'bg-white border-slate-200 text-slate-400'}">
           <input type="checkbox" data-sheet-idx="${idx}" ${sh.selected ? 'checked' : ''} class="review-sheet-cb rounded text-violet-600" />
           <span>${escapeHtml(sh.label)}</span>
+          ${sh.rawTabName && sh.rawTabName !== sh.label ? `<span class="text-[10px] text-slate-500">(${escapeHtml(sh.rawTabName)})</span>` : ''}
           ${sh.sourceSheets.length > 1 ? `<span class="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Merged x${sh.sourceSheets.length}</span>` : ''}
         </label>
       `).join('');
@@ -650,12 +1913,12 @@
       saveToLocalStorage();
       closeImportReviewModal();
       enterActiveWorkspace('overview');
-      showToast(`Imported ${selectedSheets.length} sheet(s) & ${b.accounts.length} account(s) with deduplication.`, 'success');
+      showToast(`Imported ${selectedSheets.length} snapshot(s) & ${b.accounts.length} account(s).`, 'success');
     }
 
     /**
      * =========================================================================
-     * 8. EXCEL EXPORT & SAMPLE WORKBOOK DOWNLOAD
+     * 8. EXCEL EXPORT (MATCHING ITEM / VALUE / RATE FORMAT)
      * =========================================================================
      */
     async function exportToExcel() {
@@ -666,7 +1929,7 @@
       }
       const sorted = sortSnapshots(appState.snapshots);
       if (sorted.length === 0) {
-        showToast('No monthly data to export yet.', 'error');
+        showToast('No snapshot data to export yet.', 'error');
         return;
       }
 
@@ -678,13 +1941,12 @@
         if (usedSheetNames.has(tabName)) tabName = snap.dateKey;
         usedSheetNames.add(tabName);
 
-        const rows = [['Account', 'Amount', 'Interest Rate']];
+        const rows = [['Item', 'Value', 'Interest Rate (%)']];
         for (const acc of appState.accounts) {
           const entry = snap.entries[acc.id];
-          if (!entry && !acc.active) continue;
-          const amt = entry ? entry.amount : 0;
-          const rate = entry && entry.rate !== null && entry.rate !== undefined ? entry.rate : '';
-          rows.push([acc.rawName, amt, rate]);
+          if (!entry) continue;
+          const rate = entry.rate !== null && entry.rate !== undefined ? entry.rate : '';
+          rows.push([acc.rawName, entry.amount, rate]);
         }
 
         const ws = window.XLSX.utils.aoa_to_sheet(rows);
@@ -693,74 +1955,7 @@
 
       const todayStr = new Date().toISOString().slice(0, 10);
       window.XLSX.writeFile(wb, `Wealth_ISA_Portfolio_${todayStr}.xlsx`);
-      showToast(`Exported ${sorted.length} monthly sheet(s) to Excel.`, 'success');
-    }
-
-    async function downloadSampleTemplateXlsx() {
-      const xlsxReady = await ensureXlsxLoaded();
-      if (!xlsxReady) {
-        showToast('Excel library unavailable. Check internet connection.', 'error');
-        return;
-      }
-      const wb = window.XLSX.utils.book_new();
-      const sampleSheets = [
-        {
-          name: 'Jan 2026',
-          rows: [
-            ['Account', 'Amount', 'Interest Rate', 'Extra Notes (Ignored by App)'],
-            ['Barclaycard', -320, '', 'Monthly statement balance'],
-            ['Barclays', 1850, 1.5, 'Current account'],
-            ['HL isa shares', 18400, '', 'Global index tracker'],
-            ['Hl sipp shares', 26500, '', 'Retirement pot'],
-            ['M chall', 1420, 4.1, '1p savings challenge'],
-            ['M funpot', 780, 3.85, 'Holiday fund'],
-            ['MC', 1150, 1.25, 'Main Monzo'],
-            ['Minvest shares', 4150, '', 'Monzo balanced fund'],
-            ['Ms', 4900, 4.35, 'Instant access'],
-            ['NSAI', 7500, 4.15, 'Premium bonds'],
-            ['Nw', 1200, 1.0, 'Bills account'],
-            ['Nw sav', 6800, 4.5, 'Regular saver'],
-            ['Nwe isa', 11200, 4.65, 'Fixed cash ISA'],
-            ['S', 2100, 3.25, 'Starling spaces'],
-            ['T212 isa shares', 21500, '', 'S&P 500 + FTSE'],
-            ['T212 sipp shares', 19400, '', 'SIPP ETFs'],
-            ['Virisa', 8900, 4.45, 'Virgin ISA'],
-            ['Chase sav', 3200, 4.75, 'Example newly added bank!']
-          ]
-        },
-        {
-          name: 'Feb 2026',
-          rows: [
-            ['Account', 'Amount', 'Interest Rate', 'Extra Notes (Ignored by App)'],
-            ['Barclaycard', -290, '', ''],
-            ['Barclays', 1920, 1.5, ''],
-            ['HL isa shares', 18950, '', ''],
-            ['Hl sipp shares', 27200, '', ''],
-            ['M chall', 1510, 4.1, ''],
-            ['M funpot', 840, 3.85, ''],
-            ['MC', 1190, 1.25, ''],
-            ['Minvest shares', 4320, '', ''],
-            ['Ms', 5050, 4.35, ''],
-            ['NSAI', 7600, 4.15, ''],
-            ['Nw', 1250, 1.0, ''],
-            ['Nw sav', 7000, 4.5, ''],
-            ['Nwe isa', 11400, 4.65, ''],
-            ['S', 2180, 3.25, ''],
-            ['T212 isa shares', 22300, '', ''],
-            ['T212 sipp shares', 20100, '', ''],
-            ['Virisa', 9050, 4.45, ''],
-            ['Chase sav', 3450, 4.75, '']
-          ]
-        }
-      ];
-
-      sampleSheets.forEach(s => {
-        const ws = window.XLSX.utils.aoa_to_sheet(s.rows);
-        window.XLSX.utils.book_append_sheet(wb, ws, s.name);
-      });
-
-      window.XLSX.writeFile(wb, 'Sample_Wealth_Tracker_Template.xlsx');
-      showToast('Downloaded sample multi-sheet .xlsx file.', 'success');
+      showToast(`Exported ${sorted.length} snapshot sheet(s) to Excel.`, 'success');
     }
 
     /**
@@ -787,11 +1982,16 @@
 
     function getFilteredSnapshots() {
       const sorted = sortSnapshots(appState.snapshots);
+      if (sorted.length === 0) return [];
       const tf = appState.preferences.timeframe;
-      if (tf === '6M') return sorted.slice(-6);
-      if (tf === '1Y') return sorted.slice(-12);
-      if (tf === '3Y') return sorted.slice(-36);
-      return sorted;
+      if (tf === 'ALL') return sorted;
+
+      const latestDate = new Date(sorted[sorted.length - 1].dateKey + 'T00:00:00');
+      const monthsBack = tf === '6M' ? 6 : tf === '1Y' ? 12 : 36;
+      const cutoff = new Date(latestDate.getFullYear(), latestDate.getMonth() - monthsBack, latestDate.getDate());
+      const cutoffKey = cutoff.toISOString().slice(0, 10);
+      const filtered = sorted.filter(s => s.dateKey >= cutoffKey);
+      return filtered.length > 0 ? filtered : sorted;
     }
 
     function setChartMode(mode) {
@@ -809,7 +2009,8 @@
 
     function renderOverviewTab() {
       const fullSlice = getFilteredSnapshots();
-      if (fullSlice.length === 0) return;
+      const emptyEl = document.getElementById('overviewEmptyState');
+      const chartWrap = document.getElementById('overviewChartWrapper');
 
       ['stacked', 'lines', 'total'].forEach(m => {
         const btn = document.getElementById(`mode-${m}`);
@@ -828,6 +2029,27 @@
             : 'tf-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
         }
       });
+
+      if (fullSlice.length === 0) {
+        emptyEl?.classList.remove('hidden');
+        chartWrap?.classList.add('hidden');
+        document.getElementById('kpiDateBadge').textContent = 'Empty';
+        document.getElementById('kpiTotalWorth').textContent = '£0';
+        document.getElementById('kpiTotalChange').textContent = 'Import or add a snapshot to begin';
+        document.getElementById('kpiCashTotal').textContent = '£0';
+        document.getElementById('kpiCashShare').textContent = '0%';
+        document.getElementById('kpiCashSub').textContent = '—';
+        document.getElementById('kpiSharesTotal').textContent = '£0';
+        document.getElementById('kpiSharesShare').textContent = '0%';
+        document.getElementById('kpiSharesSub').textContent = '—';
+        document.getElementById('kpiPensionTotal').textContent = '£0';
+        document.getElementById('kpiPensionShare').textContent = '0%';
+        document.getElementById('kpiPensionSub').textContent = '—';
+        return;
+      }
+
+      emptyEl?.classList.add('hidden');
+      chartWrap?.classList.remove('hidden');
 
       const activeEndIndex = animationState.currentIndex !== null
         ? Math.min(animationState.currentIndex, fullSlice.length - 1)
@@ -855,7 +2077,7 @@
         const cls = diff > 0 ? 'text-emerald-300' : diff < 0 ? 'text-rose-300' : 'text-indigo-200';
         changeEl.innerHTML = `<span class="${cls} font-bold">${formatSignedGBP(diff)} (${formatSignedPct(pct)})</span> vs ${prevSnap.label}`;
       } else {
-        changeEl.textContent = 'Starting baseline month';
+        changeEl.textContent = 'Starting baseline snapshot';
       }
 
       const grossAssets = Math.max(0, curr.Cash) + Math.max(0, curr.Shares) + Math.max(0, curr.Pension);
@@ -875,7 +2097,7 @@
         const sDiff = curr.Shares - prev.Shares;
         document.getElementById('kpiSharesSub').textContent = `${formatSignedGBP(sDiff)} vs ${prevSnap.label}`;
       } else {
-        document.getElementById('kpiSharesSub').textContent = 'Stocks & Shares ISAs';
+        document.getElementById('kpiSharesSub').textContent = 'HL & Trading 212 ISAs';
       }
 
       document.getElementById('kpiPensionTotal').textContent = formatGBP(curr.Pension);
@@ -884,7 +2106,7 @@
         const pDiff = curr.Pension - prev.Pension;
         document.getElementById('kpiPensionSub').textContent = `${formatSignedGBP(pDiff)} vs ${prevSnap.label}`;
       } else {
-        document.getElementById('kpiPensionSub').textContent = 'SIPPs & Retirement funds';
+        document.getElementById('kpiPensionSub').textContent = curr.Pension > 0 ? 'HL & T212 SIPPs' : 'No SIPP recorded at this date';
       }
     }
 
@@ -904,7 +2126,7 @@
     function startTimelineAnimation() {
       const fullSlice = getFilteredSnapshots();
       if (fullSlice.length < 2) {
-        showToast('Add at least 2 months of data to play the growth animation.', 'info');
+        showToast('Add at least 2 snapshots to play the growth animation.', 'info');
         return;
       }
 
@@ -916,7 +2138,7 @@
       updatePlayButtonUi();
       document.getElementById('animationProgressWrapper').classList.remove('hidden');
 
-      const stepIntervalMs = Math.max(60, Math.round(320 / animationState.speed));
+      const stepIntervalMs = Math.max(80, Math.round(420 / animationState.speed));
       renderOverviewTab();
 
       animationState.timerId = setInterval(() => {
@@ -1016,8 +2238,8 @@
           borderWidth: 3,
           fill: true,
           tension: 0.25,
-          pointRadius: visibleSlice.length <= 24 ? 3.5 : 1.5,
-          pointHoverRadius: 5
+          pointRadius: visibleSlice.length <= 24 ? 4 : 2,
+          pointHoverRadius: 6
         }];
       } else {
         const isStacked = mode === 'stacked';
@@ -1030,27 +2252,27 @@
             borderWidth: 2.5,
             fill: isStacked,
             tension: 0.25,
-            pointRadius: visibleSlice.length <= 24 ? 3 : 1
+            pointRadius: visibleSlice.length <= 24 ? 3.5 : 2
           },
           {
-            label: 'Shares / ISAs',
+            label: 'Shares ISA (HL & T212)',
             data: sharesData,
             borderColor: CATEGORY_STYLES.Shares.hex,
             backgroundColor: isStacked ? CATEGORY_STYLES.Shares.fill : 'transparent',
             borderWidth: 2.5,
             fill: isStacked,
             tension: 0.25,
-            pointRadius: visibleSlice.length <= 24 ? 3 : 1
+            pointRadius: visibleSlice.length <= 24 ? 3.5 : 2
           },
           {
-            label: 'Pensions / SIPPs',
+            label: 'Pensions (SIPPs)',
             data: pensionData,
             borderColor: CATEGORY_STYLES.Pension.hex,
             backgroundColor: isStacked ? CATEGORY_STYLES.Pension.fill : 'transparent',
             borderWidth: 2.5,
             fill: isStacked,
             tension: 0.25,
-            pointRadius: visibleSlice.length <= 24 ? 3 : 1
+            pointRadius: visibleSlice.length <= 24 ? 3.5 : 2
           }
         ];
       }
@@ -1138,7 +2360,14 @@
      */
     function renderInsightsAndProvidersTab() {
       const sorted = sortSnapshots(appState.snapshots);
-      if (sorted.length === 0) return;
+      const grid = document.getElementById('dynamicInsightsGrid');
+      const provGrid = document.getElementById('providerBreakdownGrid');
+      if (sorted.length === 0) {
+        if (grid) grid.innerHTML = `<p class="text-xs text-slate-500 col-span-full">Import or add snapshots to generate portfolio insights.</p>`;
+        if (provGrid) provGrid.innerHTML = '';
+        renderAccountCategoryRules();
+        return;
+      }
       const latestSnap = sorted[sorted.length - 1];
 
       renderDynamicInsights(sorted);
@@ -1161,11 +2390,12 @@
 
       const buckets = [
         { name: 'Cash', diff: latest.Cash - first.Cash, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
-        { name: 'Shares', diff: latest.Shares - first.Shares, color: 'text-violet-700', bg: 'bg-violet-50 border-violet-200' },
-        { name: 'Pensions', diff: latest.Pension - first.Pension, color: 'text-amber-800', bg: 'bg-amber-50 border-amber-200' }
+        { name: 'Shares ISA', diff: latest.Shares - first.Shares, color: 'text-violet-700', bg: 'bg-violet-50 border-violet-200' },
+        { name: 'Pensions (SIPPs)', diff: latest.Pension - first.Pension, color: 'text-amber-800', bg: 'bg-amber-50 border-amber-200' }
       ].sort((a, b) => b.diff - a.diff);
       const topDriver = buckets[0];
 
+      const firstPensionSnap = slice.find(s => computeSnapshotTotals(s).Pension > 0);
       let growthStreak = 0;
       for (let i = slice.length - 1; i >= 1; i--) {
         if (computeSnapshotTotals(slice[i]).total >= computeSnapshotTotals(slice[i - 1]).total) {
@@ -1182,12 +2412,12 @@
         {
           title: 'Multi-Year Wealth Trajectory',
           accent: 'border-violet-200 bg-violet-50/60',
-          body: `Portfolio moved by <strong>${formatSignedGBP(netGain)}</strong> (${formatSignedPct(netGainPct)}) across ${slice.length} recorded month(s).`
+          body: `Portfolio moved by <strong>${formatSignedGBP(netGain)}</strong> (${formatSignedPct(netGainPct)}) across ${slice.length} recorded snapshot(s).`
         },
         {
           title: 'Primary Growth Engine',
           accent: topDriver.bg,
-          body: `<strong class="${topDriver.color}">${topDriver.name}</strong> led portfolio gains with <strong>${formatSignedGBP(topDriver.diff)}</strong> added over the period.`
+          body: `<strong class="${topDriver.color}">${topDriver.name}</strong> led portfolio gains with <strong>${formatSignedGBP(topDriver.diff)}</strong> added since ${slice[0].label}.`
         },
         {
           title: 'Cash Yield & Rate Efficiency',
@@ -1199,19 +2429,21 @@
         {
           title: 'Growth vs. Liquid Split',
           accent: 'border-amber-200 bg-amber-50/60',
-          body: `<strong>${equityPct}%</strong> is invested for long-term growth (Shares &amp; Pensions), while <strong>${100 - equityPct}%</strong> sits in liquid cash.`
+          body: `<strong>${equityPct}%</strong> is invested in Shares ISAs &amp; SIPPs, while <strong>${100 - equityPct}%</strong> sits in liquid cash.`
+        },
+        {
+          title: 'SIPP Pension Timeline',
+          accent: 'border-fuchsia-200 bg-fuchsia-50/60',
+          body: firstPensionSnap
+            ? `SIPP pension tracking started on <strong>${firstPensionSnap.label}</strong> and has reached <strong>${formatGBP(latest.Pension)}</strong>.`
+            : `No SIPP balances recorded yet—add HL SIPP or T212 SIPP whenever opened.`
         },
         {
           title: 'Momentum & Streak',
-          accent: 'border-fuchsia-200 bg-fuchsia-50/60',
-          body: growthStreak > 0
-            ? `On a <strong>${growthStreak}-month consecutive growth streak</strong> heading into ${latestSnap.label}.`
-            : `Latest month saw a slight consolidation—regular contributions continue building units.`
-        },
-        {
-          title: 'ISA & Pension Balance',
           accent: 'border-sky-200 bg-sky-50/60',
-          body: `Accessible ISAs/Cash stand at <strong>${formatGBP(latest.Cash + latest.Shares)}</strong> alongside <strong>${formatGBP(latest.Pension)}</strong> locked for retirement.`
+          body: growthStreak > 0
+            ? `On a <strong>${growthStreak}-snapshot consecutive growth streak</strong> heading into ${latestSnap.label}.`
+            : `Latest snapshot showed a minor dip—accessible ISAs &amp; Cash total <strong>${formatGBP(latest.Cash + latest.Shares)}</strong>.`
         }
       ];
 
@@ -1237,7 +2469,7 @@
         }
         const item = provMap.get(acc.provider);
         item.total += amt;
-        item.count += 1;
+        if (entry) item.count += 1;
         item.categories.add(acc.category);
       });
 
@@ -1251,7 +2483,7 @@
           <div class="p-4 rounded-xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:border-violet-300 transition flex flex-col justify-between shadow-2xs">
             <div class="flex items-center justify-between gap-2 mb-1">
               <span class="text-sm font-bold text-slate-900 truncate">${escapeHtml(p.provider)}</span>
-              <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 shrink-0">${p.count} pot${p.count > 1 ? 's' : ''}</span>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 shrink-0">${p.count} pot${p.count === 1 ? '' : 's'}</span>
             </div>
             <div class="text-lg font-extrabold ${isNeg ? 'text-rose-600' : 'text-slate-900'} my-1">${formatGBP(p.total)}</div>
             <div class="text-[11px] font-medium text-slate-500">${escapeHtml(cats)}</div>
@@ -1341,22 +2573,27 @@
       const byYear = new Map();
 
       sorted.forEach(snap => {
-        const [yStr, mStr] = snap.dateKey.split('-');
-        const year = parseInt(yStr, 10);
-        const month = parseInt(mStr, 10);
+        const parts = snap.dateKey.split('-');
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parts[2] ? parseInt(parts[2], 10) : 1;
         if (isNaN(year) || isNaN(month)) return;
         if (!byYear.has(year)) byYear.set(year, []);
-        byYear.get(year).push({ snap, year, month });
+        byYear.get(year).push({ snap, year, month, day });
       });
 
       const years = Array.from(byYear.keys()).sort((a, b) => a - b);
       return years.map(year => {
         const candidates = byYear.get(year);
+        // Closest to Feb 1 (day-of-year ~32)
+        const targetDayOfYear = 32;
         candidates.sort((a, b) => {
-          const distA = Math.abs(a.month - 2);
-          const distB = Math.abs(b.month - 2);
-          if (distA !== distB) return distA - distB;
-          return a.month - b.month;
+          const doyA = (a.month - 1) * 30.5 + a.day;
+          const doyB = (b.month - 1) * 30.5 + b.day;
+          const distA = Math.abs(doyA - targetDayOfYear);
+          const distB = Math.abs(doyB - targetDayOfYear);
+          if (Math.abs(distA - distB) > 0.1) return distA - distB;
+          return a.snap.dateKey.localeCompare(b.snap.dateKey);
         });
 
         const chosen = candidates[0];
@@ -1457,14 +2694,14 @@
           maxBarThickness: 56
         },
         {
-          label: 'Shares / ISAs',
+          label: 'Shares ISA (HL & T212)',
           data: sharesData,
           backgroundColor: CATEGORY_STYLES.Shares.hex,
           borderRadius: isStacked ? 0 : 6,
           maxBarThickness: 56
         },
         {
-          label: 'Pensions / SIPPs',
+          label: 'Pensions (SIPPs)',
           data: pensionData,
           backgroundColor: CATEGORY_STYLES.Pension.hex,
           borderRadius: isStacked ? { topLeft: 6, topRight: 6 } : 6,
@@ -1503,7 +2740,7 @@
                   const row = annualRows[idx];
                   if (!row) return '';
                   return row.isExactFeb
-                    ? `${row.year} — February Snapshot`
+                    ? `${row.year} — February Snapshot (${row.snapshot.label})`
                     : `${row.year} — Nearest to Feb (${row.snapshot.label})`;
                 },
                 label: (ctx) => `${ctx.dataset.label}: ${formatGBP(ctx.parsed.y)}`,
@@ -1550,7 +2787,7 @@
         const badgeHtml = row.isExactFeb
           ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-               Feb Exact
+               Feb Match
              </span>`
           : `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900">
                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
@@ -1584,7 +2821,7 @@
 
     /**
      * =========================================================================
-     * 13. TAB 4: ADD / EDIT MONTH & "+ ADD ANOTHER ACCOUNT"
+     * 13. TAB 4: ADD / EDIT SNAPSHOT & "+ ADD ANOTHER ACCOUNT"
      * =========================================================================
      */
     function toggleAddAccountPanel() {
@@ -1596,20 +2833,11 @@
       }
     }
 
-    function setDefaultEntryMonth() {
-      const picker = document.getElementById('entryMonthPicker');
+    function setDefaultEntryDate() {
+      const picker = document.getElementById('entryDatePicker');
       if (!picker) return;
-      const sorted = sortSnapshots(appState.snapshots);
-      if (sorted.length > 0) {
-        const lastKey = sorted[sorted.length - 1].dateKey;
-        const [yStr, mStr] = lastKey.split('-');
-        let y = parseInt(yStr, 10);
-        let m = parseInt(mStr, 10) + 1;
-        if (m > 12) { m = 1; y += 1; }
-        picker.value = `${y}-${String(m).padStart(2, '0')}`;
-      } else {
-        picker.value = new Date().toISOString().slice(0, 7);
-      }
+      // Default to today's actual date (never future projection years)
+      picker.value = new Date().toISOString().slice(0, 10);
     }
 
     function getPrecedingSnapshot(targetDateKey) {
@@ -1620,12 +2848,8 @@
       return sorted[sorted.length - 1];
     }
 
-    function onEntryMonthChanged() {
-      renderMonthlyEntryForm();
-    }
-
     function prefillEntryFromLatest() {
-      const picker = document.getElementById('entryMonthPicker');
+      const picker = document.getElementById('entryDatePicker');
       const targetDateKey = picker ? picker.value : '';
       const refSnap = getPrecedingSnapshot(targetDateKey);
       if (!refSnap) return;
@@ -1659,10 +2883,15 @@
     }
 
     function renderMonthlyEntryForm() {
-      const picker = document.getElementById('entryMonthPicker');
+      const picker = document.getElementById('entryDatePicker');
       if (!picker) return;
-      if (!picker.value) setDefaultEntryMonth();
+      if (!picker.value) setDefaultEntryDate();
       const targetDateKey = picker.value;
+
+      const cbHideZero = document.getElementById('cbHideZeroHistoric');
+      if (cbHideZero) {
+        cbHideZero.checked = Boolean(appState.preferences.hideZeroHistoric);
+      }
 
       const sorted = sortSnapshots(appState.snapshots);
       const existingSnap = sorted.find(s => s.dateKey === targetDateKey);
@@ -1672,30 +2901,52 @@
       const bannerText = document.getElementById('entryModeBannerText');
       if (existingSnap) {
         bannerText.innerHTML = `
-          <span>Editing existing sheet: <strong class="text-violet-700">${existingSnap.label}</strong></span>
-          ${fallbackSnap ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white border border-violet-200 text-violet-800">Prior month: ${escapeHtml(fallbackSnap.label)}</span>` : ''}
+          <span>Editing existing snapshot: <strong class="text-violet-700">${existingSnap.label}</strong></span>
+          ${fallbackSnap ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white border border-violet-200 text-violet-800">Prior: ${escapeHtml(fallbackSnap.label)}</span>` : ''}
         `;
       } else {
         bannerText.innerHTML = `
-          <span>New sheet: <strong class="text-slate-900">${formatDateKeyToLabel(targetDateKey)}</strong></span>
+          <span>New snapshot: <strong class="text-slate-900">${formatDateKeyToLabel(targetDateKey)}</strong></span>
           ${fallbackSnap ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-violet-600 text-white shadow-2xs">Pre-filled from ${escapeHtml(fallbackSnap.label)}</span>` : ''}
         `;
       }
 
       const container = document.getElementById('entryGroupsContainer');
       const categories = ['Cash', 'Shares', 'Pension'];
+      const hideZero = Boolean(appState.preferences.hideZeroHistoric);
+
+      if (appState.accounts.length === 0) {
+        container.innerHTML = `
+          <div class="p-8 text-center rounded-2xl border border-slate-200 bg-slate-50 text-xs text-slate-600">
+            No accounts added yet. Use the <strong>+ Add Another Account</strong> panel above or <strong>+ Import Excel</strong> at the top right.
+          </div>
+        `;
+        recalcLiveEntryTotals();
+        return;
+      }
 
       container.innerHTML = categories.map(cat => {
         const style = CATEGORY_STYLES[cat];
-        const catAccounts = appState.accounts.filter(a => a.active && a.category === cat);
+        const catAccounts = appState.accounts.filter(a => {
+          if (!a.active || a.category !== cat) return false;
+          if (hideZero && sourceSnap) {
+            const ent = sourceSnap.entries[a.id];
+            const amt = ent ? Number(ent.amount) || 0 : 0;
+            if (amt === 0) return false;
+          }
+          return true;
+        });
+
         if (catAccounts.length === 0) return '';
+
+        const catHeading = cat === 'Shares' ? 'Shares ISA (HL & T212)' : cat === 'Pension' ? 'Pensions (SIPPs)' : 'Cash Accounts & Cards';
 
         return `
           <div class="rounded-2xl border border-slate-200 overflow-hidden">
             <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full ${style.dot}"></span>
-                <h3 class="text-sm font-bold text-slate-900">${cat} Accounts (${catAccounts.length})</h3>
+                <h3 class="text-sm font-bold text-slate-900">${catHeading} (${catAccounts.length})</h3>
               </div>
               <span class="text-xs text-slate-500">Balance (£) &amp; Interest Rate (%)</span>
             </div>
@@ -1781,9 +3032,9 @@
       });
       const total = cash + shares + pension;
       document.getElementById('entrySubCash').textContent = `Cash: ${formatGBP(cash)}`;
-      document.getElementById('entrySubShares').textContent = `Shares: ${formatGBP(shares)}`;
+      document.getElementById('entrySubShares').textContent = `Shares ISA: ${formatGBP(shares)}`;
       document.getElementById('entrySubPension').textContent = `Pension: ${formatGBP(pension)}`;
-      document.getElementById('entryLiveNetWorth').textContent = `Total: ${formatGBP(total)}`;
+      document.getElementById('entryLiveNetWorth').textContent = `Total Net Worth: ${formatGBP(total)}`;
     }
 
     function handleAddNewFund() {
@@ -1827,7 +3078,7 @@
         active: true
       });
 
-      const targetDateKey = document.getElementById('entryMonthPicker').value;
+      const targetDateKey = document.getElementById('entryDatePicker').value;
       if (targetDateKey) {
         const snap = appState.snapshots.find(s => s.dateKey === targetDateKey);
         if (snap) {
@@ -1853,13 +3104,16 @@
 
     function saveMonthlyEntry(event) {
       event.preventDefault();
-      const targetDateKey = document.getElementById('entryMonthPicker').value;
+      const targetDateKey = document.getElementById('entryDatePicker').value;
       if (!targetDateKey) {
-        showToast('Please select a target month.', 'error');
+        showToast('Please select a snapshot date.', 'error');
         return;
       }
 
-      const entries = {};
+      const fallbackSnap = getPrecedingSnapshot(targetDateKey);
+      const existingSnap = appState.snapshots.find(s => s.dateKey === targetDateKey);
+      const entries = existingSnap ? Object.assign({}, existingSnap.entries) : {};
+
       appState.accounts.forEach(acc => {
         const amtEl = document.getElementById(`entry-amt-${acc.id}`);
         const rateEl = document.getElementById(`entry-rate-${acc.id}`);
@@ -1867,6 +3121,9 @@
           const amount = enforceAccountSign(parseFloat(amtEl.value) || 0, acc);
           const rate = rateEl && rateEl.value !== '' ? parseFloat(rateEl.value) : null;
           entries[acc.id] = { amount, rate };
+        } else if (fallbackSnap && fallbackSnap.entries[acc.id]) {
+          // Preserve hidden zero-balance accounts cleanly
+          entries[acc.id] = Object.assign({}, fallbackSnap.entries[acc.id]);
         }
       });
 
@@ -1879,7 +3136,6 @@
       }
 
       saveToLocalStorage();
-      setDefaultEntryMonth();
       renderAll();
       switchTab('overview');
       showToast(`Saved ${label} snapshot and updated your Overview.`, 'success');
@@ -1918,4 +3174,4 @@
     }
   </script>
 </body>
-</html
+</html>
